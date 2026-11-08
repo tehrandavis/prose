@@ -17,3 +17,19 @@ Open items:
 - The spec's compile green and red are low-contrast as text on white. Phase 1 should add text variants.
 - The Preview channel needs a new Sparkle EdDSA key.
 - The derived dark icon has a speckled fade where the wave meets the paper. A hand-drawn dark icon would be better.
+
+## 2026-11-08: Phase 1
+
+- Design note `docs/plans/2026-11-08-phase-1-shell.md`; Tehran chose option A, folders opened in place.
+- Project model in ProseCore: `ProjectTree`, `ProjectStore`, `CompileStatus`, `OutlineNavigation.ancestry`. Fixed an inherited bug in `ProjectSources.list` (files after a symbolic link were skipped).
+- Sidebar (`⌘0`) with the folder tree, the open file's headings, file search, create, rename, trash, set main document, Quick Look for other files, FSEvents refresh. Open Folder (`⌥⌘O`); recent folders on the library home; folders restore after relaunch.
+- Title row: file and folder name, breadcrumb, status dot, Code/Writing/Focus control (Code only), export, preview toggle (`⇧⌘P`); `⌥⌘P` reads the preview. Darker red and green text colours.
+- Preview pages as rounded cards with a shadow and a side gutter; current page in the pane header (Tinymist's page gap is too small for per-card numbers).
+- Test fixes: project tests joined the serialized UI suite (a separate suite made preview tests flaky); the preview click test now lets late jumps settle.
+- Results: `scripts/build.sh release` passed. Last three full runs of `PROSE_DISTRIBUTION=preview scripts/test.sh`: two clean (206 core, 149 app tests, coverage 87.50 percent), one with a single preview reload timeout that passes alone.
+
+Open items:
+
+- One preview test still times out occasionally under load (about one run in three); not reproduced alone.
+- Writing and Focus modes are placeholders until Phases 3 and 4.
+- `.bib` files open in Quick Look; editing them needs a non-Typst buffer.
