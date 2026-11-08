@@ -11,3 +11,4 @@ Engine/SyntaxBridge/target/
 **/xcuserdata/
 Tools/MCPServer/target/
 .todos/
+Engine/RenderBridge/target/

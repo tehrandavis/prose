@@ -1,0 +1,27 @@
+[package]
+name = "prose-render"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+description = "Per-block Typst rendering for Prose's Writing mode. Phase 2 spike: library and measurement command, not yet linked into the app."
+
+[lib]
+crate-type = ["rlib"]
+
+[[bin]]
+name = "render-spike"
+path = "src/bin/render_spike.rs"
+
+# The same Typst source as Tinymist 0.15.8 and Engine/SyntaxBridge.
+[dependencies]
+typst = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }
+typst-layout = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }
+typst-svg = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }
+typst-kit = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1", features = ["embedded-fonts", "scan-fonts"] }
+
+[profile.release]
+opt-level = 3
+debug = false
+lto = "thin"
+codegen-units = 1

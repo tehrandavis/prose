@@ -147,6 +147,8 @@ Entry points:
 
 How a block is rendered with document context: the engine compiles the main entry once per revision to collect the `#set`, `#show`, `#let` and `#import` state in force at each block's position (the preamble up to that point, plus the enclosing file's rules). It then compiles the block alone inside a page of the requested width with that state applied, and exports the result as SVG. Heading numbers, equation numbers, figure numbers and citation keys come from the full compile's introspection, so `(2)` in the screenshot is the real equation number, not a count the editor made up.
 
+References: a block rendered alone cannot resolve a label outside it. The engine reads what each reference displays from the full compile (the text inside the reference's link) and gives the block document a stub label and a `show ref` rule with that text. Counter values and reference texts come from the last full compile, so typing inside a paragraph re-renders that block without waiting for a new full compile (measured in the Phase 2 spike, `docs/plans/2026-11-08-phase-2-engine-spike.md`).
+
 Caching: results are keyed by (file, block source hash, state hash, width). An edit inside one paragraph re-renders that paragraph. An edit to a `#set` line re-renders everything after it. Renders run on a background actor and the main thread never waits.
 
 Failures: a block that fails to compile stays as source with LeftBlank's existing error styling. The rest of the document keeps rendering. A full-document compile failure marks all fragments stale (a thin amber bar at the left edge) but leaves them visible.
