@@ -62,8 +62,6 @@ class TinymistBuildTests(unittest.TestCase):
         bootstrap = (ROOT / 'scripts/bootstrap.sh').read_text()
         self.assertIn('scripts/build-tinymist.sh', bootstrap)
         self.assertNotIn('releases/download', bootstrap)
-        # The iPad engine carries the same VFS fix.
-        self.assertIn('scripts/tinymist-vfs.patch', (ROOT / 'scripts/prepare-ipad-engine.sh').read_text())
 
     def test_ci_caches_the_binary_by_its_inputs(self):
         key = re.compile(r"key: mac-tinymist-[^\n]*hashFiles\('scripts/build-tinymist.sh', "

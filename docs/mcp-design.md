@@ -2,7 +2,7 @@
 
 状态：已开始实现，尚未发布。设计与实现记录日期：2026-10-05。
 
-本文定义 Prose 可复用的 agent 文档工具、macOS MCP 接入方式、Rust 与 Swift 的边界，以及用户复制给 agent 的连接配置提示词。macOS 应用自带本机 MCP 服务，Codex、Claude Code 等外部 agent 负责理解请求和生成修改；应用负责可靠地读取、编辑、保存和编译文档。未来 macOS 与 iOS/iPadOS 内置 agent 直接复用同一套 Swift 工具，不依赖 MCP server。
+本文定义 Prose 可复用的 agent 文档工具、macOS MCP 接入方式、Rust 与 Swift 的边界，以及用户复制给 agent 的连接配置提示词。macOS 应用自带本机 MCP 服务，Codex、Claude Code 等外部 agent 负责理解请求和生成修改；应用负责可靠地读取、编辑、保存和编译文档。未来 macOS 内置 agent 直接复用同一套 Swift 工具，不依赖 MCP server。
 
 ## 目标与范围
 
@@ -10,7 +10,7 @@ Prose 的技术内核是面向 Typst 的代码编辑器，用户体验仍围绕�
 
 首要工作流是：读取文档及错误 → 修改源码 → 编译指定版本 → 根据结果继续修复。支持文档管理，但不以扩充工具数量为目标。
 
-首版交付面向本机运行的外部 agent 和 macOS 应用，不包括内置聊天或模型调用、远程公网访问、任意 shell 执行、跨设备协同编辑、跨文件 ACID 事务。iOS/iPadOS 不集成 MCP server，这是本设计的平台边界；后续智能编辑通过内置 agent 接入共享工具服务。应用崩溃或同步故障也不是文档修复工具能够自动解决的问题。
+首版交付面向本机运行的外部 agent 和 macOS 应用，不包括内置聊天或模型调用、远程公网访问、任意 shell 执行、跨设备协同编辑、跨文件 ACID 事务。Prose 只支持 macOS（继承自 LeftBlank 的 iPad 目标已于 2026-11-08 移除）；后续智能编辑通过内置 agent 接入共享工具服务。应用崩溃或同步故障也不是文档修复工具能够自动解决的问题。
 
 本文保留完整设计目标；下节记录当前实现及尚未完成的验证，不能将设计承诺当作全部已交付。
 
@@ -20,18 +20,18 @@ Prose 的技术内核是面向 Typst 的代码编辑器，用户体验仍围绕�
 
 - 共享 Swift 层提供统一工具清单、schema 校验、dispatcher、版本检查、精确替换、patch、项目文件读取与搜索、文档管理和文件历史恢复。对外列表类结果统一放在 items；历史结果放在 versions，修改结果放在 files。
 - macOS 层通过 Workspace 接入未保存 buffer、原生撤销、IME 与同步冲突保护。关闭的文件使用协调访问；单个编辑文件上限 2 MiB，项目读取上限 2000 项、单个资源 16 MiB、合计 64 MiB。超出上限明确报错。读取可以并发，写操作独占执行；引擎调用依次执行。
-- Rust helper 使用锁定的 rmcp 3.5.0，只承担 MCP transport、认证与私有 JSON 行协议。macOS 构建和签名脚本打包 helper；iPad 继续使用独立依赖图，CI 增加产物检查。
+- Rust helper 使用锁定的 rmcp 3.5.0，只承担 MCP transport、认证与私有 JSON 行协议。macOS 构建和签名脚本打包 helper。
 - 入口位于 **设置 → 编程智能体**：默认关闭；新启用的连接可读写文稿库里的所有文档（包括新建文稿），启用后复制配置提示词。设置页保留连接启停和复制提示词，删除文稿范围与只读权限选项。既有连接继续遵守已保存的权限，重新启用后采用新的完整文稿权限。状态表示本机服务已启用，不代表某个 agent 已完成连接。停用会撤销当前凭证，再次启用使用新凭证。配置不会同步到 iCloud。
 - 写操作去重只保留当前 helper/dispatcher 生命周期内最近 256 个请求，按授权身份隔离；不承诺重启后或缓存过期后的 exactly-once。游标最多保留 128 个，服务重启后失效。
-- 查看类只读工具：render_page 与 query_document 沿用 compile_document 的路径，在独立目录捕获项目（含未保存 buffer），每次启动全新 Tinymist，分别调用 `tinymist.exportPng`（单页，请求 ppi 36–288，默认 144）和 `tinymist.exportQuery`（format=json，可选 field、one；结果按 limit/cursor 分页）；可选 expected_project_revision，返回 compiled_project_revision、is_current 与 status=unverified。render_page 在同一引擎上先以极低分辨率探测页面尺寸（每次探测不超过 256 px），再自动降低 ppi，使每边不超过 2048 px、总像素不超过 3 MP，结果报告实际 ppi、requested_ppi 与 ppi_reduced；连 1 ppi 也放不下时返回 page_too_large。编译失败返回 compile_failed 与诊断，页码越界返回 page_out_of_range 与 page_count。三个引擎工具共用编译队列。get_editor_context 只描述当前窗口中已打开且已授权的文档：活动文件与版本、光标、最多 4000 字符的选区（带 truncated）、可见行、布局与预览页；活动文件在项目外（如只读包源码）时不返回其路径或内容，未打开时返回 document_not_open。iPad 不提供 MCP，共享工具定义随核心编译，平台宿主尚未实现。
+- 查看类只读工具：render_page 与 query_document 沿用 compile_document 的路径，在独立目录捕获项目（含未保存 buffer），每次启动全新 Tinymist，分别调用 `tinymist.exportPng`（单页，请求 ppi 36–288，默认 144）和 `tinymist.exportQuery`（format=json，可选 field、one；结果按 limit/cursor 分页）；可选 expected_project_revision，返回 compiled_project_revision、is_current 与 status=unverified。render_page 在同一引擎上先以极低分辨率探测页面尺寸（每次探测不超过 256 px），再自动降低 ppi，使每边不超过 2048 px、总像素不超过 3 MP，结果报告实际 ppi、requested_ppi 与 ppi_reduced；连 1 ppi 也放不下时返回 page_too_large。编译失败返回 compile_failed 与诊断，页码越界返回 page_out_of_range 与 page_count。三个引擎工具共用编译队列。get_editor_context 只描述当前窗口中已打开且已授权的文档：活动文件与版本、光标、最多 4000 字符的选区（带 truncated）、可见行、布局与预览页；活动文件在项目外（如只读包源码）时不返回其路径或内容，未打开时返回 document_not_open。
 
 当前编译工具已经在独立目录捕获项目文件与实时 buffer，并启动全新的 Tinymist 实例，避免旧 PDF 混入结果。但外部包和系统字体尚未固定，因此即使产生有效 PDF，也返回 status=unverified、project_sources_compiled=true 与具体 limitation；无有效 PDF 返回 failed。这里还没有完成设计中的严格验证保证。缓存诊断暂时统一返回 freshness=unknown，原生诊断只保留起点时标明 range_is_point。
 
 当前错误校验和 mutation 执行复用共享 dispatcher；业务 JSON 参数由同一份 schema 验证，尚未为每个工具分别建立 Codable 参数结构。返回 schema 当前为 object，具体结果字段见实现和测试。搜索超时或结果预算耗尽明确返回 incomplete，不保证一次覆盖大项目；查询结果在续页前变化会使游标失效。
 
-本地验证覆盖共享工具工作流、真实 AppKit 编辑/撤销/历史、真实 MCP helper 的认证/发现/调用/重启/撤销，以及 Swift 包依赖图。Mac 完整回归通过，源码行覆盖率 86.12%；SwiftFormat、SwiftLint 和 Rust clippy 通过。iPad 模拟器 build-for-testing 及产物隔离检查通过，本次复用了源码和依赖输入完全相同的 Tinymist 静态库，没有重新构建引擎。
+本地验证覆盖共享工具工作流、真实 AppKit 编辑/撤销/历史、真实 MCP helper 的认证/发现/调用/重启/撤销，以及 Swift 包依赖图。Mac 完整回归通过，源码行覆盖率 86.12%；SwiftFormat、SwiftLint 和 Rust clippy 通过。
 
-Hurl 已接入 GitHub CI，针对真实 helper、Swift dispatcher 和隔离文档库执行，不使用模拟服务；本机不执行 Hurl，本次尚未运行该 CI。Mac 本地 ad-hoc 打包通过；正式签名沙箱运行、iPad 真机及两个目标 coding agent 的实际配置提示词执行仍需相应 CI/客户端验收，不能只凭单元测试报告完成。
+Hurl 已接入 GitHub CI，针对真实 helper、Swift dispatcher 和隔离文档库执行，不使用模拟服务；本机不执行 Hurl，本次尚未运行该 CI。Mac 本地 ad-hoc 打包通过；正式签名沙箱运行及两个目标 coding agent 的实际配置提示词执行仍需相应 CI/客户端验收，不能只凭单元测试报告完成。
 
 开发构建使用 `scripts/build.sh`，会构建并打包 Rust helper；直接 `swift build` 仅编译 Swift，不产生完整可连接的 app。调试时使用隔离文档库，不要把用户私有 connection.json 或 access.json 放进仓库。
 
@@ -141,15 +141,7 @@ MCP、ACP 和 LSP 解决不同层面的问题。本次外部接入实现 MCP；�
 
 ## 平台边界与未来内置 agent
 
-iOS/iPadOS 不按桌面模式安装、启动或管理供其他应用长期连接的本机 MCP server。这里不作“iOS 技术上无法使用 MCP”或“完全没有相关生态”的绝对判断；MCP 协议本身与是否部署桌面 helper 是两回事。Apple 的后台执行受系统调度和时限约束，不能据此承诺常驻服务。Prose 因此将本机 MCP 接入限定在 macOS。[后台执行限制](https://developer.apple.com/documentation/uikit/extending-your-app-s-background-execution-time)、[后台策略](https://developer.apple.com/documentation/backgroundtasks/choosing-background-strategies-for-your-app)
-
-| 能力 | macOS | iOS/iPadOS |
-| --- | --- | --- |
-| 共享工具定义、参数、结果与文档业务 | 首版 MCP 复用；未来内置 agent 也复用 | 为未来内置 agent 复用，不依赖 MCP |
-| Rust rmcp helper、MCP HTTP 与私有 IPC | macOS 专属适配层 | 不解析依赖、不编译、不链接、不打包 |
-| MCP 启停、连接凭证、描述文件、复制配置提示词 | macOS 专属功能 | 不提供相应设置或资源 |
-| 内置 agent 会话、模型调用与 tool calling | 后续独立设计 | 后续独立设计；进程内调用工具 |
-| 原生 buffer、撤销、IME、引擎与生命周期 | Workspace / AppKit 适配 | TabletWorkspace / UIKit 适配 |
+Prose 只支持 macOS；继承自 LeftBlank 的 iPad 目标已于 2026-11-08 移除。本机 MCP 接入属于 macOS 应用层：Rust rmcp helper、MCP HTTP 与私有 IPC、MCP 启停、连接凭证、描述文件和复制配置提示词都只在应用 target 中实现。共享工具定义、参数、结果与文档业务放在 ProseCore，首版 MCP 和未来内置 agent 都复用它们。内置 agent 的会话、模型调用与 tool calling 后续独立设计，以进程内调用使用工具。原生 buffer、撤销、IME、引擎与生命周期由 Workspace / AppKit 适配层负责。
 
 ### 一份业务契约，两种调用入口
 
@@ -157,19 +149,15 @@ iOS/iPadOS 不按桌面模式安装、启动或管理供其他应用长期连接
 
 外部 MCP 请求和内置 agent 调用均经过同一个 dispatcher。调用上下文由可信宿主注入，包含会话身份、文档授权范围、读写权限、目标窗口/工作区以及取消信号，不能让模型通过 arguments 自行声明授权或选择更高权限。内置 agent 也必须遵守相同的路径限制、版本检查、输入法保护、编辑批次、保存与历史恢复规则。
 
-首版 16 个工具作为共享业务契约设计；未来内置 agent 按宿主实际能力和用户授权获得可用子集，未实现的能力不得注册为可用。get_app_state 的公共结果包含 platform、应用身份、引擎状态、可用工具与已授权的打开文档；MCP 连接信息放在可选的 mcp 字段，iOS 省略该字段，不伪造 server 状态。安装和启停 MCP 属于 macOS 宿主功能，不增加为通用文档工具。
+首版 16 个工具作为共享业务契约设计；未来内置 agent 按宿主实际能力和用户授权获得可用子集，未实现的能力不得注册为可用。get_app_state 的公共结果包含 platform、应用身份、引擎状态、可用工具与已授权的打开文档；MCP 连接信息放在可选的 mcp 字段，不伪造 server 状态。安装和启停 MCP 属于 macOS 宿主功能，不增加为通用文档工具。
 
-共享代码优先放在现有 ProseCore，保持依赖方向为“macOS MCP 适配层 / 未来 agent 适配层 → 共享工具 → 文档服务”。共享层通过平台接口访问实时 buffer、原生撤销及引擎；不要直接依赖 AppKit 的 Workspace，也不要在 iOS 绕开 TabletWorkspace 直接覆盖磁盘文件。首版先实现 macOS 适配，iOS 适配随内置 agent 工作推进，不宣称当前已有同等工具能力。
+共享代码优先放在现有 ProseCore，保持依赖方向为“macOS MCP 适配层 / 未来 agent 适配层 → 共享工具 → 文档服务”。共享层通过平台接口访问实时 buffer、原生撤销及引擎；不要直接依赖 AppKit 的 Workspace，也不要绕开宿主直接覆盖磁盘文件。
 
 ### 构建与运行约束
 
-沿用根目录 Package.swift 与 Sources/Package.swift 的独立构建边界：macOS target 才拥有 MCP 桥接、helper 管理和连接资源；iPad 的固定 core-only 依赖图不引入 MCP。不能只用运行时开关隐藏功能，也不能按执行 manifest 的宿主操作系统判断目标平台，因为 iOS 构建同样在 Mac 上解析 manifest。打包脚本也必须显式区分平台。
-
-现有 iPad Tinymist Rust 静态库属于排版引擎，继续保留；本约束不禁止 Rust、Tokio 或引擎已有的本机预览通信。不得因为排版引擎已经使用 Rust，就顺便把 rmcp、MCP transport 或 server helper 合入 iOS 引擎产物。详见 [Mac/iPad 架构](ipad-architecture.md)。
+MCP 桥接、helper 管理和连接资源只属于 macOS 应用 target（`ProseApp`），ProseCore 不 import MCP，`scripts/test-package-graphs.py` 检查这一点。不能只用运行时开关隐藏功能。排版引擎（Tinymist helper 与 `Engine/RenderBridge`）使用 Rust 不受本约束限制，但不得把 rmcp、MCP transport 或 server helper 合入引擎产物。
 
 未来内置 agent 的推理位置（设备端或远程）、模型提供方、凭证与会话 UI 单独设计，“内置 agent”不等于必须在设备上运行模型。工具执行仍在当前应用的文档服务内完成，不需要 localhost MCP、Rust helper 或 Swift MCP SDK。
-
-iOS 内置 agent 首先按前台交互设计。进入后台时停止调度新的工具步骤，取消或暂停未完成推理，利用系统允许的时间完成必要保存并记录会话/操作状态。已应用的修改不因取消而假装未发生；恢复前台后重新检查文档版本和操作结果，不能盲目重放写请求。系统允许的后台任务可以后续专项评估，本设计不承诺持续后台运行。
 
 ## SDK 与进程结构
 
@@ -182,9 +170,9 @@ flowchart LR
     External[Mac 本机 coding agent] <-->|MCP Streamable HTTP| Rust[macOS Rust rmcp helper]
     Rust <-->|私有 stdin stdout 管道| MCP[macOS Swift MCP 适配层]
     MCP --> Dispatcher[共享 Swift ToolDispatcher]
-    Embedded[未来 macOS / iOS 内置 agent] -.->|进程内调用| Dispatcher
+    Embedded[未来 macOS 内置 agent] -.->|进程内调用| Dispatcher
     Dispatcher --> Service[共享文档操作服务]
-    Service <--> Host[平台适配 Workspace / TabletWorkspace]
+    Service <--> Host[宿主适配 Workspace]
     Service <--> Library[文档库 保存 历史]
     Host <--> Native[原生编辑与 Tinymist]
 ```
@@ -482,7 +470,7 @@ helper 随 app 打包、签名和发布，锁定依赖并纳入第三方许可�
 
 ## 实施顺序与验证
 
-1. 在共享 Swift 层建立与 MCP 无关的工具契约和 dispatcher，macOS 层接入签名 helper、私有 IPC 和 get_app_state。验证两类客户端的真实连接及沙箱行为，同时保持 iPad 依赖图不包含 MCP。
+1. 在共享 Swift 层建立与 MCP 无关的工具契约和 dispatcher，macOS 层接入签名 helper、私有 IPC 和 get_app_state。验证两类客户端的真实连接及沙箱行为。
 2. 实现 list_files、read_file、search_text、str_replace 与单文件 patch，打通实时 buffer、版本校验、原生撤销和保存。完成“定位并修复一个真实 Typst 错误”的端到端流程。
 3. 补齐严格编译验证、多文件 patch 的明确部分失败结果、文件历史查询与恢复、可恢复文件删除，以及文档 CRUD，达到首版 16 个工具的工作流覆盖。
 4. 完成连接设置、描述文件、复制提示词和客户端安装验收；发布前解决下列验证项。
@@ -490,8 +478,8 @@ helper 随 app 打包、签名和发布，锁定依赖并纳入第三方许可�
 验证重点：
 
 - 协议契约：共享工具 schema 与 Swift 参数一致；进程内调用和 MCP 转发返回相同业务结果；Rust 正确转发成功、业务错误、取消与进程退出。
-- 平台隔离：扩展现有 package graph 检查，确认 iPad 不解析/编译 MCP 相关 target；在 CI 检查 iOS 链接输入和打包产物，不含 rmcp/MCP bridge、server helper、连接资源。现有 Tinymist 静态库继续独立验证，不能笼统禁止 Rust 产物。
-- 未来内置 agent 接入时追加：provider schema 映射、授权子集、两个平台实时 buffer 与撤销、iOS 后台暂停及恢复、不确定写入结果的恢复；这些不作为首版已实现能力。
+- 边界隔离：package graph 检查确认 ProseCore 不依赖 MCP；MCP 只存在于 macOS 应用层与 helper。排版引擎的 Rust 产物继续独立验证，不能笼统禁止 Rust 产物。
+- 未来内置 agent 接入时追加：provider schema 映射、授权子集、实时 buffer 与撤销、不确定写入结果的恢复；这些不作为首版已实现能力。
 - 发现与搜索：glob、分页游标失效、未保存文本、多个章节、正则预算、超长行、下载未完成和部分扫描；各场景返回明确范围，不能漏结果却报告完整。
 - 恢复：检查删除前版本可发现、可读、可恢复；拒绝覆盖同名新文件；历史过期与保存失败有确定结果。
 - 编辑：中文、emoji、组合字符、CRLF、重复文本、空文件、EOF、多个 hunk、重叠和越界。

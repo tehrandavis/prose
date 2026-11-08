@@ -1,9 +1,5 @@
+import AppKit
 import Foundation
-#if canImport(AppKit)
-    import AppKit
-#else
-    import UIKit
-#endif
 
 /// Drawing-only colours for a TextKit 2 view. NSTextLayoutManager rendering
 /// attributes are slow to read back and pay for every run after a changed

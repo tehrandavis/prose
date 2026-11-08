@@ -176,55 +176,52 @@ private func discoveryDirectory() throws -> URL {
     ) }
 }
 
-#if os(macOS)
-    /// Network is deliberately opt-in. Exercises the real official registry, manifest parser,
-    /// asset scaffolding, managed-library import, and PDF export through the bundled Tinymist.
-    @MainActor
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["PROSE_UNIVERSE_NETWORK"] == "1"))
-    func officialUniverseTemplateCreatesRenderableManagedDocument() async throws {
-        let root = try discoveryDirectory()
-        let client = TinymistClient()
-        defer { client.stop()
-            try? FileManager.default.removeItem(at: root)
-        }
-        let package = try discoveryPackage([
-            "name": "charged-ieee",
-            "version": "0.1.4",
-            "compiler": "0.12.0",
-            "template": ["path": "template", "entrypoint": "main.typ", "thumbnail": "thumbnail.png"],
-        ])
-        try FileManager.default.createDirectory(
-            at: root.appendingPathComponent("Exports"),
-            withIntermediateDirectories: true,
-        )
-        try await client.start(root: root, outputDirectory: root.appendingPathComponent("Exports"))
-        let project = try await UniverseTemplateInstaller.materialize(
-            package,
-            using: client,
-            in: root.appendingPathComponent("Downloads"),
-        )
-        let files = try FileManager.default.subpathsOfDirectory(atPath: project.directoryURL.path)
-        #expect(files.contains("main.typ"))
-        #expect(files.contains { $0.hasSuffix(".bib") })
-        let library = DocumentLibrary(rootURL: root.appendingPathComponent("Library"))
-        let document = try await library.importProject(
-            at: project.directoryURL,
-            mainFile: project.mainFileURL,
-            title: "IEEE paper",
-        )
-        let content = try await library.read(document.id).text
-        #expect(content.contains("@preview/charged-ieee:0.1.4"))
-        // Removing staging proves subsequent editing no longer depends on the downloaded folder.
-        try FileManager.default.removeItem(at: project.directoryURL)
-        try client.open(document.sourceURL, text: content, version: 1)
-        let result = try await client.command("tinymist.exportPdf", arguments: [document.sourceURL.path])
-        let pdf = try #require(result["path"].string)
-        #expect((PDFDocument(url: URL(fileURLWithPath: pdf))?.pageCount ?? 0) > 0)
-        let reread = try await library.read(document.id)
-        #expect(reread.text == content)
+/// Network is deliberately opt-in. Exercises the real official registry, manifest parser,
+/// asset scaffolding, managed-library import, and PDF export through the bundled Tinymist.
+@MainActor
+@Test(.enabled(if: ProcessInfo.processInfo.environment["PROSE_UNIVERSE_NETWORK"] == "1"))
+func officialUniverseTemplateCreatesRenderableManagedDocument() async throws {
+    let root = try discoveryDirectory()
+    let client = TinymistClient()
+    defer { client.stop()
+        try? FileManager.default.removeItem(at: root)
     }
-
-#endif
+    let package = try discoveryPackage([
+        "name": "charged-ieee",
+        "version": "0.1.4",
+        "compiler": "0.12.0",
+        "template": ["path": "template", "entrypoint": "main.typ", "thumbnail": "thumbnail.png"],
+    ])
+    try FileManager.default.createDirectory(
+        at: root.appendingPathComponent("Exports"),
+        withIntermediateDirectories: true,
+    )
+    try await client.start(root: root, outputDirectory: root.appendingPathComponent("Exports"))
+    let project = try await UniverseTemplateInstaller.materialize(
+        package,
+        using: client,
+        in: root.appendingPathComponent("Downloads"),
+    )
+    let files = try FileManager.default.subpathsOfDirectory(atPath: project.directoryURL.path)
+    #expect(files.contains("main.typ"))
+    #expect(files.contains { $0.hasSuffix(".bib") })
+    let library = DocumentLibrary(rootURL: root.appendingPathComponent("Library"))
+    let document = try await library.importProject(
+        at: project.directoryURL,
+        mainFile: project.mainFileURL,
+        title: "IEEE paper",
+    )
+    let content = try await library.read(document.id).text
+    #expect(content.contains("@preview/charged-ieee:0.1.4"))
+    // Removing staging proves subsequent editing no longer depends on the downloaded folder.
+    try FileManager.default.removeItem(at: project.directoryURL)
+    try client.open(document.sourceURL, text: content, version: 1)
+    let result = try await client.command("tinymist.exportPdf", arguments: [document.sourceURL.path])
+    let pdf = try #require(result["path"].string)
+    #expect((PDFDocument(url: URL(fileURLWithPath: pdf))?.pageCount ?? 0) > 0)
+    let reread = try await library.read(document.id)
+    #expect(reread.text == content)
+}
 
 @Test func universeDiscoveryLargeIndexKeepsRepeatedQueriesFast() throws {
     let packages = try (0 ..< 2000).map { index in
@@ -246,49 +243,46 @@ private func discoveryDirectory() throws -> URL {
     #expect(start.duration(to: .now) < .seconds(2))
 }
 
-#if os(macOS)
-    @MainActor
-    @Test func universeTemplateRejectsInvalidRequestsBeforeCreatingProject() async throws {
-        let root = try discoveryDirectory()
-        defer { try? FileManager.default.removeItem(at: root) }
-        let destination = root.appendingPathComponent("downloads")
-        let client = TinymistClient()
-        let plain = try discoveryPackage(["name": "plain", "version": "1.0.0"])
-        await #expect(throws: UniverseTemplateError.self) { try await UniverseTemplateInstaller.materialize(
-            plain,
-            using: client,
-            in: destination,
-        ) }
-        let fields: [String: Any] = [
-            "name": "template",
-            "version": "1.0.0",
-            "compiler": "99.0.0",
-            "template": ["path": "template", "entrypoint": "main.typ"],
-        ]
-        let incompatible = try discoveryPackage(fields)
-        await #expect(throws: UniverseTemplateError.self) { try await UniverseTemplateInstaller.materialize(
-            incompatible,
-            using: client,
-            in: destination,
-        ) }
-        #expect(!FileManager.default.fileExists(atPath: destination.path))
-        let compatible = try discoveryPackage(fields.merging(
-            ["compiler": "0.12.0"],
-            uniquingKeysWith: { _, new in new },
-        ))
-        // A disconnected engine fails without leaving a half-created project in the library.
-        await #expect(throws: ServiceError.self) { try await UniverseTemplateInstaller.materialize(
-            compatible,
-            using: client,
-            in: destination,
-        ) }
-        #expect(try FileManager.default.contentsOfDirectory(atPath: destination.path).isEmpty)
-        let task = Task { try await UniverseTemplateInstaller.materialize(compatible, using: client, in: destination) }
-        task.cancel()
-        await #expect(throws: CancellationError.self) { try await task.value }
-    }
-
-#endif
+@MainActor
+@Test func universeTemplateRejectsInvalidRequestsBeforeCreatingProject() async throws {
+    let root = try discoveryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let destination = root.appendingPathComponent("downloads")
+    let client = TinymistClient()
+    let plain = try discoveryPackage(["name": "plain", "version": "1.0.0"])
+    await #expect(throws: UniverseTemplateError.self) { try await UniverseTemplateInstaller.materialize(
+        plain,
+        using: client,
+        in: destination,
+    ) }
+    let fields: [String: Any] = [
+        "name": "template",
+        "version": "1.0.0",
+        "compiler": "99.0.0",
+        "template": ["path": "template", "entrypoint": "main.typ"],
+    ]
+    let incompatible = try discoveryPackage(fields)
+    await #expect(throws: UniverseTemplateError.self) { try await UniverseTemplateInstaller.materialize(
+        incompatible,
+        using: client,
+        in: destination,
+    ) }
+    #expect(!FileManager.default.fileExists(atPath: destination.path))
+    let compatible = try discoveryPackage(fields.merging(
+        ["compiler": "0.12.0"],
+        uniquingKeysWith: { _, new in new },
+    ))
+    // A disconnected engine fails without leaving a half-created project in the library.
+    await #expect(throws: ServiceError.self) { try await UniverseTemplateInstaller.materialize(
+        compatible,
+        using: client,
+        in: destination,
+    ) }
+    #expect(try FileManager.default.contentsOfDirectory(atPath: destination.path).isEmpty)
+    let task = Task { try await UniverseTemplateInstaller.materialize(compatible, using: client, in: destination) }
+    task.cancel()
+    await #expect(throws: CancellationError.self) { try await task.value }
+}
 
 @Test func universeOldOfflineIndexRemainsUsableAndRefreshesTemplateMetadata() async throws {
     let root = try discoveryDirectory()

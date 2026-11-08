@@ -34,9 +34,9 @@ Command-click a variable, function, module member, label reference, or the path 
 
 Rest the pointer on a function or symbol for 400 ms to see its signature and available documentation. The compact card follows the app's light/dark appearance and never moves the caret or takes keyboard focus. Move into the card to scroll longer explanations; move away, type, scroll the editor or press Esc to dismiss it. Built-in types that only provide an official documentation link show that link. Symbols with no help produce no popup. Hover also works in read-only package source; `⌃⌥H` still opens explicit help at the caret.
 
-When documentation includes a Typst example, the hover card opens an **Example** tab with code above its rendered result; **Explanation** shows the signature and full description. An embedded SVG or PNG is preferred. Otherwise the first example is compiled separately, including hidden documentation setup lines. The paper preview stays white in both themes. Results are cached, rendering is cancelled when the card closes, and examples never change the manuscript's preview. Examples that require unavailable files or context keep their source and a documentation link. On Mac, preview compilation uses an isolated directory, cached packages only, a three-second limit and the first output page. On iPad, touch users open **Writing Assistance → Explain at Cursor**; a mouse or trackpad also shows the hover card. Examples render in a separate embedded engine session with a five-second session timeout. Both platforms keep longer examples and explanations scrollable.
+When documentation includes a Typst example, the hover card opens an **Example** tab with code above its rendered result; **Explanation** shows the signature and full description. An embedded SVG or PNG is preferred. Otherwise the first example is compiled separately, including hidden documentation setup lines. The paper preview stays white in both themes. Results are cached, rendering is cancelled when the card closes, and examples never change the manuscript's preview. Examples that require unavailable files or context keep their source and a documentation link. Preview compilation uses an isolated directory, cached packages only, a three-second limit and the first output page. Longer examples and explanations stay scrollable.
 
-**Go Back** restores the previous file and caret, including nested jumps. `⌘W` closes the current file and returns to the previous document; `⌘Q` quits the Mac app. On iPad, `⌘W` returns from a module to the original document, or closes the main document to the library. The original document remains the compilation entry while you inspect dependencies. Your own modules stay editable; package sources display a lock and **Read-only** badge and cannot be overwritten.
+**Go Back** restores the previous file and caret, including nested jumps. `⌘W` closes the current file and returns to the previous document; `⌘Q` quits the app. The original document remains the compilation entry while you inspect dependencies. Your own modules stay editable; package sources display a lock and **Read-only** badge and cannot be overwritten.
 
 **File → Open Folder** opens a folder of Typst files, such as a thesis, and edits the files where they are. Nothing is copied into the library, so Git, Dropbox and iCloud Drive keep working on the folder. The sidebar (`⌘0`) lists the folder's files, folders first, and nests the open file's headings under it. Click a heading to go to it. The search field filters files by name. The `+` button adds a Typst file or a folder, and each item's context menu offers Rename, Reveal in Finder, Set as Main Document and Move to Trash. A pin marks the main document: preview and export always compile it, whichever file is open. Other files, such as PDFs, images and `.bib` files, open in Quick Look. Recent folders appear on the library home and reopen after relaunch.
 
@@ -46,16 +46,14 @@ Without the sidebar, the outline appears in the left margin without moving the t
 
 ## Completion and existing objects
 
-On Mac and iPad, code completion appears after a short pause while you type.
-The editor keeps focus. Use the arrow keys and Tab to accept a candidate, or tap
-one on iPad. Escape dismisses the suggestions. Function calls also show parameter
+Code completion appears after a short pause while you type. The editor keeps
+focus. Use the arrow keys and Tab to accept a candidate. Escape dismisses the suggestions. Function calls also show parameter
 help, including calls that span multiple lines. Completion preserves snippet
 placeholders and creates one undo step. Chinese input composition defers these
 suggestions until composition finishes. Manual completion remains available.
 
 Place the cursor inside a table or image and choose **Edit Table or Image…**
-(`⌘J → c → e` on Mac; the document actions menu on iPad). Both apps use the same
-form. Tables support cells, rows, columns, a header row, cell alignment, and
+(`⌘J → c → e`). Tables support cells, rows, columns, a header row, cell alignment, and
 rectangular tab-separated data. Image editing supports existing document
 resources, a path, a numeric width, a plain caption, and alignment. Apply changes
 only the selected object and creates one undo step. Cancel leaves the source
@@ -86,13 +84,11 @@ Editor styling gently emphasizes headings, bold, italics and inline code. Moving
 
 The preview shows real typeset pages. Double-click a page to reveal the source; source selection can locate the corresponding preview position. Zoom is relative to the preview pane's fitted width. Dark preview changes screen colors only; images retain their colors and exported PDFs are unchanged.
 
-Both platforms offer **Follow Writing** and **Return to Reading** beside the
-preview controls. Follow Writing tracks the caret in side-by-side mode after a
+**Follow Writing** and **Return to Reading** sit beside the preview controls. Follow Writing tracks the caret in side-by-side mode after a
 short pause. Scrolling the preview pauses it. A preview-to-source jump remembers
 your reading position; Return to Reading restores it. Zoom, window resizing and
 preview reloads preserve a page-relative position. This geometric anchor does
-not guarantee the same paragraph after substantial document reflow. iPad also
-offers preview zoom from 50% to 200%.
+not guarantee the same paragraph after substantial document reflow.
 
 While syntax is incomplete or invalid, Prose retains the last successful preview and marks it as out of date. Rendering only visible page regions reduces display work; it does not mean every invalid document can compile partially. Export fails on a compilation error instead of silently exporting an old PDF.
 

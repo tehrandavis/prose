@@ -12,28 +12,25 @@ Binary contains Typst 0.15.1 (Apache-2.0), from Tinymist's pinned upstream fork.
 https://github.com/Myriad-Dreamin/typst/tree/tinymist/v0.15.1
 See Tinymist-LICENSE and Typst-LICENSE.
 The editor parses source with typst-syntax 0.15.1 (Apache-2.0) from the same fork,
-through Prose's parser bridge. On iPad the parser is part of the embedded engine
-and adds no other components.
+through Prose's parser bridge.
 
 Prose render engine: Typst 0.15.1 (Apache-2.0) from the same Myriad-Dreamin fork
 https://github.com/Myriad-Dreamin/typst/tree/tinymist/v0.15.1
 The macOS app links Typst into the app itself, for Writing mode's per-block
 rendering, together with the parser bridge above. It embeds the Typst assets
 0.15.1 fallback fonts; see Licenses/typst-assets-NOTICE.txt. The complete pinned
-dependency notices of the engine, parser included, are in the macOS-only
+dependency notices of the engine, parser included, are in
 TypstEngine-LICENSES.txt.
-The iPad engine embeds Typst assets 0.15.1 fallback fonts; their notices and
-licenses are in Licenses/typst-assets-NOTICE.txt.
 
 Noto Sans SC variable font (SIL Open Font License 1.1)
 https://github.com/google/fonts/tree/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosanssc
-Portable Chinese fallback shared by Mac and iPad; existing fonts stay first in template font lists.
+Portable Chinese fallback; existing fonts stay first in template font lists.
 Font and original license are bundled in ProseCore Resources/Fonts.
 SHA-256: a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da
 
 Phosphor Icons Regular (MIT)
 https://github.com/phosphor-icons/core/tree/2b75f3ad12b420c9504ef05df8d2564a28f8500e
-SVG source icons converted to vector PDF using librsvg for AppKit and UIKit.
+SVG source icons converted to vector PDF using librsvg for AppKit.
 See Phosphor-LICENSE.
 
 App icon is original Prose artwork (Brand/Prose/icon-1024.png): an italic serif P with a text caret on a white tile. No third-party logo artwork is used.
@@ -64,14 +61,14 @@ The framework is not included in direct or App Store builds.
 
 ZIPFoundation 0.9.20 (MIT)
 https://github.com/weichsel/ZIPFoundation/tree/0.9.20
-Used to extract digest-verified example books in-process on macOS and iPadOS.
+Used to extract digest-verified example books in-process.
 See ZIPFoundation-LICENSE.
 
 The macOS app additionally bundles the Prose MCP helper built with rmcp 3.5.0
 (Apache-2.0), the official Model Context Protocol Rust SDK.
 https://github.com/modelcontextprotocol/rust-sdk
-Its complete pinned dependency notices are in the macOS-only MCP-LICENSES.txt.
-The helper and its dependencies are not part of the iOS app or Tinymist engine.
+Its complete pinned dependency notices are in MCP-LICENSES.txt.
+The helper and its dependencies are not part of the Tinymist engine.
 
 Bundled authoring guides adapt dimensional-drawing by Enes Ozturk (MIT)
 and ian-xiaohei-illustrations by Ian (MIT).

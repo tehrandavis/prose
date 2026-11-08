@@ -17,12 +17,12 @@ good enough:
 A reliably good version was not in reach soon, so the editor went back to the
 simplest thing that works: styles that are plain attributes on the source
 text. There are no hidden characters, no attachments and no display text that
-differs from the source, on either platform.
+differs from the source.
 
 ## The editor now
 
-Both editors are TextKit 2 views (`NSTextView`, `UITextView`) styled by one
-`SourceStyler` from `ProseCore`, so the Mac and the iPad look the same:
+The editor is a TextKit 2 view (`NSTextView`) styled by `SourceStyler` from
+`ProseCore`:
 
 - headings are larger and semibold by level (+6, +4, then +2 pt), in the system
   font;
@@ -50,7 +50,7 @@ flowchart LR
 | `SourceStyleEngine` | Actor owning a copy of the source and its `SyntaxTree`. Each batch of native edits is reparsed incrementally; the reply carries the styles of the paragraphs typst-syntax reparsed. |
 | `SourceStyler` | Sets fonts on the text storage. Opening a file or changing the font styles the whole text synchronously, before the first layout. After an edit, the text keeps the fonts the storage moved with it until the reply, which is rebased across later edits and written only where a run's style differs (a `ProseSourceStyle` attribute records it, so fallback fonts for CJK and emoji are left alone). Attribute edits create no undo record and keep the selection; they wait while text is marked, and keep the top line in place when text above the viewport changes height. It also counts the paragraphs TextKit builds for the book benchmark. |
 | `RenderingAttributes` | Tinymist semantic colours as rendering attributes, so a reply never re-lays out text. A mirror answers reads; changed spans are pushed, and many changes become one ordered rebuild (single removals cost O(runs) in TextKit 2: 3 s for 100,000 in War and Peace). |
-| `TextKit2Geometry` | Caret, segments, hit tests and reveal without `layoutManager`. Mac jumps lay out the target and the text above it, and repeat until it stops moving; iPad jumps anchor the viewport on the target (`revealByRelocating`). Hit tests that matter after a jump use the laid-out viewport fragments (`viewportInsertionOffset`). |
+| `TextKit2Geometry` | Caret, segments, hit tests and reveal without `layoutManager`. Jumps lay out the target and the text above it, and repeat until it stops moving. Hit tests that matter after a jump use the laid-out viewport fragments (`viewportInsertionOffset`). |
 
 Code-block highlighting, literal-object editing, preview call sites, hover
 help and completions read the source and `SyntaxTree`; none of them depended
@@ -61,12 +61,11 @@ SwiftLint rejects the identifier in sources and tests; the Mac view observes
 `willSwitchToNSLayoutManagerNotification`, logs `editor.textKit1Fallback`, and
 every Mac editor test fails if its view is no longer on TextKit 2.
 
-**Tests.** `SourceStylingTests` runs on a real text view on the Mac and in the
-iPad test plan: heading fonts by level, strong, emphasis and raw fonts, laid-out
-text equal to the source with no attachments, incremental styles equal to a
-fresh styling after seeded edits, no selection change or undo step, and
-composition. `SourceStylingFlowTests` and `TabletStylingTests` check the real
-Mac and iPad editors.
+**Tests.** `SourceStylingTests` runs on a real `NSTextView`: heading fonts by
+level, strong, emphasis and raw fonts, laid-out text equal to the source with no
+attachments, incremental styles equal to a fresh styling after seeded edits, no
+selection change or undo step, and composition. `SourceStylingFlowTests` checks
+the real Mac editor.
 
 ## Why TextKit 2 stays
 
@@ -86,7 +85,7 @@ macOS 27.0, iPad Pro 11-inch (M5) simulator):
 ## Parser: typst-syntax through a C ABI
 
 [`Engine/SyntaxBridge`](../Engine/SyntaxBridge) wraps typst-syntax 0.15.1 from
-the same Myriad-Dreamin tag the iPad engine pins; `scripts/test-package-graphs.py`
+the same Myriad-Dreamin tag the render bridge pins; `scripts/test-package-graphs.py`
 checks that both lockfiles resolve one revision. The C declarations are in
 [`ProseSyntax.h`](../Sources/ProseSyntaxFFI/include/ProseSyntax.h).
 The library exports one symbol, `lb_syntax_api`, a versioned table of entry
@@ -128,18 +127,10 @@ edit invalidates the mirror, and the owner parses again.
   notarization and the App Store build are unaffected. The engine's
   dependency notices, the parser's included, go into the app as
   `TypstEngine-LICENSES.txt`.
-- **iPad.** `Engine/TinymistBridge` depends on the crate and exports
-  `prose_tinymist_syntax_api`, so the app still links one Rust static
-  library (two would duplicate the Rust runtime: 2,166 duplicate symbols with
-  `-all_load` in the spike). ProseCore is a dynamic framework on iPad and
-  does not link the engine; `Sources/Package.swift` builds the header module
-  only, and the app passes the table to `SyntaxTree.install` at launch.
-  The shared Core tests, which also run in the iPad simulator, check that the
-  parser is installed.
 - **CI.** Mac jobs cache `.tools/cargo-render` and `Engine/RenderBridge/target`;
   the regression job also caches `.tools/cargo-syntax` and
   `Engine/SyntaxBridge/target` and runs both crates' `cargo fmt`, `clippy` and
-  tests. iPad engine cache keys include the crate's sources.
+  tests.
 
 ### Measurements
 
@@ -190,29 +181,9 @@ jump 200 ms) and build about 1,300 and 1,000 paragraphs.
 | Jumps on target, max hit error | 6/6, ≤ 1 | 6/6, 0 | 6/6, ≤ 1 | 6/6, 0 |
 | Line drift after scrolling away and back (pt) | 0 | 0 | 0 | 0 |
 
-iPad Air (5th generation, M1, iPadOS 26.5), production `TabletEditor`,
-`TabletLargeDocumentTests` (books copied to the app's `Documents/Books`):
-
-| | SICP before (main) | SICP now | W&P before (main) | W&P now |
-|---|---:|---:|---:|---:|
-| Typing median / p95 (ms) | 870 / 945 | 33–48 / 34–49 | did not finish 80 keys in 15 min | 96–101 / 97–151 |
-| Jumps on target (viewport check), max tap error | – | 6/6, 0 | – | 6/6, 0 |
-| Jump median / max (ms) | 143 / 276 | 42–83 / 145–239 | – | 152–154 / 390–401 |
-| Memory after open / after typing (MiB) | 320 / 322 | 302–334 / 268–287 | – | 757–850 / 815–835 |
-
-What made iPad typing slow was not TextKit 2 itself: every keystroke rebuilt
-the line index and word count of the whole text, compared the whole text as
-Swift strings (Unicode-normalizing) up to four times, JSON-encoded the text for
-recovery, sent the full text to Tinymist, and resolved the source path on disk.
-These are now incremental, compared literally or by version, coalesced (160 ms
-for Tinymist, 400 ms for recovery, as on the Mac) and cached. The Mac had one
-of these too: its toolbar compared the whole text with the saved text as
-Swift strings on every keystroke (20 ms per key in War and Peace). What remains in
-War and Peace is UIKit's own TextKit 2 viewport pass, which estimates the size
-of every paragraph between the nearer end of the document and the viewport: a
-bare `UITextView` takes 60–92 ms per key in the middle of War and Peace, 5 ms
-near either end, and a third of that with fewer, longer paragraphs. Layout
-traps found and fixed on the way:
+On the Mac, the toolbar compared the whole text with the saved text as Swift
+strings on every keystroke (20 ms per key in War and Peace); it no longer does.
+Layout traps found and fixed on the way:
 
 - Revealing the restored caret before the first layout pass makes TextKit 2
   lay out every paragraph above it; each later keystroke then pays for all of
@@ -220,9 +191,9 @@ traps found and fixed on the way:
 - Installing a book's first styles after layout began invalidated every
   paragraph and threw TextKit's geometry away; scrolling then drifted by
   374,000 pt. The first styles are synchronous (about 0.1 s for a book).
-- On iOS, after a distant jump, a fragment laid out on its own and the
-  viewport's fragments can disagree by 100,000 characters at the same height.
-  Taps, hit tests and jump checks use the viewport's fragments.
+- After a distant jump, a fragment laid out on its own and the viewport's
+  fragments can disagree by 100,000 characters at the same height. Hit tests
+  and jump checks use the viewport's fragments.
 - Every edit walks each text element TextKit has built after it, so one
   step that builds a whole book slows every later keystroke (45 ms in War
   and Peace on CI). The book benchmark counts the paragraphs TextKit builds
@@ -239,25 +210,7 @@ traps found and fixed on the way:
   17,000 paragraphs and 1.3 s for one SICP jump on macOS 15. Jumps lay out
   a screen of text around the target first. The view also never scrolls past
   the end of its text.
-- On iPadOS, re-wrapping (rotation, Split View) does not lay the book out, but
-  UIKit's first sizing of the re-wrapped text clamped the scroll and threw
-  the reader back to the start of the book. The iPad view puts its top line
-  back through the viewport, as jumps do.
-
-## Follow-ups
-
-- **iPad War and Peace typing.** About 100 ms per key, at the budget's edge,
-  set by UIKit's viewport pass. A content manager that groups short lines into
-  larger elements would cut it roughly threefold (measured with joined
-  paragraphs); SICP-sized books already have headroom.
 
 ## Reproduce
 
-The delivered editor's numbers come from `scripts/benchmark-books.sh` (Mac)
-and, on a device, from `TabletLargeDocumentTests`: copy books into the app's
-container (`xcrun devicectl device copy to --domain-type appDataContainer
---domain-identifier com.tehrandavis.prose --source Examples/Books/SICP/main.typ
---destination Documents/Books/sicp.typ`), then run that suite with
-`xcodebuild test-without-building … -only-testing:ProseTabletTests/TabletLargeDocumentTests`;
-`TEST_RUNNER_PROSE_IPAD_BOOK=sicp` selects one book. Reports land in the
-app's `Documents/Benchmarks`.
+The delivered editor's numbers come from `scripts/benchmark-books.sh`.

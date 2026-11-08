@@ -1,9 +1,8 @@
 // typst-syntax behind a small C ABI (Engine/SyntaxBridge).
 //
-// The macOS app links Engine/SyntaxBridge as a static library. On iPad the same
-// code is part of the TinymistBridge engine library; the app passes
-// lb_syntax_api() to ProseCore at launch. Both reach the parser only
-// through the function table below.
+// The macOS app links the engine library (Engine/RenderBridge), which carries
+// Engine/SyntaxBridge and re-exports lb_syntax_api(). ProseCore reaches the
+// parser only through the function table below.
 //
 // All offsets are UTF-16 code units, compatible with NSString and NSRange.
 // Offsets that would split a surrogate pair are rejected by edit and rounded

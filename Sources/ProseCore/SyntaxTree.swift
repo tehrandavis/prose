@@ -1,6 +1,5 @@
 internal import ProseSyntaxFFI
 import Foundation
-import os
 
 /// Stable Prose kind codes from `Engine/SyntaxBridge` (`kinds!`). Append only;
 /// never renumber. Names follow typst-syntax, with a `Keyword` suffix for keywords.
@@ -194,23 +193,9 @@ private struct SyntaxEngine: @unchecked Sendable {
         api.pointee.kind_name(code).map { String(cString: $0) }
     }
 
-    private static let installed = OSAllocatedUnfairLock<SyntaxEngine?>(initialState: {
-        #if os(macOS)
-            // The macOS manifest links Engine/SyntaxBridge into ProseCore.
-            SyntaxEngine(lb_syntax_api())
-        #else
-            // On iPad the parser is part of the app's engine library; see SyntaxTree.install.
-            nil
-        #endif
-    }())
-
-    static var current: SyntaxEngine? {
-        installed.withLock { $0 }
-    }
-
-    static func install(_ engine: SyntaxEngine) {
-        installed.withLock { $0 = engine }
-    }
+    /// The engine library (Engine/RenderBridge) carries Engine/SyntaxBridge and
+    /// is linked into ProseCore; nil when its table has a different ABI.
+    static let current = SyntaxEngine(lb_syntax_api())
 }
 
 /// A typst-syntax parse of one source text, kept in sync with the editor's edits.
@@ -221,26 +206,9 @@ public final class SyntaxTree {
     private let engine: SyntaxEngine
     private var handle: OpaquePointer?
 
-    /// Whether the parser library is linked (macOS) or was installed (iPad).
+    /// Whether the linked parser library has the expected ABI version and layout.
     public static var isAvailable: Bool {
         SyntaxEngine.current != nil
-    }
-
-    /// Provides the parser on platforms where the app, not ProseCore, links
-    /// it: pass the iPad engine library's `lb_syntax_api()`. Returns false, and
-    /// changes nothing, if the table has a different ABI version or layout.
-    @discardableResult
-    public static func install(_ table: UnsafeRawPointer) -> Bool {
-        guard let engine = SyntaxEngine(table.assumingMemoryBound(to: LBSyntaxAPI.self)) else {
-            return false
-        }
-        SyntaxEngine.install(engine)
-        return true
-    }
-
-    /// The installed table, for tests.
-    static var installedTable: UnsafeRawPointer? {
-        SyntaxEngine.current.map { UnsafeRawPointer($0.api) }
     }
 
     /// Parses `source`; nil when no parser is available.

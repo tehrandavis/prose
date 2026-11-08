@@ -1,15 +1,10 @@
+import AppKit
 import CoreGraphics
 import Foundation
 @testable import ProseCore
 import Testing
-#if canImport(AppKit)
-    import AppKit
-#else
-    import UIKit
-#endif
 
-// Reading styles on a real TextKit 2 text view: NSTextView on the Mac,
-// UITextView on the iPad (this suite also runs in the iPad test plan).
+// Reading styles on a real TextKit 2 text view (NSTextView).
 
 private let sample = """
 #let item(id, title, s) = [#id #title #s]
@@ -25,48 +20,32 @@ Inline $φ = (1+√5)/2 ≈ 1.618$ math and #image("figure.png").
 
 @MainActor
 private final class Harness {
-    #if canImport(AppKit)
-        let window: NSWindow
-        let view: NSTextView
-    #else
-        let window: UIWindow
-        let view: UITextView
-    #endif
+    let window: NSWindow
+    let view: NSTextView
     let styler: SourceStyler
     let manager: NSTextLayoutManager
     let content: NSTextContentStorage
     private var forwarder: Forwarder?
 
     init(_ text: String = sample) throws {
-        #if canImport(AppKit)
-            _ = NSApplication.shared
-            window = NSWindow(
-                contentRect: CGRect(x: -8000, y: -8000, width: 700, height: 500),
-                styleMask: [.titled], backing: .buffered, defer: false,
-            )
-            window.isReleasedWhenClosed = false
-            let scroll = NSScrollView(frame: CGRect(x: 0, y: 0, width: 700, height: 500))
-            view = NSTextView(usingTextLayoutManager: true)
-            view.frame = scroll.bounds
-            view.isRichText = false
-            view.allowsUndo = true
-            view.isVerticallyResizable = true
-            view.autoresizingMask = [.width]
-            scroll.documentView = view
-            window.contentView = scroll
-            window.orderFrontRegardless()
-            content = try #require(view.textContentStorage)
-            view.string = text
-        #else
-            window = UIWindow(frame: CGRect(x: 0, y: 0, width: 700, height: 500))
-            view = UITextView(usingTextLayoutManager: true)
-            view.frame = window.bounds
-            view.textContainerInset = .zero
-            window.addSubview(view)
-            window.isHidden = false
-            content = try #require(view.textLayoutManager?.textContentManager as? NSTextContentStorage)
-            view.text = text
-        #endif
+        _ = NSApplication.shared
+        window = NSWindow(
+            contentRect: CGRect(x: -8000, y: -8000, width: 700, height: 500),
+            styleMask: [.titled], backing: .buffered, defer: false,
+        )
+        window.isReleasedWhenClosed = false
+        let scroll = NSScrollView(frame: CGRect(x: 0, y: 0, width: 700, height: 500))
+        view = NSTextView(usingTextLayoutManager: true)
+        view.frame = scroll.bounds
+        view.isRichText = false
+        view.allowsUndo = true
+        view.isVerticallyResizable = true
+        view.autoresizingMask = [.width]
+        scroll.documentView = view
+        window.contentView = scroll
+        window.orderFrontRegardless()
+        content = try #require(view.textContentStorage)
+        view.string = text
         manager = try #require(view.textLayoutManager)
         styler = SourceStyler(contentStorage: content, textLayoutManager: manager, fontSize: 14, textColor: .black)
         styler.hasMarkedText = { [view] in Self.hasMarkedText(view) }
@@ -77,11 +56,7 @@ private final class Harness {
     }
 
     var storage: NSTextStorage {
-        #if canImport(AppKit)
-            view.textStorage ?? NSTextStorage()
-        #else
-            view.textStorage
-        #endif
+        view.textStorage ?? NSTextStorage()
     }
 
     var string: NSString {
@@ -89,27 +64,15 @@ private final class Harness {
     }
 
     var selection: NSRange {
-        #if canImport(AppKit)
-            view.selectedRange()
-        #else
-            view.selectedRange
-        #endif
+        view.selectedRange()
     }
 
     func close() {
-        #if canImport(AppKit)
-            window.close()
-        #else
-            window.isHidden = true
-        #endif
+        window.close()
     }
 
     func select(_ range: NSRange) {
-        #if canImport(AppKit)
-            view.setSelectedRange(range)
-        #else
-            view.selectedRange = range
-        #endif
+        view.setSelectedRange(range)
         styler.selectionDidChange()
     }
 
@@ -145,44 +108,24 @@ private final class Harness {
     }
 
     func replace(_ range: NSRange, with text: String) {
-        #if canImport(AppKit)
-            view.insertText(text, replacementRange: range)
-        #else
-            view.selectedRange = range
-            view.insertText(text)
-        #endif
+        view.insertText(text, replacementRange: range)
     }
 
     func setMarkedText(_ text: String) {
-        #if canImport(AppKit)
-            view.setMarkedText(
-                text,
-                selectedRange: NSRange(location: (text as NSString).length, length: 0),
-                replacementRange: NSRange(location: NSNotFound, length: 0),
-            )
-        #else
-            view.setMarkedText(text, selectedRange: NSRange(location: (text as NSString).length, length: 0))
-        #endif
+        view.setMarkedText(
+            text,
+            selectedRange: NSRange(location: (text as NSString).length, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0),
+        )
     }
 
     func commitMarkedText(_ text: String) {
-        #if canImport(AppKit)
-            view.insertText(text, replacementRange: view.markedRange())
-        #else
-            view.setMarkedText(text, selectedRange: NSRange(location: (text as NSString).length, length: 0))
-            view.unmarkText()
-        #endif
+        view.insertText(text, replacementRange: view.markedRange())
     }
 
-    #if canImport(AppKit)
-        static func hasMarkedText(_ view: NSTextView) -> Bool {
-            view.hasMarkedText()
-        }
-    #else
-        static func hasMarkedText(_ view: UITextView) -> Bool {
-            view.markedTextRange != nil
-        }
-    #endif
+    static func hasMarkedText(_ view: NSTextView) -> Bool {
+        view.hasMarkedText()
+    }
 
     var undoManager: UndoManager? {
         view.undoManager
@@ -209,27 +152,15 @@ private final class Forwarder: NSObject, @preconcurrency NSTextStorageDelegate {
 }
 
 private func isBold(_ font: PlatformFont?) -> Bool {
-    #if canImport(AppKit)
-        font?.fontDescriptor.symbolicTraits.contains(.bold) == true
-    #else
-        font?.fontDescriptor.symbolicTraits.contains(.traitBold) == true
-    #endif
+    font?.fontDescriptor.symbolicTraits.contains(.bold) == true
 }
 
 private func isItalic(_ font: PlatformFont?) -> Bool {
-    #if canImport(AppKit)
-        font?.fontDescriptor.symbolicTraits.contains(.italic) == true
-    #else
-        font?.fontDescriptor.symbolicTraits.contains(.traitItalic) == true
-    #endif
+    font?.fontDescriptor.symbolicTraits.contains(.italic) == true
 }
 
 private func isMonospaced(_ font: PlatformFont?) -> Bool {
-    #if canImport(AppKit)
-        font?.fontDescriptor.symbolicTraits.contains(.monoSpace) == true
-    #else
-        font?.fontDescriptor.symbolicTraits.contains(.traitMonoSpace) == true
-    #endif
+    font?.fontDescriptor.symbolicTraits.contains(.monoSpace) == true
 }
 
 @MainActor

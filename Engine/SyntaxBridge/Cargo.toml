@@ -6,8 +6,8 @@ publish = false
 description = "typst-syntax behind a small C ABI for Prose's shared visual editor."
 
 [lib]
-# staticlib: linked into the macOS app through ProseCore.
-# rlib: Engine/TinymistBridge re-exports it, so the iPad app links one Rust
+# staticlib: built on its own by scripts/build-syntax.sh.
+# rlib: Engine/RenderBridge re-exports it, so the Mac app links one Rust
 # library (and one Rust runtime) rather than two.
 crate-type = ["staticlib", "rlib"]
 
@@ -28,7 +28,7 @@ codegen-units = 1
 [profile.release.build-override]
 strip = "none"
 
-# The same parser source as the iPad engine (Engine/TinymistBridge/Cargo.toml).
+# The same parser source as the render bridge (Engine/RenderBridge/Cargo.toml).
 # scripts/test-package-graphs.py checks that both lockfiles pin one revision.
 [patch.crates-io]
 typst-syntax = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }

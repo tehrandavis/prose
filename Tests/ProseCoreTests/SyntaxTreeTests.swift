@@ -135,17 +135,6 @@ private func node(_ nodes: [SyntaxNode], _ kind: SyntaxKind, in source: NSString
     }
 }
 
-@Test func syntaxTreeInstallRequiresAMatchingTable() throws {
-    let incompatible = UnsafeMutableRawPointer.allocate(byteCount: 128, alignment: 8)
-    defer { incompatible.deallocate() }
-    incompatible.initializeMemory(as: UInt8.self, repeating: 0, count: 128)
-    #expect(!SyntaxTree.install(UnsafeRawPointer(incompatible)), "ABI version 0")
-    #expect(SyntaxTree.isAvailable)
-    let table = try #require(SyntaxTree.installedTable)
-    #expect(SyntaxTree.install(table))
-    #expect(SyntaxTree("*b*")?.nodes()?.contains { $0.kind == .strong } == true)
-}
-
 /// Parses the checked-in books (docs/large-document-performance.md) with the
 /// release parser and checks generous budgets. scripts/benchmark-books.sh sets
 /// PROSE_SYNTAX_REPORT to keep the measurements.

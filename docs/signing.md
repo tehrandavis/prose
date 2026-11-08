@@ -96,7 +96,7 @@ from these checks.
 
 Every Mac edition bundles Tinymist 0.15.8 built at pinned commit
 `32f908199ee17ea295512bbc27166e890c438175` with the checked-in native TLS
-patch and lockfile changes, plus the VFS revision fix shared with iPad. Reqwest
+patch and lockfile changes, plus the VFS revision fix. Reqwest
 then uses macOS Security Framework instead of Rust TLS. The source checkout,
 Cargo cache and target directory live under `.tools/tinymist-mac-source`; Rust
 1.92.0 is required. The GitHub download and Preview editions use the same

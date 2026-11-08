@@ -1,9 +1,4 @@
-#if os(macOS)
-    import AppKit
-#else
-    @testable import ProseTablet
-    import UIKit
-#endif
+import AppKit
 import Foundation
 import PDFKit
 @testable import ProseCore
@@ -11,11 +6,7 @@ import ProseTestSupport
 import Testing
 
 @MainActor
-#if os(macOS)
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["PROSE_INTEGRATION"] == "1"))
-#else
-    @Test
-#endif
+@Test(.enabled(if: ProcessInfo.processInfo.environment["PROSE_INTEGRATION"] == "1"))
 func everyDiscoveredInsertionProducesARealDocument() async throws {
     let root = TestPaths.temporaryDirectory.appendingPathComponent("Prose-command-workflow-\(UUID().uuidString)")
     try FileManager.default.createDirectory(
@@ -23,39 +14,27 @@ func everyDiscoveredInsertionProducesARealDocument() async throws {
         withIntermediateDirectories: true,
     )
     defer { try? FileManager.default.removeItem(at: root) }
-    #if os(macOS)
-        let bitmap = try #require(NSBitmapImageRep(
-            bitmapDataPlanes: nil,
-            pixelsWide: 8,
-            pixelsHigh: 8,
-            bitsPerSample: 8,
-            samplesPerPixel: 4,
-            hasAlpha: true,
-            isPlanar: false,
-            colorSpaceName: .deviceRGB,
-            bytesPerRow: 0,
-            bitsPerPixel: 0,
-        ))
-        try #require(bitmap.representation(using: .png, properties: [:]))
-            .write(to: root.appendingPathComponent("images/figure.png"))
-    #else
-        let image = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).pngData { context in
-            context.cgContext.setFillColor(UIColor.white.cgColor)
-            context.cgContext.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
-        }
-        try image.write(to: root.appendingPathComponent("images/figure.png"))
-    #endif
+    let bitmap = try #require(NSBitmapImageRep(
+        bitmapDataPlanes: nil,
+        pixelsWide: 8,
+        pixelsHigh: 8,
+        bitsPerSample: 8,
+        samplesPerPixel: 4,
+        hasAlpha: true,
+        isPlanar: false,
+        colorSpaceName: .deviceRGB,
+        bytesPerRow: 0,
+        bitsPerPixel: 0,
+    ))
+    try #require(bitmap.representation(using: .png, properties: [:]))
+        .write(to: root.appendingPathComponent("images/figure.png"))
     try Data("Included fixture".utf8).write(to: root.appendingPathComponent("section.typ"))
     try Data("#let catalog-helper = \"Reusable fixture\"".utf8).write(to: root.appendingPathComponent("helpers.typ"))
     try Data("@book{example, title={Catalog Reference}, author={Doe, Jane}, date={2024}}".utf8)
         .write(to: root.appendingPathComponent("references.bib"))
     let file = root.appendingPathComponent("workflow.typ")
     try Data("Saved baseline".utf8).write(to: file)
-    #if os(macOS)
-        let client = TinymistClient()
-    #else
-        let client = TinymistClient(makeTransport: { EmbeddedTinymist() })
-    #endif
+    let client = TinymistClient()
     defer { client.stop() }
     try await client.start(root: root, outputDirectory: root)
     try client.open(file, text: "Saved baseline", version: 1)

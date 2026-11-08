@@ -44,7 +44,6 @@
 "Bold" = "加粗";
 "Books" = "书籍";
 "Bring an existing document or project into your library." = "把现有文稿或项目导入文稿库。";
-"Browse Library" = "浏览文稿库";
 "Bullet List" = "无序列表";
 "CVs" = "简历";
 "Callout" = "提示框";
@@ -130,7 +129,6 @@
 "Document title" = "文稿标题";
 "Documentation ↗" = "使用文档 ↗";
 "Documents" = "文件";
-"Done" = "完成";
 "Draft" = "草稿";
 "Draft Save Failed" = "草稿保存失败";
 "Draft Saved" = "草稿已保存";
@@ -230,7 +228,6 @@
 "Inline Equation" = "行内公式";
 "Insert" = "插入内容";
 "Insert Content" = "插入 Typst 内容";
-"Insert Import" = "插入导入语句";
 "Insert a code block in the chosen language." = "插入指定语言的代码片段。";
 "Insert a definite integral and differential." = "插入定积分与微分符号。";
 "Insert a limit condition and expression." = "插入变量趋近条件和表达式。";
@@ -283,9 +280,7 @@
 "Minimize" = "最小化";
 "Move to Trash" = "移到废纸篓";
 "New Document" = "新建文稿";
-"New document" = "新建文稿";
 "No completions are available here." = "当前位置没有补全建议。";
-"No issues found" = "目前没有发现问题";
 "No matching commands" = "没有找到匹配的命令";
 "No matching documents" = "没有找到匹配的文稿";
 "No matching packages\nTry another keyword or category." = "没有找到相符的包\n试试其他关键词或分类。";
@@ -356,7 +351,6 @@
 "Rename…" = "重命名…";
 "Reopen a draft saved before switching documents or reloading." = "重新打开切换文稿时保留的草稿或重新加载前的副本。";
 "Reports" = "报告";
-"Requires Typst %@ or later" = "需要 Typst %@ 或更新版本";
 "Resolve the current save conflict before continuing." = "请先解决当前保存冲突，再继续操作。";
 "Restart Tinymist and synchronize the current document." = "重启 Tinymist，并重新同步当前文稿。";
 "Restore" = "恢复";
@@ -739,17 +733,7 @@
 
 "Back" = "返回";
 
-"Choose a document to begin writing." = "选择一份文档开始写作。";
-
-"Format Document" = "格式化文档";
-
-"Import Project…" = "导入项目…";
-
-"No history yet" = "暂无历史版本";
-
 "OK" = "好";
-
-"Recovered Draft" = "恢复的草稿";
 
 "Restore this version?" = "恢复此版本？";
 
@@ -757,23 +741,11 @@
 
 "Search Packages" = "搜索包";
 
-"Templates & Packages" = "模板与包";
-
-"Text size: %@" = "字号：%@";
-
-"Toggle Comment" = "切换注释";
-
 "Trash" = "废纸篓";
-
-"Use Template" = "使用模板";
 
 "Your current writing will be preserved before restoring this version." = "恢复此版本前，会保留当前内容。";
 
-"iCloud Sync" = "iCloud 同步";
-
-"Authors" = "作者";
 "License" = "许可";
-"This location is in an included file. Included-file editing is not available on iPad yet." = "这个位置位于被引用的文件中，iPad 暂不支持编辑被引用文件。";
 
 "Choose or import an image. Its copy stays with your document." = "选择或导入图片，副本会随文稿一起保存。";
 "Paste text or import an image at the caret." = "在光标处粘贴文本或导入图片。";
@@ -793,31 +765,7 @@
 "Module" = "模块";
 "Document" = "文稿";
 
-"Choose Main File" = "选择主文件";
-
-"Choose the file that compiles the complete project." = "选择用于编译整个项目的文件。";
-
-"Complete at Cursor" = "在光标处补全";
-
-"Export Source…" = "导出源码…";
-
-"Latest 7 snapshots · This iPad · Current source only" = "最近 7 个快照 · 此 iPad · 仅当前源文件";
-
-"New Window" = "新建窗口";
-
-"Preview entry" = "预览入口";
-
-"Project Files" = "项目文件";
-
 "Selected" = "已选择";
-
-"The document could not be prepared for printing." = "无法准备文稿以进行打印。";
-
-"Writing Assistance" = "编辑辅助";
-
-"The iCloud account changed. Your writing is preserved. Check iCloud settings before continuing sync." = "iCloud 账户已更改。你的文稿已保留。请检查 iCloud 设置后再继续同步。";
-
-"Close other windows before changing iCloud Sync." = "请先关闭其他窗口，再更改 iCloud 同步设置。";
 
 "Edit Table or Image…" = "编辑表格或图片…";
 
@@ -924,7 +872,6 @@
 "Long documents can take a while to typeset the first time." = "长文稿首次排版需要一些时间。";
 "Resize Writing and Preview" = "调整写作与预览宽度";
 "Drag to resize. Double-click to split evenly." = "拖动调整宽度，双击恢复等宽。";
-"Drag to resize. Double-tap to split evenly." = "拖动调整宽度，轻点两下恢复等宽。";
 "Apply" = "应用";
 "Update Channel" = "更新通道";
 "Nightly (more stable)" = "每晚（较稳定）";

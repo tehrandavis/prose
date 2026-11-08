@@ -31,7 +31,7 @@ class SwiftLintPolicyTests(unittest.TestCase):
             violations = json.loads(result.stdout)
             return result.returncode, violations
 
-    def test_system_symbol_apis_fail_for_both_apps(self):
+    def test_system_symbol_apis_fail_in_app_sources(self):
         sources = [
             'let image = Image(systemName: "lock")',
             'let image = SwiftUI.Image(\n    systemName:\n        "lock"\n)',
@@ -41,7 +41,7 @@ class SwiftLintPolicyTests(unittest.TestCase):
             'let image = NSImage(systemSymbolName: "lock", accessibilityDescription: nil)',
             'let image: UIImage? = .init(systemName: symbolName)',
         ]
-        for directory in ['Sources/Prose', 'iPad/Sources']:
+        for directory in ['Sources/Prose', 'Sources/ProseCore']:
             for source in sources:
                 with self.subTest(directory=directory, source=source):
                     status, violations = self.lint(source, directory)
@@ -53,8 +53,6 @@ class SwiftLintPolicyTests(unittest.TestCase):
     def test_shared_icons_and_documentation_are_allowed(self):
         sources = [
             'let icon = PhosphorIcon(name: "lock-simple", size: 12)',
-            'let icon = TabletIcon(name: "check", size: 18)',
-            'let image = TabletIcon.menuImage("file", title: "Document")',
             '// Image(systemName: "lock")',
             '/* Label("Read-only", systemImage: "lock") */',
             '/// NSImage(systemSymbolName: "lock", accessibilityDescription: nil)',
@@ -75,7 +73,7 @@ class SwiftLintPolicyTests(unittest.TestCase):
             'let bundle = Foundation\n    .Bundle\n    .module',
             'let url = Bundle.module.url(forResource: "catalog", withExtension: "json")',
         ]
-        for directory in ('Sources/ProseCore', 'Sources/Prose', 'iPad/Sources', 'Tests/ProseCoreTests'):
+        for directory in ('Sources/ProseCore', 'Sources/Prose', 'Tests/ProseCoreTests'):
             for source in sources:
                 with self.subTest(directory=directory, source=source):
                     status, violations = self.lint(source, directory)
@@ -89,7 +87,7 @@ class SwiftLintPolicyTests(unittest.TestCase):
         status, violations = self.lint(source, 'Sources/ProseCore', 'CoreResources.swift')
         self.assertEqual(status, 0, violations)
         self.assertEqual(violations, [])
-        for directory in ('Sources/Prose', 'iPad/Sources', 'iPad/Sources/ProseCore'):
+        for directory in ('Sources/Prose', 'Tests/ProseCoreTests'):
             with self.subTest(directory=directory):
                 status, violations = self.lint(source, directory, 'CoreResources.swift')
                 self.assertNotEqual(status, 0)

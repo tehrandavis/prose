@@ -1,5 +1,4 @@
 #!/bin/bash
-# macOS-only helper; never called by the iPad build or its Rust engine graph.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/environment.sh

@@ -32,7 +32,7 @@ install_tool swiftlint 0.64.1 realm/SwiftLint portable_swiftlint.zip \
 
 format="$PWD/.tools/swiftformat-0.63.1/swiftformat"
 lint="$PWD/.tools/swiftlint-0.64.1/swiftlint"
-paths=(Package.swift Sources iPad/Sources iPad/UITests iPad/Tests Tests Benchmarks scripts)
+paths=(Package.swift Sources Tests Benchmarks scripts)
 if [ "$mode" = --fix ]; then
   "$lint" lint --fix --config .swiftlint.yml --no-cache
   "$format" "${paths[@]}" --config .swiftformat --cache ignore

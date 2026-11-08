@@ -1,10 +1,9 @@
 import AppKit
 import ProseCore
 
-/// The manuscript's TextKit 2 stack and its reading styles (`SourceStyler`,
-/// shared with the iPad). Never touch `layoutManager`: one access, ours or
-/// AppKit's, switches the view to TextKit 1 for good. SwiftLint rejects it in
-/// the app.
+/// The manuscript's TextKit 2 stack and its reading styles (`SourceStyler`).
+/// Never touch `layoutManager`: one access, ours or AppKit's, switches the view
+/// to TextKit 1 for good. SwiftLint rejects it in the app.
 extension ManuscriptTextView {
     static func make(frame: NSRect) -> ManuscriptTextView {
         let container = NSTextContainer(size: NSSize(width: frame.width, height: .greatestFiniteMagnitude))

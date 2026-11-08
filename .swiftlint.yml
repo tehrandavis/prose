@@ -9,9 +9,6 @@ strict: true
 included:
   - Package.swift
   - Sources
-  - iPad/Sources
-  - iPad/UITests
-  - iPad/Tests
   - Tests
   - Benchmarks
   - scripts
@@ -160,7 +157,7 @@ only_rules:
 custom_rules:
   packaged_resource_bundle:
     name: "Use the installed-app resource resolver"
-    excluded: '(^|/)(?<!iPad/)Sources/ProseCore/CoreResources\.swift$'
+    excluded: '(^|/)Sources/ProseCore/CoreResources\.swift$'
     regex: '\bBundle\s*\.\s*module\b'
     match_kinds:
       - identifier
@@ -169,17 +166,17 @@ custom_rules:
     severity: error
   phosphor_icons_only:
     name: "Use Phosphor icons"
-    included: '(^|/)(Sources|iPad/Sources)/.*\.swift$'
+    included: '(^|/)Sources/.*\.swift$'
     regex: '\b(systemName|systemImage|systemSymbolName)\s*:'
     match_kinds:
       - argument
       - identifier
       - keyword
-    message: "Use PhosphorIcon (macOS) or TabletIcon (iPad) with bundled Phosphor Regular assets instead of SF Symbols."
+    message: "Use PhosphorIcon with bundled Phosphor Regular assets instead of SF Symbols."
     severity: error
   text_kit_1_layout_manager:
     name: "TextKit 1 layout manager"
-    included: '(^|/)(Sources|iPad/Sources|Tests|iPad/Tests)/.*\.swift$'
+    included: '(^|/)(Sources|Tests)/.*\.swift$'
     regex: '\blayoutManager\b'
     match_kinds:
       - identifier

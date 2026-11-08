@@ -6,11 +6,11 @@ Prose's primary automated checks are feature integration tests, with an 80% prod
 
 Run `scripts/test.sh` from an SSD checkout. It exercises the real AppKit editor, SwiftUI hosting views, document storage, undo, Tinymist compilation and WebKit preview. Tests use isolated document directories and injected cloud stores, never a personal iCloud account. All native UI scenarios share one serialized suite because AppKit menus, field editors and sheet presentation are process-wide.
 
-The mandatory strict SwiftLint check rejects direct `Bundle.module` access outside `Sources/ProseCore/CoreResources.swift`. Shared resources use `CoreResources.bundle` so installed apps resolve `Contents/Resources` before the development fallback. `scripts/test-swiftlint-policy.py` runs the pinned linter on known bad single-line, multiline and Foundation-qualified calls, plus allowed resolver code, comments and strings. These checks run on Mac and iPad source changes, regardless of whether a runtime scenario reaches the offending call.
+The mandatory strict SwiftLint check rejects direct `Bundle.module` access outside `Sources/ProseCore/CoreResources.swift`. Shared resources use `CoreResources.bundle` so installed apps resolve `Contents/Resources` before the development fallback. `scripts/test-swiftlint-policy.py` runs the pinned linter on known bad single-line, multiline and Foundation-qualified calls, plus allowed resolver code, comments and strings. These checks run on every Mac-affecting change, regardless of whether a runtime scenario reaches the offending call.
 
 Every Mac-affecting pull request and main push also builds a Release app and cold-launches a relocated copy with the build-directory resource bundle hidden. The isolated library has saved, read-only MCP access so relaunch loads the authoring catalog. The check requires Chinese starter content, the application icon, a ready Tinymist service and a resumed MCP connection, then runs the authoring Hurl contract over the packaged helper's real HTTP listener. Its logs are retained as artifacts. Unit tests can find development resources; the packaged launch establishes that the installed app works without them. Hurl runs only in GitHub CI unless diagnosing a failed CI run.
 
-After nightly Mac validation succeeds, a separate job builds and notarizes Prose Preview, validates its Developer ID signature and repeats the packaged launch and Hurl check before uploading the runnable app. Each nightly main run (and any manual `publish_preview` run) that passes Mac regression and App Store validation uploads a runnable Preview app for seven days and publishes it to the default nightly update channel; each Mac-affecting main push that passes Mac regression publishes the opt-in alpha channel. Neither channel waits for iPad results or the combined `build and test` gate; iPad failures still fail that required check. PRs cannot access release credentials. Tagged stable releases retain their separate signing and notarization workflow. The nightly run performs a separate App Store distribution check before Preview packaging to keep the external updater out of the App Store binary. PRs and main pushes skip that distribution rebuild.
+After nightly Mac validation succeeds, a separate job builds and notarizes Prose Preview, validates its Developer ID signature and repeats the packaged launch and Hurl check before uploading the runnable app. Each nightly main run (and any manual `publish_preview` run) that passes Mac regression and App Store validation uploads a runnable Preview app for seven days and publishes it to the default nightly update channel; each Mac-affecting main push that passes Mac regression publishes the opt-in alpha channel. Neither channel waits for the combined `build and test` gate. PRs cannot access release credentials. Tagged stable releases retain their separate signing and notarization workflow. The nightly run performs a separate App Store distribution check before Preview packaging to keep the external updater out of the App Store binary. PRs and main pushes skip that distribution rebuild.
 
 For build-system-specific resource failures, reproduce the packaged launch with native SwiftPM on toolchains that still support it:
 
@@ -73,41 +73,6 @@ interaction wall/CPU timings, and an end-of-run footprint is not a peak-memory
 or leak measurement. Release benchmarks and whole-process-tree memory budgets
 need separate representative workloads and measured runner baselines.
 
-## iPad safety checks
-
-Pull requests run the native iPad unit suite and a few curated UI smoke
-scenarios on the 11-inch simulator. Main (and full manual dispatches) run the
-complete UI suite on both sizes, the separate 80% application coverage gate,
-and two sanitizer jobs. The native suite checks ownership release after
-repeated workspace/editor/engine lifecycles; full runs also require its XCTest
-memory metrics, retained in the result bundle. Address Sanitizer and Thread
-Sanitizer each compile separate Swift test products and run the hosted unit
-suite in parallel with UI testing; these tools are mutually exclusive. The compiler treats warnings as
-errors, applies complete Swift concurrency checking, and enables actor runtime
-checks. The normal scheme retains Main Thread Checker. A successful process
-exit with zero executed tests, failed tests, or recorded runtime safety warnings
-fails validation. Simulator discovery, test execution, diagnostics and shutdown
-are bounded, and timeouts kill the test runner's process group.
-
-The Rust bridge also runs formatting and Clippy checks with warnings and unsafe
-operations inside unsafe functions treated as errors, followed by real engine
-integration. The Swift/Xcode sanitizers do **not** instrument the precompiled
-Rust engine or WebKit child processes. Weak ownership assertions detect retained
-objects; XCTest memory metrics record footprint but do not establish whole-heap
-leak freedom or a peak-memory regression budget without a measured baseline.
-The Mac differential `leaks` check remains separate. Undefined Behavior
-Sanitizer is omitted because Apple's tool supports C-family languages, not
-Swift or this prebuilt Rust library. See
-[Apple's sanitizer scope](https://developer.apple.com/documentation/xcode/diagnosing-memory-thread-and-crash-issues-early).
-
-All required iPad build, native test, coverage and memory jobs feed the final
-`build and test` gate. Pull requests and main pushes run the iPad smoke suite;
-the nightly run (or a full manual dispatch) runs both UI sizes, the sanitizers
-and the coverage gate. Native `.xcresult` and memory diagnostics remain available
-as Actions artifacts for 14 days. Device compilation continues independently
-to catch simulator-only assumptions; actual device performance and App Store
-StoreKit delivery still require release acceptance on hardware.
-
 ## Dependency maintenance
 
 Actions are pinned to full commit SHAs with readable version comments, so a
@@ -158,7 +123,7 @@ The first two were caught by CI and the icon defect by a real-window visual chec
 ## Agent document tools and MCP
 
 `AgentToolsTests` exercises the shared dispatcher with isolated real document
-storage and history; iPad includes this same core test suite. Native Mac tests
+storage and history. Native Mac tests
 cover unsaved buffers, undo/redo, history and disk conflicts, and launch the real
 Rust helper to validate discovery, authorization, forwarding and revocation.
 Rust unit tests in the helper (`cargo test`, run in CI) cover session expiry after a

@@ -235,71 +235,68 @@ private func assistanceAction(_ edits: [[String: Any]], uri: String = assistance
     #expect(try TextEditing.applying(#require(result.first).edits, to: "a") == "b")
 }
 
-#if os(macOS)
-    @MainActor
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["PROSE_INTEGRATION"] == "1"))
-    func realTinymistLanguageAssistance() async throws {
-        let root = TestPaths.temporaryDirectory.appendingPathComponent("Prose-assistance-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        let file = root.appendingPathComponent("文稿.typ")
-        let source = "#rect(width: 20pt, height: 30pt)\n== Heading\n$alpha+beta$\n"
-        try Data("Disk sentinel\n".utf8).write(to: file)
-        let client = TinymistClient()
-        defer { client.stop()
-            try? FileManager.default.removeItem(at: root)
-        }
-        try await client.start(root: root, outputDirectory: root)
-        try client.open(file, text: source, version: 1)
-        let document = ["uri": file.absoluteString]
-        let hover = try await client.request(
-            "textDocument/hover",
-            ["textDocument": document, "position": ["line": 0, "character": 3]],
-        )
-        let help = try #require(LanguageAssistance.hover(hover))
-        #expect(help.text.lowercased().contains("rectangle"))
-        let signature = try await client.request(
-            "textDocument/signatureHelp",
-            ["textDocument": document, "position": ["line": 0, "character": 12]],
-        )
-        let call = try #require(LanguageAssistance.signatureHelp(signature))
-        #expect(call.label.hasPrefix("rect("))
-        #expect(call.activeParameter == "width:")
-        let heading = try await client.request("textDocument/codeAction", [
-            "textDocument": document, "range": [
-                "start": ["line": 1, "character": 4],
-                "end": ["line": 1, "character": 4],
-            ],
-            "context": ["diagnostics": [], "triggerKind": 1],
-        ])
-        let headingActions = LanguageAssistance.codeActions(heading, source: source, documentURL: file, version: 1)
-        let increase = try #require(headingActions.first { $0.title == "Increase depth of heading" })
-        #expect(try TextEditing.applying(increase.edits, to: source).contains("\n=== Heading\n"))
-        let decrease = try #require(headingActions.first { $0.title == "Decrease depth of heading" })
-        #expect(try TextEditing.applying(decrease.edits, to: source).contains("\n= Heading\n"))
-        let equation = try await client.request("textDocument/codeAction", [
-            "textDocument": document, "range": [
-                "start": ["line": 2, "character": 3],
-                "end": ["line": 2, "character": 3],
-            ],
-            "context": ["diagnostics": [], "triggerKind": 1],
-        ])
-        let equationActions = LanguageAssistance.codeActions(equation, source: source, documentURL: file, version: 1)
-        let block = try #require(equationActions.first { $0.title == "Convert to block equation" })
-        #expect(try TextEditing.applying(block.edits, to: source).contains("$ alpha+beta $"))
-        let multiline = try #require(equationActions.first { $0.title == "Convert to multiple-line block equation" })
-        #expect(try TextEditing.applying(multiline.edits, to: source).contains("$\nalpha+beta\n$"))
-        try client.change(file, text: "#rec", version: 2)
-        let completed = try await client.request("textDocument/completion", [
-            "textDocument": document, "position": ["line": 0, "character": 4],
-            "context": ["triggerKind": 1],
-        ])
-        let choices = LanguageAssistance.completions(
-            completed,
-            source: "#rec",
-            selection: NSRange(location: 4, length: 0),
-        )
-        #expect(choices.contains { $0.label.hasPrefix("rect") })
-        #expect(try String(contentsOf: file, encoding: .utf8) == "Disk sentinel\n")
+@MainActor
+@Test(.enabled(if: ProcessInfo.processInfo.environment["PROSE_INTEGRATION"] == "1"))
+func realTinymistLanguageAssistance() async throws {
+    let root = TestPaths.temporaryDirectory.appendingPathComponent("Prose-assistance-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let file = root.appendingPathComponent("文稿.typ")
+    let source = "#rect(width: 20pt, height: 30pt)\n== Heading\n$alpha+beta$\n"
+    try Data("Disk sentinel\n".utf8).write(to: file)
+    let client = TinymistClient()
+    defer { client.stop()
+        try? FileManager.default.removeItem(at: root)
     }
-
-#endif
+    try await client.start(root: root, outputDirectory: root)
+    try client.open(file, text: source, version: 1)
+    let document = ["uri": file.absoluteString]
+    let hover = try await client.request(
+        "textDocument/hover",
+        ["textDocument": document, "position": ["line": 0, "character": 3]],
+    )
+    let help = try #require(LanguageAssistance.hover(hover))
+    #expect(help.text.lowercased().contains("rectangle"))
+    let signature = try await client.request(
+        "textDocument/signatureHelp",
+        ["textDocument": document, "position": ["line": 0, "character": 12]],
+    )
+    let call = try #require(LanguageAssistance.signatureHelp(signature))
+    #expect(call.label.hasPrefix("rect("))
+    #expect(call.activeParameter == "width:")
+    let heading = try await client.request("textDocument/codeAction", [
+        "textDocument": document, "range": [
+            "start": ["line": 1, "character": 4],
+            "end": ["line": 1, "character": 4],
+        ],
+        "context": ["diagnostics": [], "triggerKind": 1],
+    ])
+    let headingActions = LanguageAssistance.codeActions(heading, source: source, documentURL: file, version: 1)
+    let increase = try #require(headingActions.first { $0.title == "Increase depth of heading" })
+    #expect(try TextEditing.applying(increase.edits, to: source).contains("\n=== Heading\n"))
+    let decrease = try #require(headingActions.first { $0.title == "Decrease depth of heading" })
+    #expect(try TextEditing.applying(decrease.edits, to: source).contains("\n= Heading\n"))
+    let equation = try await client.request("textDocument/codeAction", [
+        "textDocument": document, "range": [
+            "start": ["line": 2, "character": 3],
+            "end": ["line": 2, "character": 3],
+        ],
+        "context": ["diagnostics": [], "triggerKind": 1],
+    ])
+    let equationActions = LanguageAssistance.codeActions(equation, source: source, documentURL: file, version: 1)
+    let block = try #require(equationActions.first { $0.title == "Convert to block equation" })
+    #expect(try TextEditing.applying(block.edits, to: source).contains("$ alpha+beta $"))
+    let multiline = try #require(equationActions.first { $0.title == "Convert to multiple-line block equation" })
+    #expect(try TextEditing.applying(multiline.edits, to: source).contains("$\nalpha+beta\n$"))
+    try client.change(file, text: "#rec", version: 2)
+    let completed = try await client.request("textDocument/completion", [
+        "textDocument": document, "position": ["line": 0, "character": 4],
+        "context": ["triggerKind": 1],
+    ])
+    let choices = LanguageAssistance.completions(
+        completed,
+        source: "#rec",
+        selection: NSRange(location: 4, length: 0),
+    )
+    #expect(choices.contains { $0.label.hasPrefix("rect") })
+    #expect(try String(contentsOf: file, encoding: .utf8) == "Disk sentinel\n")
+}

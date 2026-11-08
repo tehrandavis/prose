@@ -44,7 +44,6 @@
 "Bold" = "Bold";
 "Books" = "Books";
 "Bring an existing document or project into your library." = "Bring an existing document or project into your library.";
-"Browse Library" = "Browse Library";
 "Bullet List" = "Bullet List";
 "CVs" = "CVs";
 "Callout" = "Callout";
@@ -130,7 +129,6 @@
 "Document title" = "Document title";
 "Documentation ↗" = "Documentation ↗";
 "Documents" = "Documents";
-"Done" = "Done";
 "Draft" = "Draft";
 "Draft Save Failed" = "Draft Save Failed";
 "Draft Saved" = "Draft Saved";
@@ -230,7 +228,6 @@
 "Inline Equation" = "Inline Equation";
 "Insert" = "Insert";
 "Insert Content" = "Insert Content";
-"Insert Import" = "Insert Import";
 "Insert a code block in the chosen language." = "Insert a code block in the chosen language.";
 "Insert a definite integral and differential." = "Insert a definite integral and differential.";
 "Insert a limit condition and expression." = "Insert a limit condition and expression.";
@@ -283,9 +280,7 @@
 "Minimize" = "Minimize";
 "Move to Trash" = "Move to Trash";
 "New Document" = "New Document";
-"New document" = "New document";
 "No completions are available here." = "No completions are available here.";
-"No issues found" = "No issues found";
 "No matching commands" = "No matching commands";
 "No matching documents" = "No matching documents";
 "No matching packages\nTry another keyword or category." = "No matching packages\nTry another keyword or category.";
@@ -356,7 +351,6 @@
 "Rename…" = "Rename…";
 "Reopen a draft saved before switching documents or reloading." = "Reopen a draft saved before switching documents or reloading.";
 "Reports" = "Reports";
-"Requires Typst %@ or later" = "Requires Typst %@ or later";
 "Resolve the current save conflict before continuing." = "Resolve the current save conflict before continuing.";
 "Restart Tinymist and synchronize the current document." = "Restart Tinymist and synchronize the current document.";
 "Restore" = "Restore";
@@ -739,17 +733,7 @@
 
 "Back" = "Back";
 
-"Choose a document to begin writing." = "Choose a document to begin writing.";
-
-"Format Document" = "Format Document";
-
-"Import Project…" = "Import Project…";
-
-"No history yet" = "No history yet";
-
 "OK" = "OK";
-
-"Recovered Draft" = "Recovered Draft";
 
 "Restore this version?" = "Restore this version?";
 
@@ -757,23 +741,11 @@
 
 "Search Packages" = "Search Packages";
 
-"Templates & Packages" = "Templates & Packages";
-
-"Text size: %@" = "Text size: %@";
-
-"Toggle Comment" = "Toggle Comment";
-
 "Trash" = "Trash";
-
-"Use Template" = "Use Template";
 
 "Your current writing will be preserved before restoring this version." = "Your current writing will be preserved before restoring this version.";
 
-"iCloud Sync" = "iCloud Sync";
-
-"Authors" = "Authors";
 "License" = "License";
-"This location is in an included file. Included-file editing is not available on iPad yet." = "This location is in an included file. Included-file editing is not available on iPad yet.";
 
 "Choose or import an image. Its copy stays with your document." = "Choose or import an image. Its copy stays with your document.";
 "Paste text or import an image at the caret." = "Paste text or import an image at the caret.";
@@ -793,31 +765,7 @@
 "Module" = "Module";
 "Document" = "Document";
 
-"Choose Main File" = "Choose Main File";
-
-"Choose the file that compiles the complete project." = "Choose the file that compiles the complete project.";
-
-"Complete at Cursor" = "Complete at Cursor";
-
-"Export Source…" = "Export Source…";
-
-"Latest 7 snapshots · This iPad · Current source only" = "Latest 7 snapshots · This iPad · Current source only";
-
-"New Window" = "New Window";
-
-"Preview entry" = "Preview entry";
-
-"Project Files" = "Project Files";
-
 "Selected" = "Selected";
-
-"The document could not be prepared for printing." = "The document could not be prepared for printing.";
-
-"Writing Assistance" = "Writing Assistance";
-
-"The iCloud account changed. Your writing is preserved. Check iCloud settings before continuing sync." = "The iCloud account changed. Your writing is preserved. Check iCloud settings before continuing sync.";
-
-"Close other windows before changing iCloud Sync." = "Close other windows before changing iCloud Sync.";
 
 "Edit Table or Image…" = "Edit Table or Image…";
 
@@ -924,7 +872,6 @@
 "Long documents can take a while to typeset the first time." = "Long documents can take a while to typeset the first time.";
 "Resize Writing and Preview" = "Resize Writing and Preview";
 "Drag to resize. Double-click to split evenly." = "Drag to resize. Double-click to split evenly.";
-"Drag to resize. Double-tap to split evenly." = "Drag to resize. Double-tap to split evenly.";
 "Apply" = "Apply";
 "Update Channel" = "Update Channel";
 "Nightly (more stable)" = "Nightly (more stable)";

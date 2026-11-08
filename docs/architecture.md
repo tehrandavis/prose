@@ -8,7 +8,8 @@ The architecture prioritizes native input, maintainability, offline writing and 
 - Swift Package Manager separates core logic, the importable app library and a thin launcher so tests exercise production app code.
 - AppKit owns windows, menus, dialogs and text editing; SwiftUI composes layouts, lists and command interfaces.
 - Tinymist **0.15.8** is built from its pinned upstream commit with Prose's checked-in patches (macOS native TLS and a VFS revision fix) and bundled with every Mac edition. It contains Typst 0.15.1.
-- typst-syntax 0.15.1 (the same Typst fork) is linked into the app as a static library behind a small C ABI ([parser bridge](visual-editing.md#parser-typst-syntax-through-a-c-abi)). On iPad it is part of the embedded engine library.
+- typst-syntax 0.15.1 (the same Typst fork) is linked into the app as a static library behind a small C ABI ([parser bridge](visual-editing.md#parser-typst-syntax-through-a-c-abi)), carried by the engine library (`Engine/RenderBridge`).
+- Prose is Mac only. The inherited iPad target was removed on 2026-11-08.
 - The running app needs no Rust toolchain, Homebrew or separate Typst installation. Uncached external packages may require a network download; cached packages work offline.
 - A small local set of Phosphor icons is bundled with its license.
 

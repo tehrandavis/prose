@@ -1,25 +1,16 @@
+import AppKit
 import Foundation
 import WebKit
-#if os(macOS)
-    import AppKit
-#else
-    import UIKit
-#endif
 
-/// Exercises the production JavaScript in each platform's actual WebKit.
+/// Exercises the production JavaScript in the system WebKit.
 /// The deterministic pages need neither a renderer process nor network access.
 @MainActor
 public final class PreviewReadingFixture {
     public let web: WKWebView
     private let navigation = PreviewFixtureNavigation()
-    #if os(macOS)
-        private let window: NSWindow
-    #else
-        private let window: UIWindow
-        private weak var previousKeyWindow: UIWindow?
-    #endif
+    private let window: NSWindow
 
-    public init(script: String, lazySVG: Bool = false) throws {
+    public init(script: String, lazySVG: Bool = false) {
         let config = WKWebViewConfiguration()
         config.userContentController.addUserScript(WKUserScript(
             source: script,
@@ -27,28 +18,11 @@ public final class PreviewReadingFixture {
             forMainFrameOnly: true,
         ))
         web = WKWebView(frame: CGRect(x: 0, y: 0, width: 600, height: 500), configuration: config)
-        #if os(macOS)
-            _ = NSApplication.shared
-            window = NSWindow(contentRect: web.frame, styleMask: [.titled], backing: .buffered, defer: false)
-            window.isReleasedWhenClosed = false
-            window.contentView = web
-            web.configuration.preferences.inactiveSchedulingPolicy = .none
-        #else
-            guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
-                .first(where: { $0.activationState == .foregroundActive })
-            else {
-                throw NSError(domain: "PreviewReadingFixture", code: 2, userInfo: [
-                    NSLocalizedDescriptionKey: "The WebKit fixture requires a foreground window scene.",
-                ])
-            }
-            previousKeyWindow = scene.keyWindow
-            window = UIWindow(windowScene: scene)
-            window.frame = web.frame
-            let controller = UIViewController()
-            controller.view.addSubview(web)
-            window.rootViewController = controller
-            window.makeKeyAndVisible()
-        #endif
+        _ = NSApplication.shared
+        window = NSWindow(contentRect: web.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = web
+        web.configuration.preferences.inactiveSchedulingPolicy = .none
         let pages = lazySVG ? """
         <svg class="typst-doc" width="100%" viewBox="0 0 600 3000">
         <g class="typst-page" data-page-width="600" data-page-height="1000" transform="translate(0,0)"></g>
@@ -96,13 +70,7 @@ public final class PreviewReadingFixture {
     public func close() {
         web.stopLoading()
         web.removeFromSuperview()
-        #if os(macOS)
-            window.close()
-        #else
-            window.isHidden = true
-            window.rootViewController = nil
-            previousKeyWindow?.makeKey()
-        #endif
+        window.close()
     }
 }
 

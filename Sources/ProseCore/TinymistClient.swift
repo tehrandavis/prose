@@ -28,22 +28,12 @@ public final class TinymistClient {
         CoreResources.bundle.url(forResource: "NotoSansSC", withExtension: "ttf")
     }
 
-    private let makeTransport: @MainActor () throws -> any TinymistTransport
-
-    public init(makeTransport: (@MainActor () throws -> any TinymistTransport)? = nil) {
-        self.makeTransport = makeTransport ?? {
-            #if os(macOS)
-                return ProcessTinymistTransport()
-            #else
-                throw ServiceError.unavailable
-            #endif
-        }
-    }
+    public init() {}
 
     public var onNotification: ((String, JSONValue) -> Void)?
     public var onShowDocument: ((JSONValue) -> Void)?
     public var onDisconnect: ((String) -> Void)?
-    private var transport: (any TinymistTransport)?
+    private var transport: ProcessTinymistTransport?
     private var writer: JSONRPCWriter?
     private var output: FileHandle?
     private var errorOutput: FileHandle?
@@ -56,15 +46,13 @@ public final class TinymistClient {
     public private(set) var semanticTokenTypes: [String] = []
     public private(set) var semanticTokenModifiers: [String] = []
 
-    #if os(macOS)
-        public static var binaryURL: URL? {
-            ProcessTinymistTransport.binaryURL
-        }
-    #endif
+    public static var binaryURL: URL? {
+        ProcessTinymistTransport.binaryURL
+    }
 
     public func start(root: URL, outputDirectory: URL, fontPaths: [URL] = [], packageCache: URL? = nil) async throws {
         stop()
-        let transport = try makeTransport()
+        let transport = ProcessTinymistTransport()
         let session = generation
         let reader = JSONRPCReader { [weak self] result in
             DispatchQueue.main.async { [weak self] in
@@ -116,8 +104,7 @@ public final class TinymistClient {
         guard generation == session else {
             throw ServiceError.disconnected
         }
-        // iPad's PingFang UI collection uses Apple-specific glyph tables that
-        // Typst cannot parse. Supply the same portable CJK fallback on both platforms.
+        // Supply the bundled, portable CJK fallback font (Resources/ThirdParty.txt).
         let bundledFont = Self.bundledFontURL
         let response = try await request("initialize", [
             "processId": ProcessInfo.processInfo.processIdentifier,

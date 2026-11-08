@@ -5,7 +5,7 @@ import Foundation
 import ProseCore
 import Security
 
-/// macOS-only lifecycle and credentials. Neither this file nor the helper is in the iPad package graph.
+/// The MCP helper's lifecycle and credentials.
 @MainActor
 final class MCPConnection: ObservableObject {
     private struct Configuration: Codable {

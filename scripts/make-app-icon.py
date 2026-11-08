@@ -7,7 +7,6 @@ This script cuts the tile out of the surround, scales it to the macOS icon grid
 
 - Resources/AppIconLight.icns, the source artwork, and Resources/AppIcon.icns,
   a dark variant with dark paper and a light letter (Dock, light and dark)
-- iPad/Assets.xcassets/AppIcon.appiconset/icon.png and icon-dark.png
 - Brand/Prose/icon-macos-1024.png and icon-macos-dark-1024.png (transparent masters)
 - the welcome-guide mark, prose-mark.png, in the templates and Examples/
 
@@ -90,15 +89,6 @@ def main():
     dark.save(ROOT / 'Brand/Prose/icon-macos-dark-1024.png')
     icns(master, ROOT / 'Resources/AppIconLight.icns')
     icns(dark, ROOT / 'Resources/AppIcon.icns')
-    # iPadOS masks the icon itself and rejects transparency: use the full tile.
-    tile = cut_tile(Image.open(SOURCE))
-    inset = round(tile.width * 0.09)  # crop inside the rounded corners
-    square = tile.crop((inset, inset, tile.width - inset, tile.width - inset))
-    paper = Image.new('RGBA', square.size, (244, 243, 247, 255))
-    square = Image.alpha_composite(paper, square).convert('RGB')
-    square = square.resize((1024, 1024), Image.LANCZOS)
-    square.save(ROOT / 'iPad/Assets.xcassets/AppIcon.appiconset/icon.png')
-    darken(square).convert('RGB').save(ROOT / 'iPad/Assets.xcassets/AppIcon.appiconset/icon-dark.png')
     mark = master.resize((256, 256), Image.LANCZOS)
     for destination in (ROOT / 'Sources/ProseCore/Resources/Templates/prose-mark.png', ROOT / 'Examples/prose-mark.png'):
         mark.save(destination, optimize=True)

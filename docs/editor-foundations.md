@@ -12,7 +12,7 @@ The current implementation is not a rope editor and does not claim constant-time
 
 | Boundary | Implementation and contract |
 | --- | --- |
-| Native input | TextKit 2 (`NSTextContentStorage` and `NSTextLayoutManager`) on both platforms; AppKit and UIKit own selection, composition, clipboard, find and undo. No custom character insertion pipeline. `layoutManager` is never touched (it would switch the view to TextKit 1); SwiftLint rejects it. Placeholder Escape handling yields to marked text. |
+| Native input | TextKit 2 (`NSTextContentStorage` and `NSTextLayoutManager`); AppKit owns selection, composition, clipboard, find and undo. No custom character insertion pipeline. `layoutManager` is never touched (it would switch the view to TextKit 1); SwiftLint rejects it. Placeholder Escape handling yields to marked text. |
 | Syntax | TextKit 2 rendering attributes, separate from the source's font and paragraph attributes. Pending semantic results retain prior colors; native edits move those ranges. Matching replies write changed runs only. Syntax never changes fonts or layout. |
 | Reading presentation | Fonts on the source text: headings by level, strong, emphasis and raw ([editor styles](visual-editing.md#the-editor-now)). Parsing runs on an actor; edited text keeps the fonts the storage moved with it until the reply, which writes only fonts that differ. Styles wait while text is marked. Every character, markers included, is laid out as typed. |
 | Layout | Viewport layout only; no full-layout pass. Jumps reveal targets precisely rather than through `scrollRangeToVisible`; hit tests after a jump use laid-out viewport fragments. Color responses do not force layout. |

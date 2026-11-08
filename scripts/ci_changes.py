@@ -2,16 +2,16 @@
 """Select CI jobs from changed paths, and check the selected jobs' results.
 
 `select` runs in the small ubuntu `changes` job of .github/workflows/ci.yml and
-writes the `mac`, `ipad`, `suite`, `release`, `publish` and `channel` outputs
-that every macOS job's `if:` consumes. `release` adds the Mac App Store and
-memory checks; it runs only from main's nightly schedule or a manual main
-dispatch. `publish` signs Prose Preview: the nightly channel from those
-runs, the opt-in alpha channel from each Mac-affecting main push.
+writes the `mac`, `release`, `publish` and `channel` outputs that every macOS
+job's `if:` consumes. `release` adds the Mac App Store and memory checks; it
+runs only from main's nightly schedule or a manual main dispatch. `publish`
+signs Prose Preview: the nightly channel from those runs, the opt-in alpha
+channel from each Mac-affecting main push.
 `gate` runs in the required `build and test` job and fails unless each job
 either passed (selected) or was skipped (not selected).
 
-Any doubt runs more, never less: unknown paths are shared, and a missing base
-commit, API error or unexpected event selects every job.
+Any doubt runs more, never less: unknown paths select the Mac jobs, and a
+missing base commit, API error or unexpected event selects every job.
 """
 import argparse
 import json
@@ -23,56 +23,33 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = 'ci.yml'
 
-# First matching prefix wins. A prefix ending in '/' matches a directory;
-# anything else must match the whole path. Unlisted paths are shared.
+# A prefix ending in '/' matches a directory; anything else must match the
+# whole path. Documentation selects no macOS job; every other path selects the
+# Mac jobs. MAC lists those paths for readers and for the check that every
+# tracked script is classified deliberately; unlisted paths behave the same way.
 DOCS = (
     'docs/', 'releases/', 'README.md', 'BRAND_POLICY.md', 'LICENSE', 'codecov.yml', 'Brand/README.md',
 )
 MAC = (
-    'Sources/Prose/', 'Sources/ProseLauncher/',
-    'Tests/ProseAppTests/', 'Tests/MCP/',
-    'Tools/MCPServer/',
-    # The render bridge and its header module are linked by the Mac app only.
-    'Engine/RenderBridge/', 'Sources/ProseRenderFFI/',
+    'Sources/', 'Tests/', 'Tools/MCPServer/', 'Engine/RenderBridge/', 'Engine/SyntaxBridge/',
+    'Package.swift', 'Package.resolved', 'Resources/', 'Examples/', 'Brand/',
     # Only scripts/lint.sh reads these; Mac regression runs it.
     'Benchmarks/', '.swiftlint.yml', '.swiftformat',
-    # Mac bundle metadata and icons. The iPad project references only
-    # Resources/Icons, Licenses, Packages and the license texts.
-    'Resources/Info.plist', 'Resources/Preview-Info.plist', 'Resources/Prose.AppStore.entitlements',
-    'Resources/Prose.Helper.entitlements', 'Resources/Prose.iCloud.entitlements.example',
-    'Resources/AppIcon.icns', 'Resources/AppIconLight.icns',
-    'Resources/en.lproj/', 'Resources/zh-Hans.lproj/',
-    'scripts/benchmark-books.sh', 'scripts/bootstrap.sh', 'scripts/build.sh', 'scripts/build-mcp.sh',
-    'scripts/build-render.sh', 'scripts/build-syntax.sh', 'scripts/build-tinymist.sh', 'scripts/check-memory.sh',
-    'scripts/export-appstore.py', 'scripts/package-app.py',
+    'scripts/appstore_connect.py', 'scripts/benchmark-books.sh', 'scripts/bootstrap.sh', 'scripts/build.sh',
+    'scripts/build-mcp.sh', 'scripts/build-render.sh', 'scripts/build-syntax.sh', 'scripts/build-tinymist.sh',
+    'scripts/check-memory.sh', 'scripts/ci_changes.py', 'scripts/coverage.py', 'scripts/environment.sh',
+    'scripts/export-appstore.py', 'scripts/lint.sh', 'scripts/make-app-icon.py', 'scripts/package-app.py',
     'scripts/package-sicp.py', 'scripts/prepare-icloud-profile.py', 'scripts/prepare-large-document.py',
     'scripts/prepare-mcp-hurl.sh', 'scripts/prepare-sicp.py', 'scripts/preview-feed.py', 'scripts/preview_channels.py',
-    'scripts/publish-preview.py',
-    'scripts/release.sh', 'scripts/release-appstore.sh', 'scripts/running_app.py', 'scripts/sign-app.sh',
-    'scripts/smoke-app.py', 'scripts/sparkle-tools.sh', 'scripts/test-icloud-profile.py',
-    'scripts/staple_app.py', 'scripts/test-staple-app.py',
-    'scripts/test-preview-release.py', 'scripts/test-running-app.py', 'scripts/test-tinymist-build.py',
-    'scripts/test-swiftlint-policy.py',
-    'scripts/test.sh', 'scripts/tinymist-native-tls.patch', 'scripts/verify-update.swift',
-    '.github/workflows/release.yml',
-)
-IPAD = (
-    'iPad/',
-    # Only the iPad scripts build the embedded Tinymist engine; Mac runs the
-    # Tinymist helper. Engine/SyntaxBridge is linked by both, so it is shared.
-    'Engine/TinymistBridge/',
-    'scripts/build-ipad.sh', 'scripts/check-ipad-mcp-boundary.py', 'scripts/ipad_frameworks.py', 'scripts/fixtures/', 'scripts/ipad_coverage.py',
-    'scripts/ipad_release.py', 'scripts/ipad_simulator.py', 'scripts/ipad_storefront.py',
-    'scripts/prepare-ipad-engine.sh', 'scripts/release-ipad.sh', 'scripts/test-ipad-coverage.py',
-    'scripts/test-ipad-engine.py', 'scripts/test-ipad-engine.sh', 'scripts/test-ipad-release.py',
-    'scripts/test-ipad-simulator.py', 'scripts/test-ipad-storefront.py', 'scripts/test-package-graphs.py',
-    'scripts/tinymist-ipad.patch', 'scripts/tinymist-ipad-export.patch',
-    '.github/workflows/ipad-release.yml',
-)
-# Shared, listed for readers; unlisted paths behave the same way.
-SHARED = (
-    'Sources/ProseCore/', 'Sources/ProseSyntaxFFI/', 'Engine/SyntaxBridge/', 'Sources/Package.swift', 'Package.swift', 'Package.resolved',
-    'Tests/ProseCoreTests/', 'Tests/Support/', 'Resources/', 'Examples/', 'Brand/', 'scripts/', '.github/',
+    'scripts/publish-preview.py', 'scripts/release.sh', 'scripts/release-appstore.sh', 'scripts/release_metadata.py',
+    'scripts/running_app.py', 'scripts/rust-licenses.py', 'scripts/sign-app.sh', 'scripts/smoke-app.py',
+    'scripts/sparkle-tools.sh', 'scripts/staple_app.py', 'scripts/test-appstore-release.py',
+    'scripts/test-ci-policy.py', 'scripts/test-icloud-profile.py', 'scripts/test-package-graphs.py',
+    'scripts/test-preview-release.py', 'scripts/test-running-app.py', 'scripts/test-staple-app.py',
+    'scripts/test-swiftlint-policy.py', 'scripts/test-tinymist-build.py', 'scripts/test.sh',
+    'scripts/tinymist-native-tls.patch', 'scripts/tinymist-vfs.patch', 'scripts/update-universe-snapshot.py',
+    'scripts/verify-update.swift',
+    '.github/',
 )
 
 
@@ -81,18 +58,12 @@ def matches(path, prefixes):
 
 
 def classify(path):
-    """Return the platforms a changed path needs validated: a set of 'mac'/'ipad'."""
-    for prefixes, platforms in ((DOCS, set()), (MAC, {'mac'}), (IPAD, {'ipad'})):
-        if matches(path, prefixes):
-            return platforms
-    return {'mac', 'ipad'}
+    """Return the platforms a changed path needs validated: {'mac'}, or none for docs."""
+    return set() if matches(path, DOCS) else {'mac'}
 
 
 def select(paths):
-    platforms = set()
-    for path in paths:
-        platforms |= classify(path)
-    return {'mac': 'mac' in platforms, 'ipad': 'ipad' in platforms}
+    return {'mac': any(classify(path) for path in paths)}
 
 
 def git(*args):
@@ -116,12 +87,12 @@ def successful_runs(repository, event):
     return [line for line in output.splitlines() if line]
 
 
-def plan(event, head, suite, repository, runs=successful_runs, pr_base=None, publish_preview=False):
-    """Decide which platforms run; returns (selection dict, human-readable reason)."""
-    everything = {'mac': True, 'ipad': True}
+def plan(event, head, repository, runs=successful_runs, pr_base=None, publish_preview=False):
+    """Decide whether the Mac jobs run; returns (selection dict, human-readable reason)."""
+    everything = {'mac': True}
     if event == 'workflow_dispatch':
         if publish_preview:
-            return {'mac': True, 'ipad': False}, 'preview dispatch runs the Mac checks and publishes'
+            return everything, 'preview dispatch runs the Mac checks and publishes'
         return everything, 'manual dispatch runs every job'
     if event == 'schedule':
         try:
@@ -131,7 +102,7 @@ def plan(event, head, suite, repository, runs=successful_runs, pr_base=None, pub
         # Only a fully successful nightly (tests and Preview publication) of
         # this exact commit is skipped; a failed one is retried.
         if last == head:
-            return {'mac': False, 'ipad': False}, f'main is unchanged since the last successful nightly ({head})'
+            return {'mac': False}, f'main is unchanged since the last successful nightly ({head})'
         return everything, 'nightly runs every job'
     if event == 'pull_request':
         try:
@@ -162,17 +133,17 @@ def plan(event, head, suite, repository, runs=successful_runs, pr_base=None, pub
     return selection, f'{len(paths)} changed path(s) since {base}:\n{listed}'
 
 
-def outputs(selection, event, ref, suite, publish_preview=False):
-    """The job outputs: platform selection plus the main-only release and publish steps."""
+def outputs(selection, event, ref, publish_preview=False):
+    """The job outputs: Mac selection plus the main-only release and publish steps."""
     main = selection['mac'] and ref == 'refs/heads/main'
     release = main and event in ('schedule', 'workflow_dispatch')
     alpha = main and event == 'push'
     publish = alpha or (release and (event == 'schedule' or publish_preview))
-    return {'mac': selection['mac'], 'ipad': selection['ipad'], 'suite': suite, 'release': release, 'publish': publish,
+    return {'mac': selection['mac'], 'release': release, 'publish': publish,
             'channel': 'alpha' if alpha else 'nightly'}
 
 
-def expected_results(mac, ipad, suite, release):
+def expected_results(mac, release):
     """The result each gated job must report for this selection. Preview
     publication is deliberately not gated: it reports its own failure."""
     def need(selected):
@@ -181,11 +152,6 @@ def expected_results(mac, ipad, suite, release):
         'integration': need(mac),
         'appstore': need(release),
         'memory': need(release),
-        'ipad-build': need(ipad),
-        'ipad-simulator-build': need(ipad),
-        'ipad-ui': need(ipad),
-        'ipad-coverage': need(ipad and suite == 'full'),
-        'ipad-memory': need(ipad and suite == 'full'),
     }
 
 
@@ -195,13 +161,13 @@ def gate(needs):
     if changes.get('result') != 'success':
         return [f"changes is {changes.get('result')}, expected success"]
     values = changes.get('outputs', {})
-    flags = [values.get(name) for name in ('mac', 'ipad', 'release')]
-    if any(flag not in ('true', 'false') for flag in flags) or values.get('suite') not in ('smoke', 'full'):
+    flags = [values.get(name) for name in ('mac', 'release')]
+    if any(flag not in ('true', 'false') for flag in flags):
         return [f'changes produced invalid outputs {values}']
-    mac, ipad, release = (flag == 'true' for flag in flags)
+    mac, release = (flag == 'true' for flag in flags)
     if release and not mac:
         return [f'changes selected release checks without Mac jobs: {values}']
-    expected = expected_results(mac, ipad, values['suite'], release)
+    expected = expected_results(mac, release)
     problems = []
     for job, result in expected.items():
         actual = needs.get(job, {}).get('result')
@@ -215,7 +181,7 @@ def main():
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('select', help='write the job selection to $GITHUB_OUTPUT')
     commands.add_parser('gate', help='check the gate job needs context (JSON in $NEEDS)')
-    commands.add_parser('classify', help='print the platforms for each path on stdin')
+    commands.add_parser('classify', help='print mac or docs for each path on stdin')
     args = parser.parse_args()
 
     if args.command == 'classify':
@@ -230,14 +196,11 @@ def main():
             print('Every selected job passed; every other job was skipped.')
         return 1 if problems else 0
 
-    suite = os.environ['IPAD_SUITE']
-    if suite not in ('smoke', 'full'):
-        raise SystemExit(f'Unexpected IPAD_SUITE {suite}')
     event = os.environ['GITHUB_EVENT_NAME']
     publish_preview = event == 'workflow_dispatch' and os.environ.get('PUBLISH_PREVIEW') == 'true'
-    selection, reason = plan(event, os.environ['GITHUB_SHA'], suite, os.environ['GITHUB_REPOSITORY'],
+    selection, reason = plan(event, os.environ['GITHUB_SHA'], os.environ['GITHUB_REPOSITORY'],
                              pr_base=os.environ.get('PR_BASE_SHA'), publish_preview=publish_preview)
-    result = outputs(selection, event, os.environ['GITHUB_REF'], suite, publish_preview)
+    result = outputs(selection, event, os.environ['GITHUB_REF'], publish_preview)
     lines = [f'{name}={str(value).lower() if isinstance(value, bool) else value}' for name, value in result.items()]
     print('\n'.join(lines))
     print(reason)

@@ -10,26 +10,15 @@ coverage:
         threshold: 0%
         if_not_found: failure
         flags: [macos]
-      ipad:
-        target: 80%
-        threshold: 0%
-        if_not_found: failure
-        flags: [ipad]
     patch:
       default: false
       macos:
         target: 80%
         threshold: 0%
         flags: [macos]
-      ipad:
-        target: 80%
-        threshold: 0%
-        flags: [ipad]
 
 flags:
   macos:
-    carryforward: false
-  ipad:
     carryforward: false
 
 comment:

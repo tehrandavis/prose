@@ -140,9 +140,10 @@ class ReleaseTests(unittest.TestCase):
         self.release.submit(self.apple.build)
         self.assertEqual(len(self.apple.writes), writes)
 
-    def test_review_notes_say_the_ipad_subscription_is_not_in_the_mac_app(self):
-        for phrase in ('no in-app purchases', 'com.tehrandavis.prose.ipad.monthly', 'only in the iPad app'):
+    def test_review_notes_describe_the_free_mac_app(self):
+        for phrase in ('no in-app purchases', 'No login is required'):
             self.assertIn(phrase, asc.MAC_REVIEW_NOTES)
+        self.assertNotIn('iPad', asc.MAC_REVIEW_NOTES)
         self.assertLessEqual(len(asc.MAC_REVIEW_NOTES), 4000)
 
     def test_missing_review_contact_stops_before_submission(self):

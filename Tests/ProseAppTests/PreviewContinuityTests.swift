@@ -8,7 +8,7 @@ import WebKit
 
 @Suite(.serialized) @MainActor struct PreviewContinuityTests {
     @Test func lazyPagesRestoreBeforePaintingAndScrollingSupersedesRestoration() async throws {
-        let fixture = try PreviewReadingFixture(script: PreviewScripts.reading, lazySVG: true)
+        let fixture = PreviewReadingFixture(script: PreviewScripts.reading, lazySVG: true)
         defer { fixture.close() }
         try await fixture.ready()
         let web = fixture.web
@@ -31,7 +31,7 @@ import WebKit
     }
 
     @Test func normalizedReadingAnchorSurvivesZoomAndSourceJumpCancelsRestore() async throws {
-        let fixture = try PreviewReadingFixture(script: PreviewScripts.reading)
+        let fixture = PreviewReadingFixture(script: PreviewScripts.reading)
         defer { fixture.close() }
         try await fixture.ready()
         let web = fixture.web
@@ -89,7 +89,7 @@ import WebKit
     }
 
     @Test func readingPositionSurvivesALiveSplitDividerDrag() async throws {
-        let fixture = try PreviewReadingFixture(script: PreviewScripts.reading)
+        let fixture = PreviewReadingFixture(script: PreviewScripts.reading)
         defer { fixture.close() }
         try await fixture.ready()
         let web = fixture.web
@@ -116,7 +116,7 @@ import WebKit
     }
 
     @Test func nativeReturnRestoresBookmarkedPageAndAcknowledgesSuccess() async throws {
-        let fixture = try PreviewReadingFixture(script: PreviewScripts.reading)
+        let fixture = PreviewReadingFixture(script: PreviewScripts.reading)
         defer { fixture.close() }
         try await fixture.ready()
         let session = PreviewReadingSession()
@@ -139,7 +139,7 @@ import WebKit
     }
 
     @Test func pressedPreviewTextIsReportedByItsGlyphBoundsForTheNextSourceJump() async throws {
-        let fixture = try PreviewReadingFixture(script: PreviewScripts.reading, lazySVG: true)
+        let fixture = PreviewReadingFixture(script: PreviewScripts.reading, lazySVG: true)
         defer { fixture.close() }
         try await fixture.ready()
         let session = PreviewReadingSession()

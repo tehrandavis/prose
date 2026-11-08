@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CI capacity policy: path selection, nightly full iPad suite, gate and publication.
+"""CI capacity policy: path selection, nightly release checks, gate and publication.
 
 Runs in the ubuntu `changes` job before any macOS job starts. Workflow files are
 inspected as text so the test needs only the Python standard library.
@@ -19,8 +19,6 @@ import ci_changes as ci  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = ROOT / '.github/workflows'
 MAC_JOBS = {'integration', 'appstore', 'memory'}
-IPAD_JOBS = {'ipad-build', 'ipad-simulator-build', 'ipad-ui', 'ipad-coverage', 'ipad-memory'}
-FULL_ONLY = {'ipad-coverage', 'ipad-memory'}
 
 
 def jobs(workflow):
@@ -54,86 +52,75 @@ def condition_passes(block, context, *, cancelled=False):
 
 
 class PathClassificationTests(unittest.TestCase):
+    MAC, DOCS = {'mac'}, set()
     TABLE = {
-        # Mac app, MCP helper and Mac-only packaging.
-        'Sources/Prose/Workspace.swift': {'mac'},
-        'Sources/ProseLauncher/main.swift': {'mac'},
-        'Tests/ProseAppTests/WritingFlowTests.swift': {'mac'},
-        'Tests/MCP/editing.hurl': {'mac'},
-        'Tools/MCPServer/src/main.rs': {'mac'},
-        'Tools/MCPServer/Cargo.lock': {'mac'},
-        'Engine/RenderBridge/src/lib.rs': {'mac'},
-        'Engine/RenderBridge/Cargo.lock': {'mac'},
-        'Sources/ProseRenderFFI/include/ProseRender.h': {'mac'},
-        'scripts/build-render.sh': {'mac'},
-        'Resources/Info.plist': {'mac'},
-        'Resources/Preview-Info.plist': {'mac'},
-        'Resources/AppIcon.icns': {'mac'},
-        'Resources/en.lproj/InfoPlist.strings': {'mac'},
-        'scripts/test.sh': {'mac'},
-        'scripts/test-swiftlint-policy.py': {'mac'},
-        'scripts/build-tinymist.sh': {'mac'},
-        'scripts/tinymist-native-tls.patch': {'mac'},
-        'scripts/release.sh': {'mac'},
-        'scripts/staple_app.py': {'mac'},
-        'scripts/test-staple-app.py': {'mac'},
-        'scripts/publish-preview.py': {'mac'},
-        'scripts/preview_channels.py': {'mac'},
-        'scripts/check-memory.sh': {'mac'},
-        'Benchmarks/Diffing/TextDiffingRoundTripTests.swift': {'mac'},
-        '.swiftlint.yml': {'mac'},
-        '.github/workflows/release.yml': {'mac'},
-        # iPad app, embedded engine and iPad-only scripts.
-        'iPad/Sources/TabletRoot.swift': {'ipad'},
-        'iPad/Prose.xcodeproj/project.pbxproj': {'ipad'},
-        'iPad/UITests/WritingTests.swift': {'ipad'},
-        'Engine/TinymistBridge/src/lib.rs': {'ipad'},
-        'Engine/TinymistBridge/Cargo.lock': {'ipad'},
-        'scripts/build-syntax.sh': {'mac'},
-        'scripts/build-ipad.sh': {'ipad'},
-        'scripts/ipad_simulator.py': {'ipad'},
-        'scripts/test-ipad-simulator.py': {'ipad'},
-        'scripts/tinymist-ipad.patch': {'ipad'},
-        'scripts/prepare-ipad-engine.sh': {'ipad'},
-        'scripts/fixtures/apple-storefront-schema.json': {'ipad'},
-        '.github/workflows/ipad-release.yml': {'ipad'},
-        # Shared code, resources and CI infrastructure run both.
-        'Sources/ProseCore/TinymistClient.swift': {'mac', 'ipad'},
-        'Sources/ProseCore/Resources/en.lproj/Localizable.strings': {'mac', 'ipad'},
-        'Sources/Package.swift': {'mac', 'ipad'},
-        'Sources/ProseSyntaxFFI/include/ProseSyntax.h': {'mac', 'ipad'},
-        'Engine/SyntaxBridge/src/lib.rs': {'mac', 'ipad'},
-        'Engine/SyntaxBridge/Cargo.lock': {'mac', 'ipad'},
-        'Engine/NewBridge/Cargo.toml': {'mac', 'ipad'},
-        'scripts/rust-licenses.py': {'mac', 'ipad'},
-        'Package.swift': {'mac', 'ipad'},
-        'Package.resolved': {'mac', 'ipad'},
-        'Tests/ProseCoreTests/CoreTests.swift': {'mac', 'ipad'},
-        'Tests/Support/TestPaths.swift': {'mac', 'ipad'},
-        'Resources/Icons/pen.svg': {'mac', 'ipad'},
-        'Resources/Packages/preview/cetz/0.5.2/src/lib.typ': {'mac', 'ipad'},
-        'Resources/ThirdParty.txt': {'mac', 'ipad'},
-        'Examples/Welcome.typ': {'mac', 'ipad'},
-        'Brand/Prose/icon-1024.png': {'mac', 'ipad'},
-        'scripts/environment.sh': {'mac', 'ipad'},
-        'scripts/lint.sh': {'mac', 'ipad'},
-        'scripts/tinymist-vfs.patch': {'mac', 'ipad'},
-        'scripts/coverage.py': {'mac', 'ipad'},
-        'scripts/appstore_connect.py': {'mac', 'ipad'},
-        'scripts/test-appstore-release.py': {'mac', 'ipad'},
-        'scripts/release_metadata.py': {'mac', 'ipad'},
-        'scripts/ci_changes.py': {'mac', 'ipad'},
-        'scripts/test-ci-policy.py': {'mac', 'ipad'},
-        '.github/workflows/ci.yml': {'mac', 'ipad'},
-        '.github/dependabot.yml': {'mac', 'ipad'},
-        'something/new.txt': {'mac', 'ipad'},
+        # Mac app, MCP helper, engine and packaging.
+        'Sources/Prose/Workspace.swift': MAC,
+        'Sources/ProseLauncher/main.swift': MAC,
+        'Tests/ProseAppTests/WritingFlowTests.swift': MAC,
+        'Tests/MCP/editing.hurl': MAC,
+        'Tools/MCPServer/src/main.rs': MAC,
+        'Tools/MCPServer/Cargo.lock': MAC,
+        'Engine/RenderBridge/src/lib.rs': MAC,
+        'Engine/RenderBridge/Cargo.lock': MAC,
+        'Sources/ProseRenderFFI/include/ProseRender.h': MAC,
+        'scripts/build-render.sh': MAC,
+        'Resources/Info.plist': MAC,
+        'Resources/Preview-Info.plist': MAC,
+        'Resources/AppIcon.icns': MAC,
+        'Resources/en.lproj/InfoPlist.strings': MAC,
+        'scripts/test.sh': MAC,
+        'scripts/test-swiftlint-policy.py': MAC,
+        'scripts/build-tinymist.sh': MAC,
+        'scripts/tinymist-native-tls.patch': MAC,
+        'scripts/release.sh': MAC,
+        'scripts/staple_app.py': MAC,
+        'scripts/test-staple-app.py': MAC,
+        'scripts/publish-preview.py': MAC,
+        'scripts/preview_channels.py': MAC,
+        'scripts/check-memory.sh': MAC,
+        'scripts/build-syntax.sh': MAC,
+        'Benchmarks/Diffing/TextDiffingRoundTripTests.swift': MAC,
+        '.swiftlint.yml': MAC,
+        '.github/workflows/release.yml': MAC,
+        # Core code, resources and CI infrastructure.
+        'Sources/ProseCore/TinymistClient.swift': MAC,
+        'Sources/ProseCore/Resources/en.lproj/Localizable.strings': MAC,
+        'Sources/ProseSyntaxFFI/include/ProseSyntax.h': MAC,
+        'Engine/SyntaxBridge/src/lib.rs': MAC,
+        'Engine/SyntaxBridge/Cargo.lock': MAC,
+        'Engine/NewBridge/Cargo.toml': MAC,
+        'scripts/rust-licenses.py': MAC,
+        'Package.swift': MAC,
+        'Package.resolved': MAC,
+        'Tests/ProseCoreTests/CoreTests.swift': MAC,
+        'Tests/Support/TestPaths.swift': MAC,
+        'Resources/Icons/pen.svg': MAC,
+        'Resources/Packages/preview/cetz/0.5.2/src/lib.typ': MAC,
+        'Resources/ThirdParty.txt': MAC,
+        'Examples/Welcome.typ': MAC,
+        'Brand/Prose/icon-1024.png': MAC,
+        'scripts/environment.sh': MAC,
+        'scripts/lint.sh': MAC,
+        'scripts/tinymist-vfs.patch': MAC,
+        'scripts/coverage.py': MAC,
+        'scripts/appstore_connect.py': MAC,
+        'scripts/test-appstore-release.py': MAC,
+        'scripts/release_metadata.py': MAC,
+        'scripts/ci_changes.py': MAC,
+        'scripts/test-ci-policy.py': MAC,
+        'scripts/test-package-graphs.py': MAC,
+        '.github/workflows/ci.yml': MAC,
+        '.github/dependabot.yml': MAC,
+        # Unknown paths run the Mac jobs.
+        'something/new.txt': MAC,
         # Documentation runs no macOS job.
-        'docs/development.md': set(),
-        'docs/screenshots/editor.png': set(),
-        'README.md': set(),
-        'releases/0.5.0.md': set(),
-        'LICENSE': set(),
-        'Brand/README.md': set(),
+        'docs/development.md': DOCS,
+        'docs/screenshots/editor.png': DOCS,
+        'README.md': DOCS,
+        'releases/0.5.0.md': DOCS,
+        'LICENSE': DOCS,
+        'Brand/README.md': DOCS,
     }
 
     def test_each_path_selects_its_platforms(self):
@@ -142,33 +129,30 @@ class PathClassificationTests(unittest.TestCase):
                 self.assertEqual(ci.classify(path), expected)
 
     def test_prefixes_match_whole_names_or_directories(self):
-        # A sibling sharing a name prefix must not inherit a narrower platform.
-        self.assertEqual(ci.classify('Sources/ProseCore/X.swift'), {'mac', 'ipad'})
-        self.assertEqual(ci.classify('scripts/test.sh.orig'), {'mac', 'ipad'})
-        self.assertEqual(ci.classify('docsite/index.md'), {'mac', 'ipad'})
-        self.assertEqual(ci.classify('Examples/Books/SICP/README.md'), {'mac', 'ipad'})
+        # A sibling sharing a name prefix with a docs path is not documentation.
+        self.assertEqual(ci.classify('docsite/index.md'), {'mac'})
+        self.assertEqual(ci.classify('README.md.orig'), {'mac'})
+        self.assertEqual(ci.classify('Brand/README.mdx'), {'mac'})
+        self.assertEqual(ci.classify('Examples/Books/SICP/README.md'), {'mac'})
+        self.assertFalse(ci.matches('scripts/test.sh.orig', ci.MAC))
 
     def test_every_tracked_script_is_classified_deliberately(self):
-        listed = ci.MAC + ci.IPAD + ci.DOCS
         scripts = subprocess.check_output(['git', 'ls-files', 'scripts'], cwd=ROOT, text=True).split()
-        shared = {'scripts/appstore_connect.py', 'scripts/ci_changes.py', 'scripts/coverage.py',
-                  'scripts/environment.sh', 'scripts/lint.sh', 'scripts/make-app-icon.py', 'scripts/rust-licenses.py',
-                  'scripts/release_metadata.py', 'scripts/test-appstore-release.py', 'scripts/test-ci-policy.py',
-                  'scripts/tinymist-vfs.patch', 'scripts/update-universe-snapshot.py'}
         for script in scripts:
             with self.subTest(script=script):
-                self.assertTrue(ci.matches(script, listed) or script in shared,
-                                'Classify new scripts in scripts/ci_changes.py (Mac, iPad or shared)')
+                self.assertTrue(ci.matches(script, ci.MAC + ci.DOCS),
+                                'List new scripts in scripts/ci_changes.py MAC')
+        # Each listed script still exists, so the list cannot silently go stale.
+        for prefix in ci.MAC:
+            if prefix.startswith('scripts/'):
+                with self.subTest(listed=prefix):
+                    self.assertIn(prefix, scripts)
 
     def test_selection_unions_the_changed_paths(self):
-        self.assertEqual(ci.select(['docs/ipad.md', 'README.md']), {'mac': False, 'ipad': False})
-        self.assertEqual(ci.select([]), {'mac': False, 'ipad': False})
-        self.assertEqual(ci.select(['Tools/MCPServer/src/main.rs', 'docs/mcp-design.md']),
-                         {'mac': True, 'ipad': False})
-        self.assertEqual(ci.select(['iPad/Sources/TabletRoot.swift']), {'mac': False, 'ipad': True})
-        self.assertEqual(ci.select(['iPad/Sources/TabletRoot.swift', 'Sources/Prose/Workspace.swift']),
-                         {'mac': True, 'ipad': True})
-        self.assertEqual(ci.select(['Sources/ProseCore/Library.swift']), {'mac': True, 'ipad': True})
+        self.assertEqual(ci.select(['docs/development.md', 'README.md']), {'mac': False})
+        self.assertEqual(ci.select([]), {'mac': False})
+        self.assertEqual(ci.select(['Tools/MCPServer/src/main.rs', 'docs/mcp-design.md']), {'mac': True})
+        self.assertEqual(ci.select(['Sources/ProseCore/Library.swift']), {'mac': True})
 
 
 class PlanTests(unittest.TestCase):
@@ -198,59 +182,61 @@ class PlanTests(unittest.TestCase):
         return self.git('rev-parse', 'HEAD')
 
     def plan(self, event, head, runs=lambda repository, event: [], **kwargs):
-        return ci.plan(event, head, 'smoke', 'tehrandavis/prose', runs=runs, **kwargs)[0]
+        return ci.plan(event, head, 'tehrandavis/prose', runs=runs, **kwargs)[0]
 
     def test_push_diffs_against_the_last_successful_main_run(self):
         self.commit('Sources/Prose/Workspace.swift')   # its run was cancelled
-        head = self.commit('iPad/Sources/TabletRoot.swift')
-        self.assertEqual(self.plan('push', head, runs=lambda repository, event: [self.base]),
-                         {'mac': True, 'ipad': True})
+        head = self.commit('docs/more.md')
+        self.assertEqual(self.plan('push', head, runs=lambda repository, event: [self.base]), {'mac': True})
         self.assertEqual(self.plan('push', head, runs=lambda repository, event: [self.git('rev-parse', 'HEAD~1')]),
-                         {'mac': False, 'ipad': True})
+                         {'mac': False})
 
     def test_push_ignores_its_own_and_unrelated_successes(self):
         head = self.commit('Tools/MCPServer/src/main.rs')
         self.git('checkout', '-q', '-b', 'other', self.base)
-        unrelated = self.commit('iPad/Sources/Other.swift')
+        unrelated = self.commit('Sources/Prose/Other.swift')
         self.git('checkout', '-q', 'main')
         # A rerun of an already successful commit still diffs against an earlier run.
         runs = lambda repository, event: [head, unrelated, self.base]  # noqa: E731
-        self.assertEqual(self.plan('push', head, runs=runs), {'mac': True, 'ipad': False})
+        self.assertEqual(self.plan('push', head, runs=runs), {'mac': True})
+        # Only an ancestor may be the base: the unrelated run would select Mac
+        # jobs for this docs-only commit.
+        docs = self.commit('docs/more.md')
+        runs = lambda repository, event: [unrelated, head]  # noqa: E731
+        self.assertEqual(self.plan('push', docs, runs=runs), {'mac': False})
 
     def test_push_without_a_usable_base_runs_everything(self):
         head = self.commit('docs/more.md')
-        self.assertEqual(self.plan('push', head), {'mac': True, 'ipad': True})
+        self.assertEqual(self.plan('push', head), {'mac': True})
 
         def broken(repository, event):
             raise subprocess.CalledProcessError(1, 'gh')
-        self.assertEqual(self.plan('push', head, runs=broken), {'mac': True, 'ipad': True})
+        self.assertEqual(self.plan('push', head, runs=broken), {'mac': True})
 
     def test_docs_only_push_runs_no_macos_job(self):
         head = self.commit('docs/more.md')
-        self.assertEqual(self.plan('push', head, runs=lambda repository, event: [self.base]),
-                         {'mac': False, 'ipad': False})
+        self.assertEqual(self.plan('push', head, runs=lambda repository, event: [self.base]), {'mac': False})
 
     def test_pull_request_diffs_its_test_merge_commit_against_the_base(self):
         self.git('checkout', '-q', '-b', 'feature')
-        self.commit('Tools/MCPServer/src/main.rs')
+        self.commit('docs/feature.md')
         self.git('checkout', '-q', 'main')
-        self.commit('iPad/Sources/Landed.swift')          # already on the base branch
+        self.commit('Sources/Prose/Landed.swift')          # already on the base branch
         self.git('merge', '-q', '--no-ff', '-m', 'merge', 'feature')
         merge = self.git('rev-parse', 'HEAD')
-        self.assertEqual(self.plan('pull_request', merge), {'mac': True, 'ipad': False})
+        self.assertEqual(self.plan('pull_request', merge), {'mac': False})
 
     def test_pull_request_head_checkout_uses_the_merge_base(self):
         self.git('checkout', '-q', '-b', 'feature')
-        head = self.commit('iPad/Sources/TabletRoot.swift')
-        self.assertEqual(self.plan('pull_request', head, pr_base=self.base), {'mac': False, 'ipad': True})
+        head = self.commit('Sources/Prose/Workspace.swift')
+        self.assertEqual(self.plan('pull_request', head, pr_base=self.base), {'mac': True})
 
     def test_nightly_runs_everything_unless_main_is_unchanged(self):
         head = self.commit('docs/more.md')
-        self.assertEqual(self.plan('schedule', head, runs=lambda repository, event: [self.base]),
-                         {'mac': True, 'ipad': True})
+        self.assertEqual(self.plan('schedule', head, runs=lambda repository, event: [self.base]), {'mac': True})
         self.assertEqual(self.plan('schedule', head, runs=lambda repository, event: [head, self.base]),
-                         {'mac': False, 'ipad': False})
-        self.assertEqual(self.plan('schedule', head), {'mac': True, 'ipad': True})
+                         {'mac': False})
+        self.assertEqual(self.plan('schedule', head), {'mac': True})
 
     def test_a_failed_nightly_is_retried_so_preview_still_publishes(self):
         # The successful-runs query never returns a failed nightly, whether its
@@ -258,8 +244,8 @@ class PlanTests(unittest.TestCase):
         head = self.commit('Sources/Prose/Workspace.swift')
         last_success = lambda repository, event: [self.base]  # noqa: E731  (the run for head failed)
         selection = self.plan('schedule', head, runs=last_success)
-        self.assertEqual(selection, {'mac': True, 'ipad': True})
-        self.assertTrue(ci.outputs(selection, 'schedule', 'refs/heads/main', 'full')['publish'])
+        self.assertEqual(selection, {'mac': True})
+        self.assertTrue(ci.outputs(selection, 'schedule', 'refs/heads/main')['publish'])
 
     def test_nightly_only_compares_with_earlier_nightlies(self):
         seen = []
@@ -269,11 +255,10 @@ class PlanTests(unittest.TestCase):
     def test_manual_and_unknown_events_run_everything(self):
         for event in ('workflow_dispatch', 'merge_group', 'release'):
             with self.subTest(event=event):
-                self.assertEqual(self.plan(event, self.base), {'mac': True, 'ipad': True})
+                self.assertEqual(self.plan(event, self.base), {'mac': True})
 
-    def test_preview_dispatch_runs_only_the_mac_checks(self):
-        self.assertEqual(self.plan('workflow_dispatch', self.base, publish_preview=True),
-                         {'mac': True, 'ipad': False})
+    def test_preview_dispatch_runs_the_mac_checks(self):
+        self.assertEqual(self.plan('workflow_dispatch', self.base, publish_preview=True), {'mac': True})
 
 
 class OutputTests(unittest.TestCase):
@@ -281,12 +266,11 @@ class OutputTests(unittest.TestCase):
     MAIN, BRANCH = 'refs/heads/main', 'refs/heads/feature'
 
     def result(self, event, ref=MAIN, mac=True, publish_preview=False):
-        selection = {'mac': mac, 'ipad': True}
-        values = ci.outputs(selection, event, ref, 'smoke', publish_preview)
+        values = ci.outputs({'mac': mac}, event, ref, publish_preview)
         return values['release'], values['publish']
 
     def channel(self, event, **kwargs):
-        return ci.outputs({'mac': True, 'ipad': True}, event, self.MAIN, 'smoke', **kwargs)['channel']
+        return ci.outputs({'mac': True}, event, self.MAIN, **kwargs)['channel']
 
     def test_pull_requests_never_release_or_publish(self):
         self.assertEqual(self.result('pull_request', 'refs/pull/79/merge'), (False, False))
@@ -295,7 +279,7 @@ class OutputTests(unittest.TestCase):
     def test_mac_affecting_main_pushes_publish_the_alpha_channel(self):
         self.assertEqual(self.result('push'), (False, True))
         self.assertEqual(self.channel('push'), 'alpha')
-        # Docs- and iPad-only pushes select no Mac job, so they publish nothing.
+        # Docs-only pushes select no Mac job, so they publish nothing.
         self.assertEqual(self.result('push', mac=False), (False, False))
         self.assertEqual(self.result('push', self.BRANCH), (False, False))
         for event in ('schedule', 'workflow_dispatch'):
@@ -314,11 +298,10 @@ class OutputTests(unittest.TestCase):
 
 
 class GateTests(unittest.TestCase):
-    def needs(self, mac, ipad, suite, release, **overrides):
-        outputs = {'mac': str(mac).lower(), 'ipad': str(ipad).lower(), 'suite': suite,
-                   'release': str(release).lower(), 'publish': str(release).lower()}
+    def needs(self, mac, release, **overrides):
+        outputs = {'mac': str(mac).lower(), 'release': str(release).lower(), 'publish': str(release).lower()}
         result = {'changes': {'result': 'success', 'outputs': outputs}}
-        for job, expected in ci.expected_results(mac, ipad, suite, release).items():
+        for job, expected in ci.expected_results(mac, release).items():
             result[job] = {'result': expected, 'outputs': {}}
         for job, value in overrides.items():
             result[job.replace('_', '-')] = {'result': value, 'outputs': {}}
@@ -326,50 +309,45 @@ class GateTests(unittest.TestCase):
 
     def test_selected_jobs_must_pass_and_filtered_jobs_must_skip(self):
         for mac in (True, False):
-            for ipad in (True, False):
-                for suite in ('smoke', 'full'):
-                    for release in ((True, False) if mac else (False,)):
-                        with self.subTest(mac=mac, ipad=ipad, suite=suite, release=release):
-                            self.assertEqual(ci.gate(self.needs(mac, ipad, suite, release)), [])
+            for release in ((True, False) if mac else (False,)):
+                with self.subTest(mac=mac, release=release):
+                    self.assertEqual(ci.gate(self.needs(mac, release)), [])
 
     def test_docs_only_run_passes_with_every_macos_job_skipped(self):
-        needs = self.needs(False, False, 'smoke', False)
-        self.assertTrue(all(needs[job]['result'] == 'skipped' for job in MAC_JOBS | IPAD_JOBS))
+        needs = self.needs(False, False)
+        self.assertTrue(all(needs[job]['result'] == 'skipped' for job in MAC_JOBS))
         self.assertEqual(ci.gate(needs), [])
 
     def test_failed_cancelled_or_unexpected_results_fail(self):
         cases = [
-            self.needs(True, True, 'smoke', False, integration='failure'),
-            self.needs(True, True, 'smoke', False, ipad_ui='cancelled'),
-            self.needs(True, False, 'smoke', False, integration='skipped'),
-            self.needs(False, True, 'smoke', False, ipad_build='skipped'),
-            self.needs(True, True, 'full', True, ipad_memory='skipped'),
-            self.needs(True, True, 'full', True, memory='failure'),
-            self.needs(True, True, 'full', True, appstore='skipped'),
+            self.needs(True, False, integration='failure'),
+            self.needs(True, False, integration='cancelled'),
+            self.needs(True, False, integration='skipped'),
+            self.needs(True, True, memory='failure'),
+            self.needs(True, True, appstore='skipped'),
             # A job that should have been filtered out but ran is a selection bug.
-            self.needs(False, True, 'smoke', False, integration='success'),
-            self.needs(True, True, 'smoke', False, ipad_coverage='success'),
-            self.needs(True, True, 'smoke', False, appstore='success'),
+            self.needs(False, False, integration='success'),
+            self.needs(True, False, appstore='success'),
+            self.needs(True, False, memory='success'),
         ]
         for needs in cases:
             with self.subTest(needs=needs):
                 self.assertNotEqual(ci.gate(needs), [])
 
     def test_preview_publication_is_reported_separately(self):
-        needs = self.needs(True, True, 'full', True)
+        needs = self.needs(True, True)
         needs['preview'] = {'result': 'failure'}
         self.assertEqual(ci.gate(needs), [])
-        self.assertNotIn('preview', ci.expected_results(True, True, 'full', True))
+        self.assertNotIn('preview', ci.expected_results(True, True))
 
     def test_a_failed_or_malformed_selection_fails(self):
-        needs = self.needs(True, True, 'smoke', False)
+        needs = self.needs(True, False)
         needs['changes']['result'] = 'failure'
         self.assertNotEqual(ci.gate(needs), [])
-        for outputs in ({'mac': '', 'ipad': 'true', 'suite': 'smoke', 'release': 'false'},
-                        {'mac': 'true', 'ipad': 'true', 'suite': '', 'release': 'false'},
-                        {'mac': 'true', 'ipad': 'true', 'suite': 'smoke'},
-                        {'mac': 'false', 'ipad': 'true', 'suite': 'smoke', 'release': 'true'}, {}):
-            needs = self.needs(True, True, 'smoke', False)
+        for outputs in ({'mac': '', 'release': 'false'},
+                        {'mac': 'true'},
+                        {'mac': 'false', 'release': 'true'}, {}):
+            needs = self.needs(True, False)
             needs['changes']['outputs'] = outputs
             with self.subTest(outputs=outputs):
                 self.assertNotEqual(ci.gate(needs), [])
@@ -381,27 +359,10 @@ class WorkflowContractTests(unittest.TestCase):
         cls.text = (WORKFLOWS / 'ci.yml').read_text()
         cls.jobs = jobs('ci.yml')
 
-    def test_nightly_schedule_runs_the_full_ipad_suite(self):
+    def test_nightly_schedule_and_preview_dispatch(self):
         self.assertRegex(self.text, r"\n  schedule:\n    - cron: '0 18 \* \* \*'\n")
-        self.assertIn("\n  IPAD_SUITE: ${{ (github.event_name == 'schedule' || (github.event_name == "
-                      "'workflow_dispatch' && inputs.ipad_suite != 'smoke')) && 'full' || 'smoke' }}\n", self.text)
-        self.assertRegex(self.text, r'ipad_suite:\n(?:        .*\n)*        options: \[full, smoke\]\n'
-                                    r'        default: full\n')
         self.assertRegex(self.text, r'publish_preview:\n(?:        .*\n)*        type: boolean\n'
                                     r'        default: false\n')
-
-    def test_pull_requests_and_main_pushes_run_the_smoke_suite(self):
-        # Only the nightly schedule and a full dispatch evaluate to 'full';
-        # every other event, including pull_request and push, falls to 'smoke'.
-        expression = re.search(r'\n  IPAD_SUITE: \$\{\{ (.*) \}\}\n', self.text).group(1)
-        self.assertTrue(expression.endswith("&& 'full' || 'smoke'"))
-        self.assertNotIn("'pull_request'", expression)
-        self.assertNotIn("'push'", expression)
-        self.assertIn("fromJSON(needs.changes.outputs.suite == 'smoke' && '[{\"size\":\"11-inch\","
-                      "\"appearance\":\"light\"}]'", self.jobs['ipad-ui'])
-        # Full-only jobs depend on the selected suite, never on event names.
-        for job in FULL_ONLY:
-            self.assertIn("needs.changes.outputs.suite == 'full'", field(self.jobs[job], 'if'))
 
     def test_changes_job_runs_contracts_then_selects(self):
         changes = self.jobs['changes']
@@ -411,15 +372,15 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn('PUBLISH_PREVIEW: ${{ inputs.publish_preview }}', changes)
         self.assertLess(changes.index('python3 scripts/test-ci-policy.py'),
                         changes.index('python3 scripts/ci_changes.py select'))
-        for output in ('mac', 'ipad', 'suite', 'release', 'publish'):
+        for output in ('mac', 'release', 'publish', 'channel'):
             self.assertIn(f'{output}: ${{{{ steps.select.outputs.{output} }}}}', changes)
 
     def test_path_outputs_gate_every_macos_job(self):
         macos = {name for name, block in self.jobs.items() if 'runs-on: macos' in block}
-        self.assertEqual(macos, MAC_JOBS | IPAD_JOBS | {'preview'})
-        for name in MAC_JOBS | IPAD_JOBS:
+        self.assertEqual(macos, MAC_JOBS | {'preview'})
+        for name in MAC_JOBS:
             block = self.jobs[name]
-            output = 'release' if name in ('appstore', 'memory') else 'mac' if name in MAC_JOBS else 'ipad'
+            output = 'release' if name in ('appstore', 'memory') else 'mac'
             with self.subTest(job=name):
                 self.assertIn('changes', needs(block))
                 self.assertTrue(field(block, 'if').startswith(f"needs.changes.outputs.{output} == 'true'"))
@@ -427,10 +388,7 @@ class WorkflowContractTests(unittest.TestCase):
         for name in ('appstore', 'memory'):
             self.assertEqual(field(self.jobs[name], 'if'), "needs.changes.outputs.release == 'true'")
 
-    def test_ipad_only_changes_still_lint(self):
-        lint = re.search(r"- name: Strict SwiftFormat and SwiftLint\n\s+if: (.*)\n\s+run: scripts/lint.sh",
-                         self.jobs['ipad-build'])
-        self.assertEqual(lint.group(1), "matrix.platform == 'engine' && needs.changes.outputs.mac != 'true'")
+    def test_mac_regression_lints(self):
         self.assertIn('run: scripts/lint.sh', self.jobs['integration'])
 
     def test_mandatory_lint_checks_its_own_regression_rules(self):
@@ -467,11 +425,11 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn('runs-on: ubuntu-latest', gate)
         gated = set(self.jobs) - {'changes', 'gate', 'preview', 'publish-preview'}
         self.assertEqual(needs(gate), gated | {'changes'})
-        self.assertEqual(set(ci.expected_results(True, True, 'full', True)), gated)
+        self.assertEqual(set(ci.expected_results(True, True)), gated)
         self.assertIn('NEEDS: ${{ toJSON(needs) }}', gate)
         self.assertIn('run: python3 scripts/ci_changes.py gate', gate)
         self.assertEqual(ci.gate({'changes': {'result': 'success', 'outputs': {
-            'mac': 'false', 'ipad': 'false', 'suite': 'smoke', 'release': 'false', 'publish': 'false'}},
+            'mac': 'false', 'release': 'false', 'publish': 'false'}},
             **{job: {'result': 'skipped'} for job in gated}}), [])
 
     def test_newer_runs_cancel_older_ones_of_the_same_event_only(self):
@@ -480,7 +438,7 @@ class WorkflowContractTests(unittest.TestCase):
 
     def test_preview_publishes_each_channel_after_its_checks(self):
         preview, publish = self.jobs['preview'], self.jobs['publish-preview']
-        # Neither job may inherit a dependency on the combined gate or iPad jobs.
+        # Neither job may inherit a dependency on the combined gate.
         self.assertEqual(needs(preview), {'changes', 'integration', 'appstore'})
         self.assertEqual(needs(publish), {'changes', 'preview'})
         # Override implicit success(): alpha intentionally skips App Store checks.

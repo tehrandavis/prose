@@ -1,8 +1,7 @@
 #!/bin/bash
 # Build the typst-syntax bridge on its own, as a macOS static library. The Mac
 # app no longer links this one: it links the render bridge, which carries the
-# same crate (scripts/build-render.sh). The iPad links the crate through
-# Engine/TinymistBridge (scripts/build-ipad.sh).
+# same crate (scripts/build-render.sh).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/environment.sh

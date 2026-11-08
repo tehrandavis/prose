@@ -4,52 +4,40 @@ on:
   push:
     branches: [main]
   pull_request:
-  # Nightly full iPad suite at 18:00 UTC (02:00 Beijing).
+  # Nightly release checks and Preview publication at 18:00 UTC.
   schedule:
     - cron: '0 18 * * *'
   workflow_dispatch:
     inputs:
-      ipad_suite:
-        description: iPad validation depth
-        type: choice
-        options: [full, smoke]
-        default: full
       publish_preview:
-        description: Run only the Mac checks on main and publish Prose Preview (ignores ipad_suite)
+        description: Run the Mac checks on main and publish Prose Preview
         type: boolean
         default: false
 
 permissions:
   contents: read
 
-# GitHub Free gives the organization about five concurrent macOS runners, so
-# each run selects only what its changes need:
-# - The `changes` job diffs changed paths (scripts/ci_changes.py): Mac-only
-#   changes skip the iPad jobs, iPad-only changes skip Mac regression, shared
-#   code runs both and docs-only changes run no macOS job. Pull requests diff
-#   against their base; main pushes against the last successful main run, so a
-#   cancelled or failed run's changes stay selected.
-# - Pull requests and main pushes run exactly the same checks: the selected
-#   Mac regression and iPad smoke suite (native unit tests plus a few curated
-#   UI scenarios on one 11-inch simulator). A main push that selected the Mac
-#   jobs then publishes the opt-in alpha channel of Prose Preview once
-#   Mac regression passes, independently of the iPad results.
-# - The nightly schedule on main runs everything: the full iPad suite (every
-#   UI scenario on both sizes, coverage, memory metrics and sanitizers), Mac App
-#   Store validation and Mac memory safety, then signs and publishes Prose
-#   Preview once Mac regression and App Store validation pass. It skips only
-#   when this commit already had a fully successful nightly.
-# - Manual dispatches run everything at the `ipad_suite` depth (default full);
-#   on main they add the App Store and memory checks. `publish_preview` on main
-#   runs only the Mac checks and publishes Preview between nightlies.
+# Prose is Mac only. Each run selects only what its changes need:
+# - The `changes` job diffs changed paths (scripts/ci_changes.py): any change
+#   outside the documentation runs Mac regression; docs-only changes run no
+#   macOS job. Pull requests diff against their base; main pushes against the
+#   last successful main run, so a cancelled or failed run's changes stay
+#   selected.
+# - Pull requests and main pushes run exactly the same checks. A main push
+#   that selected the Mac jobs then publishes the opt-in alpha channel of Prose
+#   Preview once Mac regression passes.
+# - The nightly schedule on main runs everything: Mac regression, Mac App Store
+#   validation and Mac memory safety, then signs and publishes Prose Preview
+#   once Mac regression and App Store validation pass. It skips only when this
+#   commit already had a fully successful nightly.
+# - Manual dispatches run everything; on main they add the App Store and
+#   memory checks. `publish_preview` on main also publishes Preview between
+#   nightlies.
 # - A newer run cancels an older one with the same event and ref, so pushes
 #   never cancel nightly or manual runs. A cancelled publication is harmless:
 #   at worst it leaves a build release that the next publication supersedes.
 # The `build and test` gate is the only required check; it accepts a skipped
-# job only when the selection did not require it. Job conditions repeat the
-# suite test because workflow env is unavailable there.
-env:
-  IPAD_SUITE: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.ipad_suite != 'smoke')) && 'full' || 'smoke' }}
+# job only when the selection did not require it.
 
 # Keep only the newest run per ref and event: the event name keeps main
 # pushes from cancelling nightly and manual runs.
@@ -67,8 +55,6 @@ jobs:
       actions: read
     outputs:
       mac: ${{ steps.select.outputs.mac }}
-      ipad: ${{ steps.select.outputs.ipad }}
-      suite: ${{ steps.select.outputs.suite }}
       release: ${{ steps.select.outputs.release }}
       publish: ${{ steps.select.outputs.publish }}
       channel: ${{ steps.select.outputs.channel }}
@@ -221,6 +207,7 @@ jobs:
           python3 scripts/test-appstore-release.py
           python3 scripts/test-running-app.py
           python3 scripts/test-tinymist-build.py
+          python3 scripts/test-package-graphs.py
       - name: Coverage summary
         if: always()
         run: |
@@ -324,8 +311,7 @@ jobs:
           path: build/memory
           if-no-files-found: warn
           retention-days: 14
-  # Both channels depend only on their Mac checks. An iPad failure still
-  # fails the required gate, but neither delays nor blocks Mac publication.
+  # Both channels depend only on their Mac checks, not on the combined gate.
   # Nightly also requires App Store validation; alpha needs Mac regression.
   preview:
     name: Signed preview
@@ -451,308 +437,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PREVIEW_CHANNEL: ${{ needs.changes.outputs.channel }}
         run: python3 scripts/publish-preview.py
-  ipad-build:
-    name: iPad ${{ matrix.platform }}
-    needs: changes
-    if: needs.changes.outputs.ipad == 'true'
-    runs-on: macos-15
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [engine, device]
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      PROSE_DISTRIBUTION: appstore
-      CARGO_BUILD_JOBS: 2
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Mac regression normally lints the whole repository; lint here when an
-      # iPad-only change skips it.
-      - name: Strict SwiftFormat and SwiftLint
-        if: matrix.platform == 'engine' && needs.changes.outputs.mac != 'true'
-        run: scripts/lint.sh
-      - name: Cache engine sources and platform build
-        id: engine-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            .tools/cargo-ipad
-            .tools/tinymist-ipad-source
-            Engine/TinymistBridge/target
-          key: ipad-${{ runner.os }}-${{ runner.arch }}-${{ matrix.platform }}-rust-1.92.0-xcode-26.3-${{ hashFiles('Engine/TinymistBridge/Cargo.lock', 'Engine/TinymistBridge/Cargo.toml', 'Engine/TinymistBridge/src/**', 'Engine/TinymistBridge/examples/**', 'Engine/SyntaxBridge/Cargo.toml', 'Engine/SyntaxBridge/src/**', 'scripts/tinymist-ipad*.patch', 'scripts/tinymist-vfs.patch', 'scripts/prepare-ipad-engine.sh') }}
-          restore-keys: |
-            ipad-${{ runner.os }}-${{ runner.arch }}-${{ matrix.platform }}-rust-1.92.0-xcode-26.3-
-      - name: Cache Swift package sources
-        id: swift-cache
-        if: matrix.platform != 'engine'
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .build/xcode-packages
-          key: ipad-swiftpm-${{ runner.os }}-${{ runner.arch }}-xcode-26.3-${{ hashFiles('Sources/Package.swift', 'iPad/**/Package.resolved') }}
-      - name: In-process engine integration
-        if: matrix.platform == 'engine'
-        run: scripts/test-ipad-engine.sh
-      - name: Rust bridge correctness lints
-        if: matrix.platform == 'engine'
-        run: |
-          source scripts/environment.sh
-          export CARGO_HOME="$PWD/.tools/cargo-ipad"
-          rustup component add --toolchain 1.92.0 rustfmt clippy
-          cargo +1.92.0 fmt --manifest-path Engine/TinymistBridge/Cargo.toml --check
-          cargo +1.92.0 clippy --locked --release --manifest-path Engine/TinymistBridge/Cargo.toml --all-targets --no-deps -- -D warnings -D unsafe_op_in_unsafe_fn
-      - name: Simulator, coverage and iPad package contracts
-        if: matrix.platform == 'engine'
-        timeout-minutes: 2
-        run: |
-          source scripts/environment.sh
-          python3 scripts/test-ipad-simulator.py
-          python3 scripts/test-ipad-coverage.py
-          python3 scripts/test-package-graphs.py
-          python3 scripts/test-ipad-release.py
-          python3 scripts/test-ipad-storefront.py
-      - name: Build native iPad app
-        if: matrix.platform != 'engine'
-        run: scripts/build-ipad.sh "${{ matrix.platform }}"
-      # Save successful compilation even when a later check fails, so a retry
-      # does not repeat a 15-minute cold Rust build.
-      - name: Save compiled engine
-        if: steps.engine-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        continue-on-error: true
-        timeout-minutes: 5
-        with:
-          path: |
-            .tools/cargo-ipad
-            .tools/tinymist-ipad-source
-            Engine/TinymistBridge/target
-          key: ${{ steps.engine-cache.outputs.cache-primary-key }}
-      - name: Save resolved Swift packages
-        if: matrix.platform != 'engine' && steps.swift-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        continue-on-error: true
-        timeout-minutes: 3
-        with:
-          path: .build/xcode-packages
-          key: ${{ steps.swift-cache.outputs.cache-primary-key }}
-  ipad-simulator-build:
-    name: iPad simulator build
-    needs: changes
-    if: needs.changes.outputs.ipad == 'true'
-    runs-on: macos-15
-    timeout-minutes: 60
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      PROSE_DISTRIBUTION: appstore
-      CARGO_BUILD_JOBS: 2
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Cache engine sources and simulator build
-        id: engine-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            .tools/cargo-ipad
-            .tools/tinymist-ipad-source
-            Engine/TinymistBridge/target
-          key: ipad-${{ runner.os }}-${{ runner.arch }}-simulator-rust-1.92.0-xcode-26.3-${{ hashFiles('Engine/TinymistBridge/Cargo.lock', 'Engine/TinymistBridge/Cargo.toml', 'Engine/TinymistBridge/src/**', 'Engine/TinymistBridge/examples/**', 'Engine/SyntaxBridge/Cargo.toml', 'Engine/SyntaxBridge/src/**', 'scripts/tinymist-ipad*.patch', 'scripts/tinymist-vfs.patch', 'scripts/prepare-ipad-engine.sh') }}
-          restore-keys: |
-            ipad-${{ runner.os }}-${{ runner.arch }}-simulator-rust-1.92.0-xcode-26.3-
-      - name: Cache Swift package sources
-        id: swift-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .build/xcode-packages
-          key: ipad-swiftpm-${{ runner.os }}-${{ runner.arch }}-xcode-26.3-${{ hashFiles('Sources/Package.swift', 'iPad/**/Package.resolved') }}
-      - name: Build simulator tests
-        run: scripts/build-ipad.sh simulator
-      # Save successful compilation before UI tests: a failing test must not
-      # discard a 15-minute Rust build and force another cold build on retry.
-      - name: Save compiled engine
-        if: steps.engine-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        continue-on-error: true
-        timeout-minutes: 5
-        with:
-          path: |
-            .tools/cargo-ipad
-            .tools/tinymist-ipad-source
-            Engine/TinymistBridge/target
-          key: ${{ steps.engine-cache.outputs.cache-primary-key }}
-      - name: Save resolved Swift packages
-        if: steps.swift-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        continue-on-error: true
-        timeout-minutes: 3
-        with:
-          path: .build/xcode-packages
-          key: ${{ steps.swift-cache.outputs.cache-primary-key }}
-      # Keep executable permissions and symlinks inside an archive. Both UI
-      # runners consume this one build, including its relocatable .xctestrun.
-      - name: Archive compiled simulator tests
-        timeout-minutes: 3
-        run: |
-          source scripts/environment.sh
-          COPYFILE_DISABLE=1 tar -C build/iPad/Build -czf build/iPad-ui-tests.tar.gz Products
-      - name: Upload compiled simulator tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        timeout-minutes: 5
-        with:
-          name: ipad-ui-tests
-          path: build/iPad-ui-tests.tar.gz
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 1
-  ipad-ui:
-    name: iPad (${{ matrix.size }}, ${{ matrix.appearance }})
-    needs: [changes, ipad-simulator-build]
-    if: needs.changes.outputs.ipad == 'true'
-    runs-on: macos-15
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        # Smoke runs one size; nightly and full dispatches cover both sizes and appearances.
-        include: ${{ fromJSON(needs.changes.outputs.suite == 'smoke' && '[{"size":"11-inch","appearance":"light"}]' || '[{"size":"11-inch","appearance":"light"},{"size":"13-inch","appearance":"dark"}]') }}
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      PROSE_DISTRIBUTION: appstore
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Select Xcode for simulator services
-        timeout-minutes: 1
-        run: |
-          sudo xcode-select --switch "$DEVELOPER_DIR"
-          xcodebuild -version
-      - name: Download compiled simulator tests
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        timeout-minutes: 3
-        with:
-          name: ipad-ui-tests
-          path: build
-      - name: Restore compiled simulator tests
-        timeout-minutes: 2
-        run: |
-          source scripts/environment.sh
-          mkdir -p build/iPad/Build
-          tar -xzf build/iPad-ui-tests.tar.gz -C build/iPad/Build
-      - name: Native tests and ${{ env.IPAD_SUITE }} UI suite
-        timeout-minutes: ${{ env.IPAD_SUITE == 'smoke' && 20 || 50 }}
-        run: |
-          source scripts/environment.sh
-          if [ "$IPAD_SUITE" = smoke ]; then
-            suite=(--suite smoke --no-coverage)
-          else
-            suite=(--memory)
-          fi
-          python3 scripts/ipad_simulator.py --fresh-device --size "${{ matrix.size }}" \
-            --appearance "${{ matrix.appearance }}" "${suite[@]}"
-      - name: Upload native iPad test results
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        timeout-minutes: 3
-        with:
-          name: ipad-writing-${{ matrix.size }}-${{ matrix.appearance }}
-          path: build/iPad-writing
-          if-no-files-found: warn
-          retention-days: 14
-  ipad-memory:
-    name: iPad memory safety (${{ matrix.check }})
-    # Reuse the Rust engine cached by the simulator build, off the UI path.
-    needs: [changes, ipad-simulator-build]
-    if: needs.changes.outputs.ipad == 'true' && needs.changes.outputs.suite == 'full'
-    runs-on: macos-15
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        check: [address, thread]
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      PROSE_DISTRIBUTION: appstore
-      CARGO_BUILD_JOBS: 2
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Select Xcode for simulator services
-        timeout-minutes: 1
-        run: sudo xcode-select --switch "$DEVELOPER_DIR"
-      - name: Reuse compiled Rust engine
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            .tools/cargo-ipad
-            .tools/tinymist-ipad-source
-            Engine/TinymistBridge/target
-          key: ipad-${{ runner.os }}-${{ runner.arch }}-simulator-rust-1.92.0-xcode-26.3-${{ hashFiles('Engine/TinymistBridge/Cargo.lock', 'Engine/TinymistBridge/Cargo.toml', 'Engine/TinymistBridge/src/**', 'Engine/TinymistBridge/examples/**', 'Engine/SyntaxBridge/Cargo.toml', 'Engine/SyntaxBridge/src/**', 'scripts/tinymist-ipad*.patch', 'scripts/tinymist-vfs.patch', 'scripts/prepare-ipad-engine.sh') }}
-          restore-keys: |
-            ipad-${{ runner.os }}-${{ runner.arch }}-simulator-rust-1.92.0-xcode-26.3-
-      - name: Reuse resolved Swift packages
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .build/xcode-packages
-          key: ipad-swiftpm-${{ runner.os }}-${{ runner.arch }}-xcode-26.3-${{ hashFiles('Sources/Package.swift', 'iPad/**/Package.resolved') }}
-      - name: Build separate sanitizer test products
-        timeout-minutes: 15
-        run: scripts/build-ipad.sh simulator "${{ matrix.check }}"
-      - name: Check Swift memory corruption and data races separately
-        timeout-minutes: 25
-        run: |
-          source scripts/environment.sh
-          python3 scripts/ipad_simulator.py --fresh-device --size 11-inch --suite unit --no-coverage \
-            --derived-data "build/iPad-memory/${{ matrix.check }}" \
-            --results "build/iPad-memory/${{ matrix.check }}-results"
-      - name: Upload iPad sanitizer diagnostics
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ipad-memory-${{ matrix.check }}
-          path: build/iPad-memory/*-results
-          if-no-files-found: warn
-          retention-days: 14
-  ipad-coverage:
-    name: iPad 80% application coverage
-    needs: [changes, ipad-ui]
-    if: needs.changes.outputs.ipad == 'true' && needs.changes.outputs.suite == 'full'
-    runs-on: macos-15
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      id-token: write
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - name: Download native test coverage
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: ipad-writing-*
-          path: build/iPad-results
-      - name: Merge actual execution counts and require 80% coverage
-        run: |
-          source scripts/environment.sh
-          python3 scripts/ipad_coverage.py --minimum 80 --result \
-            build/iPad-results/ipad-writing-11-inch-light/11-inch.xcresult \
-            build/iPad-results/ipad-writing-13-inch-dark/13-inch.xcresult
-      # Codecov uploads are temporarily disabled while CLI downloads fail TLS handshakes.
-      - name: Coverage summary
-        if: always()
-        run: |
-          if [ -f build/iPad-coverage/summary.md ]; then
-            cat build/iPad-coverage/summary.md >> "$GITHUB_STEP_SUMMARY"
-          fi
-      - name: Upload iPad coverage diagnostics
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ipad-coverage
-          path: build/iPad-coverage
-          if-no-files-found: warn
-          retention-days: 14
   gate:
     name: build and test
-    needs: [changes, integration, appstore, memory, ipad-build, ipad-simulator-build, ipad-ui, ipad-coverage, ipad-memory]
+    needs: [changes, integration, appstore, memory]
     # Always report, so a failed, cancelled or wrongly skipped job fails the
     # required check instead of leaving it skipped (which GitHub treats as passing).
     if: always()
@@ -764,8 +451,8 @@ jobs:
           sparse-checkout: scripts/ci_changes.py
           sparse-checkout-cone-mode: false
       # Each selected job must pass and every other job must be skipped:
-      # path filters and the smoke suite skip jobs, never fail or cancel them.
-      - name: Require every selected Mac and iPad job to pass
+      # path filters skip jobs, never fail or cancel them.
+      - name: Require every selected job to pass
         env:
           NEEDS: ${{ toJSON(needs) }}
         run: python3 scripts/ci_changes.py gate

@@ -4,17 +4,7 @@ import ProseTestSupport
 import Testing
 
 private func libraryFixture() throws -> URL {
-    #if os(iOS)
-        // File coordination does not notify presenters for temporary sandbox files.
-        let base = try FileManager.default.url(
-            for: .cachesDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true,
-        )
-    #else
-        let base = TestPaths.temporaryDirectory
-    #endif
+    let base = TestPaths.temporaryDirectory
     let url = base.appendingPathComponent("Prose-library-" + UUID().uuidString)
     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     return url

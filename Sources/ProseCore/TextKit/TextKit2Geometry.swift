@@ -1,14 +1,10 @@
+import AppKit
 import CoreGraphics
 import Foundation
-#if canImport(AppKit)
-    import AppKit
-#else
-    import UIKit
-#endif
 
-/// Source-offset geometry on NSTextLayoutManager, shared by NSTextView and
-/// UITextView. Never touches `layoutManager`: one access switches a view to
-/// TextKit 1 for good. Rects are in text-container coordinates.
+/// Source-offset geometry on NSTextLayoutManager for NSTextView. Never touches
+/// `layoutManager`: one access switches a view to TextKit 1 for good. Rects are
+/// in text-container coordinates.
 @MainActor
 public enum TextKit2Geometry {
     public static func location(_ offset: Int, in manager: NSTextLayoutManager) -> NSTextLocation? {
@@ -64,8 +60,7 @@ public enum TextKit2Geometry {
     }
 
     /// The insertion offset at `point`, found among the fragments laid out in
-    /// the viewport. After a distant jump, `insertionOffset` (and UIKit's
-    /// `closestPosition`) can return a location 100,000 units away, because an
+    /// the viewport. After a distant jump, `insertionOffset` can return a location 100,000 units away, because an
     /// estimated fragment elsewhere still claims that height; laid-out
     /// viewport fragments do not. Nil when the point is outside the viewport.
     public static func viewportInsertionOffset(at point: CGPoint, in manager: NSTextLayoutManager) -> Int? {
@@ -102,50 +97,6 @@ public enum TextKit2Geometry {
             return false
         }
         return result
-    }
-
-    /// The source range the laid-out viewport fragments show inside `rect`.
-    public static func displayedRange(in rect: CGRect, manager: NSTextLayoutManager) -> NSRange? {
-        guard let top = viewportInsertionOffset(at: CGPoint(x: rect.minX, y: rect.minY), in: manager),
-              let bottom = viewportInsertionOffset(at: CGPoint(x: rect.maxX, y: rect.maxY - 1), in: manager)
-        else {
-            return nil
-        }
-        return NSRange(location: min(top, bottom), length: abs(bottom - top))
-    }
-
-    /// Scrolls `offset` into view by anchoring the viewport on it. For
-    /// `UITextView`: there, a fragment laid out on its own (`ensureLayout`) can
-    /// be placed where the viewport shows text 100,000 units away, so neither
-    /// its frame nor `scrollRangeToVisible` can be trusted; the viewport's own
-    /// layout from the target can. The target ends up a third of the way down,
-    /// or at the top.
-    public static func revealByRelocating(
-        _ offset: Int,
-        in manager: NSTextLayoutManager,
-        visible: () -> CGRect,
-        scroll: (CGFloat) -> Void,
-        margins: [CGFloat]? = nil,
-    ) {
-        let controller = manager.textViewportLayoutController
-        controller.layoutViewport()
-        if let shown = displayedRange(in: visible(), manager: manager), NSLocationInRange(offset, shown) {
-            return
-        }
-        guard let location = location(offset, in: manager) else {
-            return
-        }
-        // By default a third of a screen of context above the target; laying
-        // that text out can push the target off the top, and then it goes to
-        // the top.
-        for margin in margins ?? [visible().height / 3, 0] {
-            let top = controller.relocateViewport(to: location)
-            scroll(max(0, top - margin))
-            controller.layoutViewport()
-            if let shown = displayedRange(in: visible(), manager: manager), NSLocationInRange(offset, shown) {
-                return
-            }
-        }
     }
 
     /// The character under `point`, not the nearest insertion position.
@@ -205,8 +156,7 @@ public enum TextKit2Geometry {
 
     /// Scrolls `offset` into view without trusting `scrollRangeToVisible`,
     /// which reads estimated geometry and can leave a distant target thousands
-    /// of points away (1 of 6 War and Peace jumps on the Mac, every distant
-    /// jump on iPad). Lays out the target and the text above it, scrolls the
+    /// of points away (1 of 6 War and Peace jumps). Lays out the target and the text above it, scrolls the
     /// target a third of the way down the viewport, lets the viewport
     /// re-anchor, and repeats until its frame stops moving. A target that is
     /// already visible does not scroll.

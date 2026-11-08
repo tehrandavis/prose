@@ -1,10 +1,10 @@
 import CoreGraphics
 import Foundation
 
-/// Mac and iPad share the side-by-side ratio model; each platform keeps its
-/// own pointer, touch and accessibility handling. The ratio is a per-device
-/// preference: screens and window sizes differ, so it stays in local defaults
-/// rather than the synced preferences.
+/// The side-by-side ratio model; the view keeps its own pointer and
+/// accessibility handling. The ratio is a per-device preference: screens and
+/// window sizes differ, so it stays in local defaults rather than the synced
+/// preferences.
 public enum SplitLayout {
     public static let defaultFraction: CGFloat = 0.5
     /// Neither pane may take more than this share of the writing area.

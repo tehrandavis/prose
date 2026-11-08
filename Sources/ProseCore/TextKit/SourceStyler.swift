@@ -1,13 +1,8 @@
+import AppKit
 import CoreGraphics
 import Foundation
-#if canImport(AppKit)
-    import AppKit
-#else
-    import UIKit
-#endif
 
-/// Reading styles for one TextKit 2 text view, shared verbatim by the Mac
-/// (`NSTextView`) and the iPad (`UITextView`).
+/// Reading styles for one TextKit 2 text view (`NSTextView`).
 ///
 /// Styles are plain attributes on the source text in the text storage:
 /// headings are larger and bold by level, `*strong*` is bold, `_emphasis_`
@@ -22,8 +17,8 @@ import Foundation
 @MainActor
 public final class SourceStyler: NSObject, @preconcurrency NSTextContentStorageDelegate {
     /// The `SourceStyle` the font of a run was chosen for, as `code(for:)`.
-    /// Comparing it, not fonts, leaves the fallback fonts AppKit and UIKit
-    /// substitute for CJK and emoji alone.
+    /// Comparing it, not fonts, leaves the fallback fonts AppKit
+    /// substitutes for CJK and emoji alone.
     static let styleKey = NSAttributedString.Key("ProseSourceStyle")
 
     /// Semantic syntax colours, drawn over the text.

@@ -2,7 +2,7 @@
 
 Measured on 2026-10-09, Apple M4 Pro, macOS 27.0, the TextKit 2 editor with
 attribute-only styles ([editor styles](visual-editing.md#the-editor-now)),
-Tinymist 0.15.8 / Typst 0.15.1; iPad numbers are in the same section. These are instrumented debug test runs, not a
+Tinymist 0.15.8 / Typst 0.15.1. These are instrumented debug test runs, not a
 release-mode FPS claim. Both fixture sources, licenses and generators are in
 [Examples/Books](../Examples/Books/README.md).
 
@@ -70,22 +70,6 @@ Absolute timings vary with hardware, instrumentation, caches and background load
   (before it, TextKit lays out every paragraph above it and each keystroke pays
   for them), and the first visual plan is computed before layout, so it never
   invalidates a laid-out book.
-
-## iPad
-
-iPad Air (5th generation, M1), iPadOS 26.5, `TabletLargeDocumentTests` on the
-production editor ([how to run it](visual-editing.md#reproduce)):
-
-| Book | Typing median / p95 (ms) | Jumps on target, tap error | Jump median / max (ms) | Memory after typing (MiB) |
-|---|---:|---:|---:|---:|
-| sicp, before | 870 / 945 | – | 143 / 276 | 322 |
-| sicp | 33–48 / 34–49 | 6/6, 0 | 42–83 / 145–239 | 268–287 |
-| war-and-peace, before | did not finish 80 keys in 15 minutes | – | – | – |
-| war-and-peace | 96–101 / 97–151 | 6/6, 0 | 152–154 / 390–401 | 802–835 |
-
-Ranges are over runs, measured with the visual layer that was removed on
-2026-10-09. The causes and what remains are in
-[editor styles](visual-editing.md#large-documents-measured).
 
 The native text storage remains authoritative; we did not introduce a second
 rope buffer or a terminal editor with another selection/undo model. These fixes

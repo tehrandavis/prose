@@ -15,36 +15,30 @@ public enum LibraryCloudEnvironment {
 
     /// Read only the running process's code-signing entitlements; no account credentials are accessed.
     public static func signedEntitlements() -> [String: Any] {
-        #if os(macOS)
-            var code: SecCode?
-            var staticCode: SecStaticCode?
-            var information: CFDictionary?
-            guard SecCodeCopySelf([], &code) == errSecSuccess, let code,
-                  SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode,
-                  SecCodeCopySigningInformation(
-                      staticCode,
-                      SecCSFlags(rawValue: kSecCSSigningInformation),
-                      &information,
-                  ) ==
-                  errSecSuccess,
-                  let dictionary = information as? [String: Any]
-            else {
-                return [:]
-            }
-            return dictionary[kSecCodeInfoEntitlementsDict as String] as? [String: Any] ?? [:]
-        #else
-            [:]
-        #endif
+        var code: SecCode?
+        var staticCode: SecStaticCode?
+        var information: CFDictionary?
+        guard SecCodeCopySelf([], &code) == errSecSuccess, let code,
+              SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode,
+              SecCodeCopySigningInformation(
+                  staticCode,
+                  SecCSFlags(rawValue: kSecCSSigningInformation),
+                  &information,
+              ) ==
+              errSecSuccess,
+              let dictionary = information as? [String: Any]
+        else {
+            return [:]
+        }
+        return dictionary[kSecCodeInfoEntitlementsDict as String] as? [String: Any] ?? [:]
     }
 
     public static func containerURL(identifier: String = containerIdentifier) throws -> URL {
-        #if os(macOS)
-            let entitlements = signedEntitlements()
-            let containers = entitlements["com.apple.developer.ubiquity-container-identifiers"] as? [String] ?? []
-            guard containers.contains(identifier) else {
-                throw LibraryError.cloudNotConfigured
-            }
-        #endif
+        let entitlements = signedEntitlements()
+        let containers = entitlements["com.apple.developer.ubiquity-container-identifiers"] as? [String] ?? []
+        guard containers.contains(identifier) else {
+            throw LibraryError.cloudNotConfigured
+        }
         guard FileManager.default.ubiquityIdentityToken != nil else {
             throw LibraryError.cloudAccountUnavailable
         }
@@ -56,12 +50,8 @@ public enum LibraryCloudEnvironment {
     }
 
     public static func preferenceSyncAvailable() -> Bool {
-        #if os(macOS)
-            let value = signedEntitlements()["com.apple.developer.ubiquity-kvstore-identifier"] as? String
-            return value?.isEmpty == false && FileManager.default.ubiquityIdentityToken != nil
-        #else
-            (try? containerURL()) != nil
-        #endif
+        let value = signedEntitlements()["com.apple.developer.ubiquity-kvstore-identifier"] as? String
+        return value?.isEmpty == false && FileManager.default.ubiquityIdentityToken != nil
     }
 
     public static func state(of url: URL) -> LibraryCloudState {

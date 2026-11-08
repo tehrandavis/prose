@@ -1,4 +1,4 @@
-"""Upload tagged Apple builds; submit Mac versions after validating provenance."""
+"""Upload tagged Mac App Store builds; submit versions after validating provenance."""
 import argparse
 import base64
 import json
@@ -16,12 +16,8 @@ SUBMITTED = {'WAITING_FOR_REVIEW', 'IN_REVIEW', 'ACCEPTED', 'PENDING_APPLE_RELEA
              'PROCESSING_FOR_DISTRIBUTION', 'READY_FOR_DISTRIBUTION', 'PENDING_DEVELOPER_RELEASE',
              'PROCESSING_FOR_APP_STORE', 'READY_FOR_SALE', 'PENDING_CONTRACT'}
 EDITABLE = {'PREPARE_FOR_SUBMISSION', 'DEVELOPER_REJECTED', 'REJECTED', 'METADATA_REJECTED', 'INVALID_BINARY'}
-# Mac and iPad share one app record, so App Review sees the iPad subscription on
-# Mac submissions too and asks where to buy it (2.1(b), Mac 1.0 review).
 MAC_REVIEW_NOTES = (
-    'The Mac app is free and has no in-app purchases. The auto-renewable subscription '
-    'in this app record (com.tehrandavis.prose.ipad.monthly) is offered only in the iPad '
-    'app; the Mac app never offers, sells or checks it. No login is required. Rendering '
+    'The Mac app is free and has no in-app purchases. No login is required. Rendering '
     'runs locally. Additional Typst packages are downloaded over HTTPS.')
 
 
@@ -121,11 +117,10 @@ def state(version):
 
 
 class Release:
-    def __init__(self, client, app, metadata, platform='MAC_OS'):
-        if platform not in ('MAC_OS', 'IOS'):
-            raise ValueError('Unsupported App Store platform')
+    platform = 'MAC_OS'
+
+    def __init__(self, client, app, metadata):
         self.client, self.app, self.metadata = client, app, metadata
-        self.platform = platform
 
     def versions(self):
         return self.client.list(f'/v1/apps/{self.app}/appStoreVersions', **{'filter[platform]': self.platform, 'limit': 200})
@@ -208,7 +203,7 @@ class Release:
             release = None
         else:
             release = json.loads(view.stdout)
-        asset = 'appstore-source.json' if self.platform == 'MAC_OS' else 'appstore-source-ios.json'
+        asset = 'appstore-source.json'
         if release and any(item['name'] == asset for item in release['assets']):
             with tempfile.TemporaryDirectory(dir=os.environ['TMPDIR']) as directory:
                 subprocess.run(['gh', 'release', 'download', tag, '--pattern', asset, '--dir', directory], check=True)
@@ -221,18 +216,13 @@ class Release:
         if release and not release['isDraft']:
             raise RuntimeError('Published GitHub release has no CI provenance; use a new release tag')
         if not release:
-            notes = ['--notes-file', 'build/release-metadata.md'] if self.platform == 'MAC_OS' else [
-                '--notes', 'iPad App Store build provenance. Initial app and subscription review is submitted together in App Store Connect.']
             subprocess.run(['gh', 'release', 'create', tag, '--verify-tag', '--draft',
-                            '--title', 'Prose ' + tag, *notes], check=True)
+                            '--title', 'Prose ' + tag, '--notes-file', 'build/release-metadata.md'], check=True)
         path = Path('build') / asset
         path.write_text(json.dumps(self.metadata, ensure_ascii=False, indent=2) + '\n')
         subprocess.run(['gh', 'release', 'upload', tag, str(path)], check=True)
 
     def submit(self, build):
-        if self.platform == 'IOS':
-            from ipad_storefront import Storefront
-            return Storefront(self).submit(build)
         if not self.preflight():
             return self.current()
         version = self.current()
@@ -324,25 +314,16 @@ def upload_package(package, client):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['preflight', 'claim', 'upload', 'submit', 'status', 'profile', 'prepare'])
+    parser.add_argument('command', choices=['preflight', 'claim', 'upload', 'submit', 'status'])
     parser.add_argument('--metadata', type=Path, default=Path('build/release-metadata.json'))
     parser.add_argument('--key', type=Path, required=True)
     parser.add_argument('--package', type=Path, default=Path('build/Prose-AppStore.pkg'))
-    parser.add_argument('--platform', choices=['MAC_OS', 'IOS'], default='MAC_OS')
-    parser.add_argument('--identity', help='SHA-1 of the existing Apple Distribution certificate')
-    parser.add_argument('--profile-output', type=Path)
     parser.add_argument('--timeout', type=int, default=2400)
     args = parser.parse_args()
     if args.timeout <= 0:
         parser.error('--timeout must be positive')
     client = Client(args.key, os.environ['APP_STORE_CONNECT_KEY_ID'], os.environ['APP_STORE_CONNECT_ISSUER_ID'])
-    release = Release(client, os.environ['APP_STORE_APP_ID'], json.loads(args.metadata.read_text()), args.platform)
-    if args.command == 'profile':
-        if args.platform != 'IOS' or not args.identity or not args.profile_output:
-            parser.error('profile requires IOS, --identity and --profile-output')
-        from ipad_storefront import Storefront
-        Storefront(release).profile(args.identity, args.profile_output)
-        return
+    release = Release(client, os.environ['APP_STORE_APP_ID'], json.loads(args.metadata.read_text()))
     if args.command == 'status':
         version, build = release.current(), release.build()
         print(json.dumps({'versionState': state(version) if version else None,
@@ -366,13 +347,7 @@ def main():
             print('Reusing the uploaded build for this immutable tag')
         release.wait_build(args.timeout)
         return
-    if args.command == 'prepare':
-        if args.platform != 'IOS':
-            parser.error('prepare is supported for IOS')
-        from ipad_storefront import Storefront
-        result = Storefront(release).prepare(release.wait_build(args.timeout))
-    else:
-        result = release.submit(release.wait_build(args.timeout))
+    result = release.submit(release.wait_build(args.timeout))
     Path('build/appstore-submission.json').write_text(json.dumps(result, indent=2) + '\n')
 
 
