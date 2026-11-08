@@ -1,7 +1,7 @@
 # Phase 3: Writing mode in the editor
 
 Date: 2026-11-08
-Status: accepted 2026-11-08. Step A (spike) next.
+Status: accepted 2026-11-08. Step A (spike) done; see "Spike results" and "Changes after the spike" at the end.
 Spec: `docs/prose-spec.md`, Sections 5.3, 5.4 and 8. Builds on `docs/plans/2026-11-08-phase-2-render-bridge.md`.
 
 ## Goal
@@ -53,7 +53,7 @@ As in Phase 2, the main session writes this note, briefs each step to an Opus su
 | Step | Builds | Checks it must pass |
 |-|-|-|
 | A. Spike | A throwaway test target, or a test inside `WritingFlowTests`, with a fragment subclass over a three-line block, on a scratch branch. Answers the five questions above | The pass marks in "Spike pass marks" below. Results written into this note |
-| B. Engine | `blocks` covers the whole file: context lines and `#include` lines become blocks of kind `context`, raw blocks become `raw`, lists `list`; empty or comment-only blocks are marked. `render` takes a default text colour for dark appearance. ABI version bump | `cargo test --release`; `render-spike` on SICP renders every block, 0 failures; `BlockRendererTests` pass |
+| B. Engine | `blocks` covers the whole file: context lines and `#include` lines become blocks of kind `context`, raw blocks become `raw`, lists `list`; empty or comment-only blocks are marked. `render` takes a default text colour for dark appearance and can return a PNG bitmap through `typst-render` at a given scale. The page is transparent, and the bounds include hanging punctuation. ABI version bump | `cargo test --release`; `render-spike` on SICP renders every block, 0 failures; `BlockRendererTests` pass |
 | C. Layout model | `ProseCore/WritingLayout.swift`: a main-actor model with no AppKit drawing. It holds the block list, rebases it across edits, resolves the active block from the selection and marked text, decides each block's state (source, rendered, failed, pill), and schedules renders for the viewport | Unit tests in `ProseCoreTests`, including seeded random edits that must match a fresh block list. Coverage of the new file 90 percent or more |
 | D. Drawing | `Sources/Prose/WritingFragments.swift`: the layout manager delegate, the rendered fragment, the pill, the stale bar. `setMode(.writing)` enabled behind a hidden default. Engine lifecycle per project. Scale 1.3, dark appearance, resize | UI tests: switching modes leaves the storage, selection and undo stack identical; rendered heights match the engine; TextKit 2 stays on; no attachments in the storage |
 | E. Pointer and selection | Click mapping through glyph boxes, double-click, shift-click, drag across rendered blocks, selection drawing over rendered fragments, copy | Selection acceptance tests (below) |
@@ -61,7 +61,7 @@ As in Phase 2, the main session writes this note, briefs each step to an Opus su
 | G. Input methods and VoiceOver | No swap while text is marked; accessibility value, frames for ranges, and the text under the VoiceOver cursor for rendered blocks | IME and VoiceOver acceptance tests (below) |
 | H. Gate and documents | Book benchmark in Writing mode; the decision on the default; spec Sections 5.3, 5.4 and 8, `docs/architecture.md`, `docs/visual-editing.md`, `CLAUDE.md` phase table, work log | All acceptance tests pass three runs in a row, or the kill switch is applied and documented |
 
-Steps B and C are independent of each other and can run in parallel after the spike. D needs both. E, F and G each need D and can run one after another in any order.
+Steps B and C were planned to run in parallel. They run one after the other instead (B, then C): two agents building in one checkout would break each other's builds, and a second checkout means copying about 9 GB of Rust build output. C also uses B's new block kinds. D needs both. E, F and G each need D and can run one after another in any order.
 
 ## Spike pass marks
 
@@ -150,7 +150,7 @@ All in `Tests/ProseAppTests/WritingModeFlowTests.swift` as `extension WritingFlo
 
 1. Clicking at every glyph box's center in three rendered blocks (a paragraph with inline math, a numbered heading, a display equation) puts the caret at that glyph's source offset, and the block opens.
 2. Shift-arrow and shift-click selections across three rendered blocks produce the expected source range and draw a highlight over each fragment.
-3. A drag from a source block across two rendered blocks ends with a source range whose ends lie at the points the drag passed, or at block boundaries if decision 6's fallback applies.
+3. A drag that starts in a rendered block is handled by Prose and is driven directly by the test: it ends with a source range whose ends lie at the points the drag passed, or at block boundaries if decision 6's fallback applies. A drag that starts in a source block stays with AppKit and is tested through the selection navigation calls AppKit's mouse tracking makes, because posted mouse events end the test process (see "Spike results").
 4. Select All, then copy, puts exactly the source on the pasteboard. Copying a range inside a rendered block puts that source range on it.
 5. Double-click selects the word under the pointer in a rendered paragraph; triple-click selects the block.
 
@@ -194,3 +194,79 @@ Tehran accepted the note and all three recommendations:
 1. The spike's fallback is inside the rule. The content storage delegate may return paragraphs with the same characters and a different paragraph style; the storage itself never changes.
 2. Writing mode stays behind the hidden default `WritingModeEnabled` until step H.
 3. If per-glyph dragging over rendered text is not reachable, a drag selects whole blocks in version one.
+
+## Spike results (2026-11-08)
+
+Step A ran on the branch `phase-3-spike`. The spike code is `Sources/Prose/WritingSpike.swift`; only tests install it, and Code mode is unchanged. The measurements are `Tests/ProseAppTests/WritingSpikeFlowTests.swift`, three tests in `WritingFlowTests`. Each test prints its numbers with the prefix `SPIKE`. Measured on Xcode 27.0 beta, macOS 27, debug Swift build, window 1220 by 820, column 854 pt, render width 657 pt.
+
+### Pass marks
+
+| Question | Pass mark | Measured | Result |
+|-|-|-|-|
+| Custom height | Rendered fragment reports the engine's height; `usageBoundsForTextContainer`, view frame and scroller agree within 1 pt | Each rendered fragment's frame has the engine height times 1.3, to 0.01 pt. Every next fragment starts at the previous one's bottom, to 0.01 pt. Usage height 2647.57 pt, expected 2647.57 pt (Code mode 2782 pt). View frame 2732.0 pt, usage plus insets 2731.57 pt. Scrolled to the end: clip bottom 2732.0 pt, knob proportion 0.2990 against 0.2990, last line visible | PASS |
+| Swapping | Invalidating the block's range makes TextKit ask the delegate again, both ways, in one pass, no stale fragment drawn | `invalidateLayout(for:)` does not ask the delegate. TextKit keeps the old fragment object and lays it out again. `recordEditAction(in:newTextRange:)` with the same range, inside `performEditingTransaction`, does: in the window's next layout pass TextKit asked for exactly the block's three paragraphs, both ways. It built no new paragraphs. The replaced fragment's draw count did not change; the new one drew on the next draw | PASS with `recordEditAction`. FAIL with `invalidateLayout(for:)` alone |
+| Neighbours | Caret rectangles, `character(at:)` round trips and drag selection in the next source block behave as in Code mode | 136 caret rectangles equal Code mode after one constant shift of -78.82 pt (x and height to 0.5 pt). Round trips: 0 failures of 136, both modes. Drag from character 2 to character 60: {348, 58} in both modes, which is the expected range | PASS, with the drag caveat below |
+| SVG | `NSImage(data:)` draws SICP's ten largest blocks without missing glyphs, and one screen in under 8 ms | Drawing is correct: 0 of 30,798 glyph boxes without ink, and the PNGs match the source by eye. Speed fails: one viewport of SICP (4 blocks, 943 pt, 299 KB of SVG) takes 16.9 ms to decode and 20.9 ms to draw the first time, 37.5 ms in all; drawing it again takes 6.3 ms. The plan's 20 blocks (3159 pt, 1.5 MB) take 184 ms cold and 23 ms again | Correctness PASS. Speed FAIL |
+| TextKit 1 | `switchedToTextKit1` stays false | False at the end of all three tests, and in `WritingFixture.close` | PASS |
+| Book | Opening SICP in the spike's Writing mode builds under 5,000 paragraphs | With every block rendered: 11,110. With blocks of more than 400 source lines left as source: 945 | FAIL as planned. PASS with the cap |
+
+### Custom height: the mechanism
+
+An `NSTextLayoutFragment` subclass, returned from `NSTextLayoutManagerDelegate.textLayoutManager(_:textLayoutFragmentFor:in:)`, overrides:
+
+- `layoutFragmentFrame`: returns `super.layoutFragmentFrame` with the height replaced by the block's drawn height. TextKit stacks the next fragment at this frame's bottom, and `usageBoundsForTextContainer`, the view frame and the scroller follow it.
+- `renderingSurfaceBounds`: the block's drawn rectangle.
+- `draw(at:in:)`: draws the SVG through `NSImage` into an `NSGraphicsContext(cgContext:flipped: true)`.
+
+The block's later paragraphs get a fragment whose `layoutFragmentFrame` height is 0, whose `renderingSurfaceBounds` is empty and which draws nothing. No other hook was needed. The content storage fallback (paragraph styles from `textContentStorage(_:textParagraphWith:)`) was not needed and was not built.
+
+`NSTextView` does not set a layout manager delegate of its own (it was nil before the spike set one).
+
+### Swapping: the mechanism
+
+`invalidateLayout(for:)` never makes TextKit ask the delegate; it lays out the same fragment objects again. Two ways work:
+
+1. Replace the fragments. Call `textContentManager.performEditingTransaction { recordEditAction(in: range, newTextRange: range) }` with the block's range. Nothing in the storage changes. The view marks itself for layout, and in its next layout pass TextKit asks the delegate for each paragraph of the range. `SourceStyler.paragraphsBuilt` did not change, so the text elements are reused. The storage, the workspace revision, the selection and the undo stack stayed the same. Switching all 99 paragraphs of the test document this way also built no paragraphs. (`NSTextStorage.edited(.editedAttributes, …)` works too, but it runs the storage's editing machinery, so the spike does not use it.)
+2. One fragment class for every paragraph. The fragment reads the block state each time TextKit reads its frame or draws, and `invalidateLayout(for:)` alone swaps it. Heights switched both ways (37.77, 0, 0 to 52, 52, 27 and back), the next fragment moved from 86.97 pt to 180.21 pt and back, and the delegate was not asked. The spike did not check this way's drawing.
+
+In the test harness the window's own display pass draws no fragments, so draws were checked with `cacheDisplay(in:to:)`. The delegate calls happened in the window's `layoutIfNeeded` pass.
+
+### What NSTextView does inside rendered and collapsed fragments (recorded only)
+
+Test block: a paragraph of three source lines starting at offset 17 (lines start at 17, 120 and 225). Its rendered fragment is 37.77 pt tall at y 49.21; in Code mode the three lines take 52, 52 and 27 pt.
+
+- **Layout inside.** TextKit still lays out the source lines. The rendered fragment's `textLineFragments` are the first source line's lines (it wraps to two). The collapsed fragments keep their source lines too, placed at the rendered block's bottom.
+- **Caret.** In the first source line, the caret sits at the source x position (offset 57 at x 395.6), 18 pt tall, inside the rendered fragment. In the second and third source lines, the caret sits at y 93.97, the block's bottom plus line spacing, at the source x. It is drawn over the paragraph after the block.
+- **Selection highlight.** Selection segments are the source lines' rectangles. Inside the rendered fragment they are hidden, because the SVG's page is opaque white and is drawn over them. The collapsed lines' segments lie below the block and show as grey bands over the blank line after it (`editor-selection.png`). With a transparent page they would show through the rendered text in the wrong places.
+- **Hit testing.** A point in the rendered fragment maps through the source layout of the first source line: x 20 and 300 near the top give offsets 19 and 47, near the bottom 106 and 119. The second and third source lines can never be hit. `TextKit2Geometry.character(at:)` returns nil in the top 7 pt (the line spacing). A click through selection navigation at the fragment's middle gives offset 29, a source position, not the glyph under the pointer.
+- **Up and down arrows.** They step through every source line, the collapsed ones included, at the source x. Up from the paragraph below the first equation: 345, 312, 311, 225, 206, 120. Down from the heading: 16, 17, 104, 120, 206, 225. End of line from offset 20 goes to 104, the end of the first source line's first wrapped line in source layout.
+- **Drag from source into a rendered block.** From the paragraph below the equation up to the first line of the rendered paragraph gives {57, 291}: a plain source range, ending at the source position under the point.
+
+### SVG drawing
+
+- `NSImage(data:)` draws Typst's SVG correctly: `<symbol>` and `<use>` glyphs, inline and display math, footnotes, italics, monospace, tables and shaded code blocks. PNGs of the ten largest SICP blocks were checked by eye against their source (the index table, the factorial compilation listing, the amb evaluator paragraph and others). A pixel check found ink in all 30,798 glyph boxes that should have it.
+- The engine's SVG page is opaque white. That hid NSTextView's selection inside rendered fragments, and it would be wrong in dark appearance.
+- 69 punctuation marks at line ends hang past the right edge of the block's page (Typst's overhang) and are clipped by the SVG `viewBox`. The engine should widen the `viewBox` or the page to the ink bounds.
+- Speed is the problem. Decoding and drawing cost about 0.12 ms per KB of SVG on the main thread, and SICP's SVG averages 54 KB per block (198 MB for the whole book). A first draw of one viewport takes about 38 ms. A second draw of the same `NSImage` objects takes about 6 ms, just inside 8 ms. The fallback in this note applies: engine PNG output through `typst-render`, or rasterizing the SVG to a `CGImage` off the main thread and drawing the cached image. Either way the main thread should only draw bitmaps.
+
+### Other findings
+
+- **Huge blocks.** SICP's index is one table of 43,081 characters on about 10,500 source lines. Jumping into it made the viewport lay out every zero-height paragraph after the caret: 10,500 paragraphs and 244 to 291 ms for one jump. With blocks of more than 400 source lines left as source, the whole run built 945 paragraphs and the slowest jump took 84 ms.
+- **Rendering the whole book.** 3,671 blocks, 0 failures, 3.4 s, 198 MB of SVG. Switching all fragments took 80 ms and built 53 paragraphs.
+- **Every block starts at a line start** in SICP, as the shape in decision 2 needs.
+- **Test harness.** `NSApp.postEvent` calls `CFRunLoopStop` on the main run loop. Under `swift test` the main actor runs inside that loop, and its return exits the test process with status 0 and no report. The spike's drags therefore use `textSelectionNavigation.textSelections(interactingAt:…, anchors:, modifiers: [.extend], selecting: true, …)`, the calls NSTextView's mouse tracking makes, instead of posted mouse events. A real event drag over a rendered block is still unverified. Steps E and F need another way to drive mouse tracking, for example a nested run loop around the posted events, or an XCUITest target.
+
+### What this changes in the decisions
+
+- **Decision 2 (one fragment draws the block)** holds, with two changes. Blocks longer than a limit (400 source lines in the spike) stay source, or the engine splits them; without that, one large table breaks the paragraph gate. And because collapsed paragraphs keep their source lines, every piece of geometry inside a rendered block (caret, selection, hit testing, accessibility frames) must come from the glyph boxes, not from TextKit.
+- **Decision 5 (caret entry and exit)**: a swap is not `invalidateLayout(for:)`. Use either `recordEditAction` on the block's range, or one fragment class whose state changes and `invalidateLayout(for:)`. I recommend the second for step D: it does not simulate an edit, so nothing observing edits can react. Its drawing must be checked first. Arrow keys already move through collapsed lines one source line at a time, so the swap on caret entry must happen in `textViewDidChangeSelection` before the next draw.
+- **Decision 6 (pointer)**: NSTextView maps clicks inside a rendered fragment through the source layout of the first source line, and the other lines cannot be reached. `mouseDown` must map rendered fragments through glyph boxes itself, as planned. The drag fallback (whole blocks) may still be needed; the spike could not test real drags.
+- **Decision 7 (selection drawing)**: NSTextView draws the collapsed lines' selection below the block, over the next paragraph. Suppressing NSTextView's selection inside rendered blocks is required, not optional.
+- **Decision 4 and the engine (step B)**: drawing SVG on the main thread is too slow for first display. Step B should add bitmap output (or step D should rasterize off the main thread), keep SVG or bitmaps only for blocks near the viewport, emit a transparent page, and include hanging punctuation in the page bounds.
+
+## Changes after the spike (approved 2026-11-08)
+
+1. **Bitmaps, not SVG, on the main thread.** Step B adds PNG output through `typst-render` at the screen's backing scale. The main thread draws only cached bitmaps. The engine's page is transparent, and its bounds include hanging punctuation.
+2. **Large blocks stay source.** A block of more than 400 source lines stays source in version one. SICP's index (about 10,500 lines) otherwise breaks the 5,000-paragraph gate.
+3. **Swaps change fragment state.** Each fragment reads its block's state (rendered, source, pill), and `invalidateLayout(for:)` swaps it. Step D checks drawing for this method first. `recordEditAction(in:newTextRange:)` on the block's range is the backup.
+4. **Drag tests.** Acceptance test 3 is split as written above: Prose handles drags that start in rendered blocks, and tests drive them directly; drags that start in source stay with AppKit.
