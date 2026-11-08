@@ -930,3 +930,9 @@
 "Nightly (more stable)" = "Nightly (more stable)";
 "Every merge (Alpha)" = "Every merge (Alpha)";
 "Alpha builds arrive after every merge to main. After switching back to Nightly, the next nightly build newer than this one installs." = "Alpha builds arrive after every merge to main. After switching back to Nightly, the next nightly build newer than this one installs.";
+
+/* Project folders */
+"That file is outside the open folder." = "That file is outside the open folder.";
+"Use a name without slashes that does not start with a dot." = "Use a name without slashes that does not start with a dot.";
+"An item with that name already exists. Choose a different name." = "An item with that name already exists. Choose a different name.";
+"The folder is no longer available. It may have been moved, renamed or deleted." = "The folder is no longer available. It may have been moved, renamed or deleted.";

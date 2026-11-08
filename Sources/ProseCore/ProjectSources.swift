@@ -27,8 +27,9 @@ public enum ProjectSources {
         var sources: [URL] = []
         for case let file as URL in files {
             let values = try file.resourceValues(forKeys: Set(keys))
+            // The enumerator does not follow links. skipDescendants() here would
+            // skip the rest of the link's parent folder instead.
             if values.isSymbolicLink == true {
-                files.skipDescendants()
                 continue
             }
             if values.isRegularFile == true, file.pathExtension.lowercased() == "typ" {

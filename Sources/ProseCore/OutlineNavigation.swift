@@ -97,6 +97,19 @@ public struct OutlineNavigation: Sendable {
         return visible
     }
 
+    /// The heading and its enclosing headings, outermost first, for a breadcrumb.
+    public func ancestry(of index: Int) -> [Int] {
+        guard items.indices.contains(index) else {
+            return []
+        }
+        var chain = [index], parent = parents[index]
+        while let next = parent {
+            chain.insert(next, at: 0)
+            parent = parents[next]
+        }
+        return chain
+    }
+
     /// The enclosing visible row remains highlighted when its children are folded.
     public func visibleAncestor(of index: Int) -> Int {
         var result = index, parent = parents[index]

@@ -1,7 +1,7 @@
 # Phase 1: the window shell
 
 Date: 2026-11-08
-Status: draft, awaiting review
+Status: accepted 2026-11-08 (option A: folders in place)
 Spec: `docs/prose-spec.md`, Sections 3.2 to 3.4 and 4
 
 ## Goal

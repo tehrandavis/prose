@@ -930,3 +930,9 @@
 "Nightly (more stable)" = "每晚（较稳定）";
 "Every merge (Alpha)" = "每次合入（Alpha）";
 "Alpha builds arrive after every merge to main. After switching back to Nightly, the next nightly build newer than this one installs." = "Alpha 版本在每次合入 main 后发布。切回“每晚”后，会安装比当前版本更新的下一个每晚版本。";
+
+/* Project folders */
+"That file is outside the open folder." = "该文件不在已打开的文件夹中。";
+"Use a name without slashes that does not start with a dot." = "名称不能包含斜杠，也不能以句点开头。";
+"An item with that name already exists. Choose a different name." = "已有同名项目。请换一个名称。";
+"The folder is no longer available. It may have been moved, renamed or deleted." = "该文件夹已不可用，可能已被移动、重命名或删除。";
