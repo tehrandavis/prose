@@ -3,8 +3,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/environment.sh
 mkdir -p .tools
-# ProseCore links the parser on macOS, for every distribution.
-scripts/build-syntax.sh
+# ProseCore links the engine library (renderer and parser) on macOS, for every
+# distribution.
+scripts/build-render.sh
 case "$(uname -m)" in
   arm64) ;;
   *) echo 'Prose supports Apple Silicon (arm64) only' >&2; exit 1 ;;

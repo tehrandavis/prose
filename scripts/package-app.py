@@ -32,8 +32,9 @@ def package(binary_dir, distribution):
     shutil.copy2('.tools/tinymist', contents / 'Helpers/tinymist')
     shutil.copy2('.tools/prose-mcp', contents / 'Helpers/prose-mcp')
     shutil.copy2('.tools/MCP-LICENSES.txt', resources / 'MCP-LICENSES.txt')
-    # typst-syntax is statically linked into the executable (scripts/build-syntax.sh).
-    shutil.copy2('.tools/SYNTAX-LICENSES.txt', resources / 'TypstSyntax-LICENSES.txt')
+    # The Typst engine (renderer and typst-syntax) is statically linked into the
+    # executable (scripts/build-render.sh).
+    shutil.copy2('.tools/RENDER-LICENSES.txt', resources / 'TypstEngine-LICENSES.txt')
     # Native SwiftPM embeds its PackageFrameworks path ahead of the app's rpath.
     # Remove build-machine paths so cold-launch checks exercise bundled code.
     executable = contents / 'MacOS/Prose'

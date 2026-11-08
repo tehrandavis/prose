@@ -9,7 +9,7 @@ A native macOS Typst writing app with three views of one source file: Code, Writ
 - LeftBlank's brand policy (`BRAND_POLICY.md`) excludes its names, logo and icons from the MIT licence. Phase 0 removed them. Keep the "based on LeftBlank" attribution in `README.md` and `Resources/ThirdParty.txt`.
 - Bundle id `com.tehrandavis.prose`. Icons come from `Brand/Prose/icon-1024.png` through `scripts/make-app-icon.py`.
 - The Preview channel has no Sparkle key yet. Generate one before publishing a Preview build.
-- Build and test with `scripts/build.sh release` and `PROSE_DISTRIBUTION=preview scripts/test.sh` (the coverage gate needs the Preview distribution). Run `scripts/build-syntax.sh` once before a plain `swift build`. Xcode 26 or later (verified on Xcode 27.0 beta, Swift 6.4), Rust 1.92.0 through rustup. The first build compiles Tinymist and takes about 15 minutes.
+- Build and test with `scripts/build.sh release` and `PROSE_DISTRIBUTION=preview scripts/test.sh` (the coverage gate needs the Preview distribution). Run `scripts/build-render.sh` once before a plain `swift build`. Xcode 26 or later (verified on Xcode 27.0 beta, Swift 6.4), Rust 1.92.0 through rustup. The first build compiles Tinymist and takes about 15 minutes.
 - Coverage gate is 80 percent of production Swift lines. Keep it.
 - Native UI tests extend `WritingFlowTests` (the serialized suite). A new `@Suite` runs in parallel with the windows and menus and makes preview tests flaky.
 

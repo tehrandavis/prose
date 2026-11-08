@@ -32,6 +32,8 @@ MAC = (
     'Sources/Prose/', 'Sources/ProseLauncher/',
     'Tests/ProseAppTests/', 'Tests/MCP/',
     'Tools/MCPServer/',
+    # The render bridge and its header module are linked by the Mac app only.
+    'Engine/RenderBridge/', 'Sources/ProseRenderFFI/',
     # Only scripts/lint.sh reads these; Mac regression runs it.
     'Benchmarks/', '.swiftlint.yml', '.swiftformat',
     # Mac bundle metadata and icons. The iPad project references only
@@ -41,7 +43,8 @@ MAC = (
     'Resources/AppIcon.icns', 'Resources/AppIconLight.icns',
     'Resources/en.lproj/', 'Resources/zh-Hans.lproj/',
     'scripts/benchmark-books.sh', 'scripts/bootstrap.sh', 'scripts/build.sh', 'scripts/build-mcp.sh',
-    'scripts/build-syntax.sh', 'scripts/build-tinymist.sh', 'scripts/check-memory.sh', 'scripts/export-appstore.py', 'scripts/package-app.py',
+    'scripts/build-render.sh', 'scripts/build-syntax.sh', 'scripts/build-tinymist.sh', 'scripts/check-memory.sh',
+    'scripts/export-appstore.py', 'scripts/package-app.py',
     'scripts/package-sicp.py', 'scripts/prepare-icloud-profile.py', 'scripts/prepare-large-document.py',
     'scripts/prepare-mcp-hurl.sh', 'scripts/prepare-sicp.py', 'scripts/preview-feed.py', 'scripts/preview_channels.py',
     'scripts/publish-preview.py',

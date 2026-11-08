@@ -2,7 +2,7 @@
 
 Prose uses SwiftUI and AppKit for the app and editing experience, with Tinymist as a managed child process for Typst language services and preview. Documents use ordinary `.typ` source and relative assets. The visual approach was inspired by Nano Emacs.
 
-Use Xcode 26 or later with a Swift 6.2 or later toolchain and the macOS SDK. The Tinymist and macOS MCP helpers, and the typst-syntax parser linked into ProseCore, are built with Rust 1.92.0 (`rustup toolchain install 1.92.0 --profile minimal`). `scripts/build.sh` and `scripts/test.sh` build the parser through `scripts/bootstrap.sh`; run `scripts/build-syntax.sh` once before a plain `swift build` or `swift test`. Run from any checkout; `scripts/environment.sh` keeps temporary files, Cargo caches and fixtures under the checkout's `.tools/` directory, which git ignores:
+Use Xcode 26 or later with a Swift 6.2 or later toolchain and the macOS SDK. The Tinymist and macOS MCP helpers, and the engine library linked into ProseCore, are built with Rust 1.92.0 (`rustup toolchain install 1.92.0 --profile minimal`). The engine library is the render bridge (`Engine/RenderBridge`), which typesets single blocks for Writing mode and carries the typst-syntax parser bridge inside it, so the app links one Rust static library that exports both `prose_render_api` and `lb_syntax_api`. `scripts/build.sh` and `scripts/test.sh` build it through `scripts/bootstrap.sh`; run `scripts/build-render.sh` once before a plain `swift build` or `swift test`. Run from any checkout; `scripts/environment.sh` keeps temporary files, Cargo caches and fixtures under the checkout's `.tools/` directory, which git ignores:
 
 ```sh
 scripts/build.sh release

@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/environment.sh
 mkdir -p build/memory
-scripts/build-syntax.sh
+scripts/build-render.sh
 
 case "${1:-}" in
   leaks)

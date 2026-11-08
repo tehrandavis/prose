@@ -21,13 +21,17 @@ let package = Package(
     dependencies: [.package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20")] +
         updaterPackages,
     targets: [
-        // typst-syntax behind a C ABI (Engine/SyntaxBridge). scripts/build-syntax.sh,
+        // The one Rust library in the app (Engine/RenderBridge): the per-block Typst
+        // renderer, which also carries the typst-syntax bridge (Engine/SyntaxBridge),
+        // so it exports both prose_render_api and lb_syntax_api. scripts/build-render.sh,
         // which scripts/bootstrap.sh runs, builds it before the first `swift build`.
-        .binaryTarget(name: "ProseSyntaxLibrary", path: "Engine/SyntaxBridge/target/ProseSyntax.xcframework"),
-        .target(name: "ProseSyntaxFFI", dependencies: ["ProseSyntaxLibrary"]),
+        .binaryTarget(name: "ProseEngineLibrary", path: "Engine/RenderBridge/target/ProseEngine.xcframework"),
+        // Header-only C modules for the two function tables.
+        .target(name: "ProseSyntaxFFI", dependencies: ["ProseEngineLibrary"]),
+        .target(name: "ProseRenderFFI", dependencies: ["ProseEngineLibrary"]),
         .target(
             name: "ProseCore",
-            dependencies: ["ZIPFoundation", "ProseSyntaxFFI"],
+            dependencies: ["ZIPFoundation", "ProseSyntaxFFI", "ProseRenderFFI"],
             resources: [.process("Resources"), .copy("AuthoringGuides")],
             swiftSettings: distributionSettings,
         ),
@@ -40,15 +44,18 @@ let package = Package(
         .executableTarget(
             name: "ProseLauncher",
             dependencies: ["ProseApp"],
-            linkerSettings: preview ? [.unsafeFlags([
-                "-Xlinker",
-                "-rpath",
-                "-Xlinker",
-                "@executable_path/../Frameworks",
-            ])] : [],
+            // Keep the renderer's table in the app even before Swift calls it; the
+            // linker otherwise leaves out an unreferenced static library member.
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-u", "-Xlinker", "_prose_render_api"])] +
+                (preview ? [.unsafeFlags([
+                    "-Xlinker",
+                    "-rpath",
+                    "-Xlinker",
+                    "@executable_path/../Frameworks",
+                ])] : []),
         ),
         .target(name: "ProseTestSupport", path: "Tests/Support"),
-        .testTarget(name: "ProseCoreTests", dependencies: ["ProseCore", "ProseTestSupport"]),
+        .testTarget(name: "ProseCoreTests", dependencies: ["ProseCore", "ProseRenderFFI", "ProseTestSupport"]),
         .testTarget(
             name: "ProseAppTests",
             dependencies: ["ProseApp", "ProseCore", "ProseTestSupport"] +

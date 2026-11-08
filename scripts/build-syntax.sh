@@ -1,8 +1,8 @@
 #!/bin/bash
-# Build the typst-syntax bridge that ProseCore links on macOS. SwiftPM
-# consumes it as a binary target, so run this (or scripts/bootstrap.sh) before
-# the first `swift build`. The iPad links the same crate through
-# Engine/TinymistBridge instead (scripts/build-ipad.sh).
+# Build the typst-syntax bridge on its own, as a macOS static library. The Mac
+# app no longer links this one: it links the render bridge, which carries the
+# same crate (scripts/build-render.sh). The iPad links the crate through
+# Engine/TinymistBridge (scripts/build-ipad.sh).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/environment.sh

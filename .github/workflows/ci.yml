@@ -118,6 +118,15 @@ jobs:
           sw_vers
           xcodebuild -version
           swift --version
+      - name: Cache engine dependencies and library
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .tools/cargo-render
+            Engine/RenderBridge/target
+          key: render-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-${{ hashFiles('Engine/RenderBridge/Cargo.lock', 'Engine/RenderBridge/Cargo.toml', 'Engine/RenderBridge/src/**', 'Engine/SyntaxBridge/Cargo.toml', 'Engine/SyntaxBridge/src/**') }}
+          restore-keys: |
+            render-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-
       - name: Cache parser dependencies and library
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -166,10 +175,14 @@ jobs:
             .tools/tinymist
             .tools/tinymist.stamp
           key: ${{ steps.tinymist-cache.outputs.cache-primary-key }}
-      - name: Build and validate the parser bridge
+      - name: Build the engine library and validate the Rust bridges
         run: |
           source scripts/environment.sh
-          scripts/build-syntax.sh
+          scripts/build-render.sh
+          export CARGO_HOME="$PWD/.tools/cargo-render"
+          cargo +1.92.0 fmt --manifest-path Engine/RenderBridge/Cargo.toml --check
+          cargo +1.92.0 clippy --locked --manifest-path Engine/RenderBridge/Cargo.toml --all-targets --no-deps -- -D warnings -D unsafe_op_in_unsafe_fn
+          cargo +1.92.0 test --locked --release --manifest-path Engine/RenderBridge/Cargo.toml
           export CARGO_HOME="$PWD/.tools/cargo-syntax"
           cargo +1.92.0 fmt --manifest-path Engine/SyntaxBridge/Cargo.toml --check
           cargo +1.92.0 clippy --locked --manifest-path Engine/SyntaxBridge/Cargo.toml --all-targets --no-deps -- -D warnings -D unsafe_op_in_unsafe_fn
@@ -231,7 +244,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.release == 'true'
     runs-on: macos-15
-    timeout-minutes: 15
+    # A cold engine cache compiles Typst (scripts/build-render.sh).
+    timeout-minutes: 25
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
       PROSE_DISTRIBUTION: appstore
@@ -247,19 +261,19 @@ jobs:
           key: appstore-swiftpm-${{ runner.os }}-${{ runner.arch }}-xcode-26.3-${{ hashFiles('Package.resolved') }}
           restore-keys: |
             swiftpm-${{ runner.os }}-${{ runner.arch }}-xcode-26.3-
-      - name: Cache parser dependencies and library
+      - name: Cache engine dependencies and library
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
-            .tools/cargo-syntax
-            Engine/SyntaxBridge/target
-          key: syntax-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-${{ hashFiles('Engine/SyntaxBridge/Cargo.lock', 'Engine/SyntaxBridge/Cargo.toml', 'Engine/SyntaxBridge/src/**') }}
+            .tools/cargo-render
+            Engine/RenderBridge/target
+          key: render-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-${{ hashFiles('Engine/RenderBridge/Cargo.lock', 'Engine/RenderBridge/Cargo.toml', 'Engine/RenderBridge/src/**', 'Engine/SyntaxBridge/Cargo.toml', 'Engine/SyntaxBridge/src/**') }}
           restore-keys: |
-            syntax-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-
+            render-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-
       - name: Verify App Store build excludes the updater
         run: |
           source scripts/environment.sh
-          scripts/build-syntax.sh
+          scripts/build-render.sh
           PROSE_INTEGRATION=1 swift test -Xswiftc -warnings-as-errors --filter distributionUsesMatchingAppIdentity
           binary="$(swift build --show-bin-path)/Prose"
           if otool -L "$binary" | grep -q Sparkle; then
@@ -272,7 +286,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.release == 'true'
     runs-on: macos-15
-    timeout-minutes: 25
+    # A cold engine cache compiles Typst (scripts/build-render.sh).
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -290,15 +305,15 @@ jobs:
             .build/checkouts
             .build/artifacts
           key: memory-${{ matrix.check }}-${{ runner.os }}-${{ runner.arch }}-xcode-26.3-${{ hashFiles('Package.resolved') }}
-      - name: Cache parser dependencies and library
+      - name: Cache engine dependencies and library
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
-            .tools/cargo-syntax
-            Engine/SyntaxBridge/target
-          key: syntax-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-${{ hashFiles('Engine/SyntaxBridge/Cargo.lock', 'Engine/SyntaxBridge/Cargo.toml', 'Engine/SyntaxBridge/src/**') }}
+            .tools/cargo-render
+            Engine/RenderBridge/target
+          key: render-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-${{ hashFiles('Engine/RenderBridge/Cargo.lock', 'Engine/RenderBridge/Cargo.toml', 'Engine/RenderBridge/src/**', 'Engine/SyntaxBridge/Cargo.toml', 'Engine/SyntaxBridge/src/**') }}
           restore-keys: |
-            syntax-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-
+            render-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-
       - name: Check memory
         run: scripts/check-memory.sh "${{ matrix.check }}"
       - name: Upload memory diagnostics
@@ -366,15 +381,15 @@ jobs:
             .tools/tinymist
             .tools/tinymist.stamp
           key: ${{ steps.tinymist-cache.outputs.cache-primary-key }}
-      - name: Cache parser dependencies and library
+      - name: Cache engine dependencies and library
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
-            .tools/cargo-syntax
-            Engine/SyntaxBridge/target
-          key: syntax-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-${{ hashFiles('Engine/SyntaxBridge/Cargo.lock', 'Engine/SyntaxBridge/Cargo.toml', 'Engine/SyntaxBridge/src/**') }}
+            .tools/cargo-render
+            Engine/RenderBridge/target
+          key: render-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-${{ hashFiles('Engine/RenderBridge/Cargo.lock', 'Engine/RenderBridge/Cargo.toml', 'Engine/RenderBridge/src/**', 'Engine/SyntaxBridge/Cargo.toml', 'Engine/SyntaxBridge/src/**') }}
           restore-keys: |
-            syntax-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-
+            render-${{ runner.os }}-${{ runner.arch }}-rust-1.92.0-xcode-26.3-
       - name: Sign, notarize and prepare the update
         env:
           SIGNING_CERTIFICATE_P12: ${{ secrets.SIGNING_CERTIFICATE_P12 }}

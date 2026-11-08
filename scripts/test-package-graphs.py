@@ -12,7 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = ROOT / 'iPad/Prose.xcodeproj/project.pbxproj'
 MAC_TARGETS = {
-    'ProseCore', 'ProseSyntaxFFI', 'ProseSyntaxLibrary',
+    'ProseCore', 'ProseSyntaxFFI', 'ProseRenderFFI', 'ProseEngineLibrary',
     'ProseApp', 'ProseLauncher', 'ProseTestSupport', 'ProseCoreTests',
     'ProseAppTests',
 }
@@ -76,14 +76,20 @@ class PackageGraphs(unittest.TestCase):
         self.assertNotIn('MCPServer', PROJECT.read_text())
         self.assertNotIn('MCPConnection.swift', PROJECT.read_text())
 
-    def test_mac_links_the_parser_library_the_ipad_engine_reexports(self):
+    def test_mac_links_one_engine_library_that_reexports_the_parser(self):
         for mode, graph in self.mac.items():
             with self.subTest(distribution=mode):
-                library = targets(graph)['ProseSyntaxLibrary']
+                library = targets(graph)['ProseEngineLibrary']
                 self.assertEqual(library['type'], 'binary')
-                self.assertEqual(library['path'], 'Engine/SyntaxBridge/target/ProseSyntax.xcframework')
-                self.assertEqual(targets(graph)['ProseSyntaxFFI']['dependencies'],
-                                 [{'byName': ['ProseSyntaxLibrary', None]}])
+                self.assertEqual(library['path'], 'Engine/RenderBridge/target/ProseEngine.xcframework')
+                # Both header modules resolve to the one Rust library.
+                for name in ('ProseSyntaxFFI', 'ProseRenderFFI'):
+                    self.assertEqual(targets(graph)[name]['dependencies'],
+                                     [{'byName': ['ProseEngineLibrary', None]}])
+                self.assertEqual([t for t in graph['targets'] if t['type'] == 'binary'], [library])
+        render = (ROOT / 'Engine/RenderBridge/Cargo.toml').read_text()
+        self.assertIn('prose-syntax = { path = "../SyntaxBridge" }', render)
+        self.assertIn('pub use prose_syntax::lb_syntax_api;', (ROOT / 'Engine/RenderBridge/src/lib.rs').read_text())
         mac_ffi = ROOT / (targets(self.mac['appstore'])['ProseSyntaxFFI'].get('path')
                           or 'Sources/ProseSyntaxFFI')
         ipad_ffi = ROOT / 'Sources' / targets(self.ipad['appstore'])['ProseSyntaxFFI']['path']
@@ -97,9 +103,10 @@ class PackageGraphs(unittest.TestCase):
             return {p['name']: (p['version'], p.get('source')) for p in packages
                     if p['name'] in {'typst-syntax', 'typst-utils', 'typst-timing'}
                     and p['version'].startswith('0.15.')}
-        # The Mac and the iPad must parse with the same typst-syntax revision.
+        # The parser, the Mac engine and the iPad engine use one typst-syntax revision.
         parser = pins('Engine/SyntaxBridge/Cargo.lock')
         self.assertEqual(len(parser), 3)
+        self.assertEqual(parser, pins('Engine/RenderBridge/Cargo.lock'))
         self.assertEqual(parser, pins('Engine/TinymistBridge/Cargo.lock'))
 
     def test_ipad_ignores_mac_preview_environment(self):
@@ -114,8 +121,13 @@ class PackageGraphs(unittest.TestCase):
         self.assertEqual(mac['name'], ipad['name'], 'SwiftPM resource bundle identity must remain stable')
         # Swift 6.2 omits this field from dump-package; newer versions include it.
         self.assertEqual(mac.get('defaultLocalization'), ipad.get('defaultLocalization'))
-        for key in ('dependencies', 'resources', 'type'):
+        for key in ('resources', 'type'):
             self.assertEqual(mac_core[key], ipad_core[key], key)
+        # The renderer is Mac only; otherwise the core depends on the same targets.
+        mac_dependencies = [row for row in mac_core['dependencies']
+                            if row.get('byName', [None])[0] != 'ProseRenderFFI']
+        self.assertEqual(len(mac_dependencies), len(mac_core['dependencies']) - 1)
+        self.assertEqual(mac_dependencies, ipad_core['dependencies'])
 
     def test_mac_keeps_apps_and_preview_updater(self):
         for mode, graph in self.mac.items():

@@ -113,17 +113,21 @@ edit invalidates the mirror, and the owner parses again.
 
 ### Build and packaging
 
-- **Mac.** `scripts/build-syntax.sh` (run by `scripts/bootstrap.sh`, so by
-  `scripts/build.sh` and `scripts/test.sh`) builds the release static library
-  for `aarch64-apple-darwin` with Rust 1.92.0 and wraps it as
-  `Engine/SyntaxBridge/target/ProseSyntax.xcframework`. The root manifest
-  consumes it as the `ProseSyntaxLibrary` binary target behind the
-  `ProseSyntaxFFI` header module. Run the script once before a plain
-  `swift build`; SwiftPM reports a missing binary artifact otherwise. This is
-  the first Rust code in the app process; Tinymist and the MCP helper remain
-  helpers. A static library needs no entitlement or helper signing, so
-  Developer ID, notarization and the App Store build are unaffected. The
-  dependency notices go into the app as `TypstSyntax-LICENSES.txt`.
+- **Mac.** The parser reaches the app inside the render bridge
+  (`Engine/RenderBridge`), which depends on this crate as an `rlib` and
+  re-exports `lb_syntax_api`, so the app links one Rust static library.
+  `scripts/build-render.sh` (run by `scripts/bootstrap.sh`, so by
+  `scripts/build.sh` and `scripts/test.sh`) builds it for
+  `aarch64-apple-darwin` with Rust 1.92.0 and wraps it as
+  `Engine/RenderBridge/target/ProseEngine.xcframework`. The root manifest
+  consumes it as the `ProseEngineLibrary` binary target behind the
+  `ProseSyntaxFFI` and `ProseRenderFFI` header modules. Run the script once
+  before a plain `swift build`; SwiftPM reports a missing binary artifact
+  otherwise. `scripts/build-syntax.sh` still builds this crate on its own. A
+  static library needs no entitlement or helper signing, so Developer ID,
+  notarization and the App Store build are unaffected. The engine's
+  dependency notices, the parser's included, go into the app as
+  `TypstEngine-LICENSES.txt`.
 - **iPad.** `Engine/TinymistBridge` depends on the crate and exports
   `prose_tinymist_syntax_api`, so the app still links one Rust static
   library (two would duplicate the Rust runtime: 2,166 duplicate symbols with
@@ -132,9 +136,10 @@ edit invalidates the mirror, and the owner parses again.
   only, and the app passes the table to `SyntaxTree.install` at launch.
   The shared Core tests, which also run in the iPad simulator, check that the
   parser is installed.
-- **CI.** Mac jobs cache `.tools/cargo-syntax` and `Engine/SyntaxBridge/target`;
-  the regression job runs the crate's `cargo fmt`, `clippy` and tests. iPad
-  engine cache keys include the crate's sources.
+- **CI.** Mac jobs cache `.tools/cargo-render` and `Engine/RenderBridge/target`;
+  the regression job also caches `.tools/cargo-syntax` and
+  `Engine/SyntaxBridge/target` and runs both crates' `cargo fmt`, `clippy` and
+  tests. iPad engine cache keys include the crate's sources.
 
 ### Measurements
 
