@@ -13,6 +13,8 @@ A native macOS Typst writing app with three views of one source file: Code, Writ
 - Coverage gate is 80 percent of production Swift lines. Keep it.
 - Native UI tests extend `WritingFlowTests` (the serialized suite). A new `@Suite` runs in parallel with the windows and menus and makes preview tests flaky.
 
+- Prose is Mac only (decided 2026-11-08). The inherited iPad project is not maintained; do not spend effort keeping it building.
+
 ## Rules inherited from LeftBlank that stay
 
 - Phosphor icons only. SwiftLint rejects SF Symbols in app sources.

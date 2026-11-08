@@ -61,9 +61,9 @@ A Typst error returns a result with the first diagnostic's message and no SVG. A
 
 Package directories: the app's bundled `Packages` folder and the user's Typst package cache, read only; no downloads in Phase 2. Fonts: Typst's embedded fonts, system fonts and the app's bundled fonts directory. Engine creation scans fonts once (about 180 ms).
 
-### 8. Not linked on iPad
+### 8. Mac only
 
-The Swift wrapper is compiled for macOS only (`#if os(macOS)`). The header-only FFI target exists in both manifests so the module resolves; the iPad engine does not include the render bridge in Phase 2.
+Prose is a Mac app; Tehran does not intend to build for iPad (2026-11-08). The render bridge is linked into the Mac app only, and Phase 2 does not keep the inherited iPad project (`iPad/`, `Sources/Package.swift`, `Engine/TinymistBridge`) building. Removing that code is a separate cleanup.
 
 ## Risks
 
