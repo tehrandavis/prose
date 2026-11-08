@@ -7,10 +7,9 @@ import SwiftUI
 import Testing
 
 /// A three-file thesis opened in place, with the real editor, window and
-/// Tinymist process.
-@Suite(.serialized)
-@MainActor
-struct ProjectFlowTests {
+/// Tinymist process. These scenarios join the serialized native UI suite:
+/// windows, menus and sheets are process-wide.
+extension WritingFlowTests {
     private func thesis(in root: URL) throws -> URL {
         let folder = root.appendingPathComponent("Thesis")
         let manager = FileManager.default
