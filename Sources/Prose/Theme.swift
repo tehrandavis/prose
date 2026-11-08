@@ -13,21 +13,24 @@ enum Theme {
         }
     }
 
-    // Nano-inspired paper, blue-grey ink and a restrained violet accent. Faded
-    // text is darker than Nano's decorative grey so small labels stay legible.
-    static let nativeBackground = adaptive("background", light: 0xFAFAFA, dark: 0x171A1D)
-    static let nativeEditor = adaptive("editor", light: 0xFFFFFF, dark: 0x1C1F23)
-    static let nativePanel = adaptive("panel", light: 0xFAFAFA, dark: 0x22262B)
-    static let nativeBorder = adaptive("border", light: 0xDFE5E8, dark: 0x343A41)
-    static let nativeText = adaptive("text", light: 0x37474F, dark: 0xE0E2E5)
-    static let nativeSecondary = adaptive("secondary", light: 0x586B75, dark: 0x9DA6B2)
-    static let nativeMuted = adaptive("muted", light: 0x64757F, dark: 0x737D89)
-    static let nativeAccent = adaptive("accent", light: 0x673AB7, dark: 0xD9B97C)
-    static let nativeGreen = adaptive("green", light: 0x426648, dark: 0xA3BE8C)
-    static let nativeRed = adaptive("red", light: 0xB34242, dark: 0xE29A9A)
-    static let selection = adaptive("selection", light: 0xE5DCF3, dark: 0x3B4651)
-    static let selectedText = adaptive("selectedText", light: 0x302742, dark: 0xF2F3F4)
+    // Intent tokens (docs/prose-spec.md Section 4.1): Things-style sidebar and
+    // page, warm ink and a dusk-violet accent. Muted text is derived, kept at
+    // 4.5:1 or better on the page and the sidebar.
+    static let nativeBackground = adaptive("background", light: 0xF5F5F7, dark: 0x1A1A1A)
+    static let nativeEditor = adaptive("editor", light: 0xFFFFFF, dark: 0x262626)
+    static let nativePanel = adaptive("panel", light: 0xF5F5F7, dark: 0x1A1A1A)
+    static let nativeBorder = adaptive("border", light: 0xE5E2DD, dark: 0x464646)
+    static let nativeText = adaptive("text", light: 0x1A1918, dark: 0xE8E4DE)
+    static let nativeSecondary = adaptive("secondary", light: 0x68635E, dark: 0x9C968D)
+    static let nativeMuted = adaptive("muted", light: 0x716B65, dark: 0x948E85)
+    static let nativeAccent = adaptive("accent", light: 0x7C2494, dark: 0xB784E0)
+    static let nativeGreen = adaptive("green", light: 0x5CB85C, dark: 0x5CB85C)
+    static let nativeRed = adaptive("red", light: 0xE25555, dark: 0xE25555)
+    // Accent at 10 percent on the light page and 22 percent on the dark page.
+    static let selection = adaptive("selection", light: 0xF2E9F4, dark: 0x463B4F)
+    static let selectedText = adaptive("selectedText", light: 0x1A1918, dark: 0xE8E4DE)
 
+    // Code-mode syntax colours keep LeftBlank's Nano-derived set (spec Section 4.1).
     static let sourceText = adaptive("sourceText", light: 0x37474F, dark: 0xD5D9DE)
     static let sourceStrong = adaptive("sourceStrong", light: 0x263238, dark: 0xEEE8DA)
     static let sourceComment = adaptive("sourceComment", light: 0x637681, dark: 0x7C8793)

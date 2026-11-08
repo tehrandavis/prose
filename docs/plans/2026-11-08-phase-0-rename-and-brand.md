@@ -114,13 +114,16 @@ The iPad project (`iPad/LeftBlank.xcodeproj`, sources, UI tests, storefront) is 
 | `border` | `#E5E2DD` | `#464646` | Hairline |
 | `text` | `#1A1918` | `#E8E4DE` | Primary text |
 | `secondary` | `#68635E` | `#9C968D` | Secondary text |
-| `muted` | `#7A746E` | `#827C74` | Not in the spec. Between secondary text and the hairline, kept above 4.5:1 on the page in light mode |
+| `muted` | `#716B65` | `#948E85` | Not in the spec. Chosen for 4.5:1 or better on both the page and the sidebar |
 | `accent` | `#7C2494` | `#B784E0` | Dusk violet |
 | `green` | `#5CB85C` | `#5CB85C` | Compile OK |
-| `amber` (new) | `#E8A838` | `#E8A838` | Compile warning |
 | `red` | `#E25555` | `#E25555` | Compile error |
-| `selection` | `#F2E9F4` | `#47404D` | Violet at 10 percent on the page, violet at 22 percent on the dark page, flattened to opaque colours |
+| `selection` | `#F2E9F4` | `#463B4F` | Violet at 10 percent on the page, violet at 22 percent on the dark page, flattened to opaque colours |
 | `selectedText` | `#1A1918` | `#E8E4DE` | Primary text |
+
+The preview canvas (`PreviewWebView.chromeColor`) changes from `#FAFAFA` and `#22262B` to the sidebar colours, `#F5F5F7` and `#1A1A1A`, as Section 4.1 says. The iPad theme (`TabletTheme.swift`, `TabletPreview.swift`) takes the same values, unverified. The compile warning colour `#E8A838` has no user yet and is left for the Phase 1 status dot.
+
+The spec's compile colours are low in contrast when used for text on white: green `#5CB85C` is 2.5:1 and red `#E25555` is 3.7:1. Several error messages draw text in `Theme.red`. Phase 0 applies the spec values as written. Phase 1 should add darker text variants or use the colours only for dots and icons.
 
 `docs/architecture.md` describes the Nano colours. Its palette paragraphs change in the same commit.
 

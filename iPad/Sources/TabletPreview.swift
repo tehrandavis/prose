@@ -21,7 +21,7 @@ struct TabletPreview: UIViewRepresentable {
         config.userContentController.add(context.coordinator, name: "prosePreviewError")
         config.userContentController.addUserScript(WKUserScript(
             source: PreviewScripts.setup(
-                canvas: scheme == .dark ? "#171a1d" : "#fafafa",
+                canvas: scheme == .dark ? "#1a1a1a" : "#f5f5f7",
                 scheme: scheme == .dark ? "dark" : "light",
             ),
             injectionTime: .atDocumentEnd, forMainFrameOnly: true,
@@ -62,7 +62,7 @@ struct TabletPreview: UIViewRepresentable {
         if !view.isLoading {
             let dark = scheme == .dark
             view.evaluateJavaScript(
-                "window.proseSetChrome?.('\(dark ? "#171a1d" : "#fafafa")', '\(dark ? "dark" : "light")'); window.proseSetDark?.(\(previewDark ? "true" : "false"));",
+                "window.proseSetChrome?.('\(dark ? "#1a1a1a" : "#f5f5f7")', '\(dark ? "dark" : "light")'); window.proseSetDark?.(\(previewDark ? "true" : "false"));",
                 completionHandler: nil,
             )
         }

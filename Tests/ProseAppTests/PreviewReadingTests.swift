@@ -427,7 +427,7 @@ extension WritingFlowTests {
         )
         // App appearance changes only the canvas, never the page color setting
         // or live renderer. Switching system appearance uses the same callback.
-        for (appearance, canvas) in [(AppAppearance.light, "rgb(250, 250, 250)"), (.dark, "rgb(34, 38, 43)")] {
+        for (appearance, canvas) in [(AppAppearance.light, "rgb(245, 245, 247)"), (.dark, "rgb(26, 26, 26)")] {
             app.workspace.appearance = appearance
             await app.layout()
             try await waitForJavaScript(
@@ -449,7 +449,7 @@ extension WritingFlowTests {
                     canvas)
             }
             #expect(resolvedHex(web.underPageBackgroundColor, appearance: web.effectiveAppearance) ==
-                (appearance == .dark ? 0x22262B : 0xFAFAFA))
+                (appearance == .dark ? 0x1A1A1A : 0xF5F5F7))
             #expect(app.workspace.previewURL == initialURL)
         }
         app.workspace.previewZoom = 1.4

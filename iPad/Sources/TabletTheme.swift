@@ -4,15 +4,15 @@ import UIKit
 
 @MainActor
 enum TabletTheme {
-    static let nativeBackground = adaptive(light: 0xFAFAFA, dark: 0x171A1D)
-    static let nativeBorder = adaptive(light: 0xDFE5E8, dark: 0x343A41)
+    static let nativeBackground = adaptive(light: 0xF5F5F7, dark: 0x1A1A1A)
+    static let nativeBorder = adaptive(light: 0xE5E2DD, dark: 0x464646)
     static let background = Color(uiColor: nativeBackground)
     static let border = Color(uiColor: nativeBorder)
     static let secondary = Color(uiColor: nativeSecondary)
-    static let nativeEditor = adaptive(light: 0xFFFFFF, dark: 0x1C1F23)
-    static let nativeText = adaptive(light: 0x37474F, dark: 0xE0E2E5)
-    static let nativeSecondary = adaptive(light: 0x586B75, dark: 0x9DA6B2)
-    static let nativeAccent = adaptive(light: 0x673AB7, dark: 0xD9B97C)
+    static let nativeEditor = adaptive(light: 0xFFFFFF, dark: 0x262626)
+    static let nativeText = adaptive(light: 0x1A1918, dark: 0xE8E4DE)
+    static let nativeSecondary = adaptive(light: 0x68635E, dark: 0x9C968D)
+    static let nativeAccent = adaptive(light: 0x7C2494, dark: 0xB784E0)
     static let accent = Color(uiColor: nativeAccent)
 
     static let sourceText = adaptive(light: 0x37474F, dark: 0xD5D9DE)

@@ -245,7 +245,7 @@ final class PreviewWebView: WKWebView {
     }
 
     static func chromeColor(for appearance: NSAppearance) -> String {
-        chromeScheme(for: appearance) == "dark" ? "#22262b" : "#fafafa"
+        chromeScheme(for: appearance) == "dark" ? "#1a1a1a" : "#f5f5f7"
     }
 
     override func viewDidChangeEffectiveAppearance() {
@@ -260,7 +260,7 @@ final class PreviewWebView: WKWebView {
         // of passing a dynamic NSColor that can retain the previous appearance.
         let background = Self.chromeColor(for: effectiveAppearance)
         underPageBackgroundColor = NSColor(hex: Self
-            .chromeScheme(for: effectiveAppearance) == "dark" ? 0x22262B : 0xFAFAFA)
+            .chromeScheme(for: effectiveAppearance) == "dark" ? 0x1A1A1A : 0xF5F5F7)
         guard !isLoading else {
             return
         }
