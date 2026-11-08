@@ -54,3 +54,5 @@ Next: Phase 2 proper (C ABI, cache, background rendering), using the spike's fin
 - Results: full suite 220 core and 149 app tests pass, coverage 87.56 percent; lint clean; SICP renders every block, median 0.48 ms.
 
 Open items: peak memory about 1 GB on a 450-page book; counters for a file with no prior headings; files changed by other apps; duplicated embedded fonts (18.5 MB). Optional cleanup: delete the iPad code.
+
+- Removed the inherited iPad code (d3f4364). Full suite and lint pass.
