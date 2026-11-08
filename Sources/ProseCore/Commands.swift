@@ -1174,7 +1174,14 @@ public struct WritingCommand: Identifiable, Sendable {
             "Decrease the editor font size without changing the finished document.",
             "zoom out editor font 缩小 字号",
         ),
-        .init("writing", "view", "w", "Hide Preview", "Give your writing the whole window.", "hide preview writing 隐藏 预览"),
+        .init(
+            "writing",
+            "view",
+            "w",
+            "Hide Preview",
+            "Give your writing the whole window.",
+            "hide preview writing 隐藏 预览",
+        ),
         .init(
             "togglePreview",
             "view",
@@ -1183,7 +1190,14 @@ public struct WritingCommand: Identifiable, Sendable {
             "Show the finished pages beside your text, or hide them.",
             "toggle preview pages 预览 切换",
         ),
-        .init("modeCode", "view", "1", "Code Mode", "Write the Typst source with every marker visible.", "code source mode 源码 模式"),
+        .init(
+            "modeCode",
+            "view",
+            "1",
+            "Code Mode",
+            "Write the Typst source with every marker visible.",
+            "code source mode 源码 模式",
+        ),
         .init(
             "modeWriting",
             "view",

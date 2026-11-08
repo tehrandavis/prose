@@ -1,7 +1,7 @@
 import Foundation
+import PDFKit
 @testable import ProseCore
 import ProseTestSupport
-import PDFKit
 import Testing
 
 private func discoveryPackage(_ fields: [String: Any]) throws -> UniversePackage {

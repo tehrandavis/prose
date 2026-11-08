@@ -464,7 +464,10 @@ extension WritingFlowTests {
         }
         app.workspace.previewZoom = 1.4
         await app.layout()
-        try await waitForJavaScript(web, condition: "document.getElementById('typst-container').style.width === 'calc(140% - 40px)'")
+        try await waitForJavaScript(
+            web,
+            condition: "document.getElementById('typst-container').style.width === 'calc(140% - 40px)'",
+        )
         let editor = try #require(app.workspace.editor)
         editor.insertSnippet(
             Snippet(text: "#unknown-function("),
@@ -533,8 +536,10 @@ extension WritingFlowTests {
             .evaluateJavaScript("getComputedStyle(document.querySelector('.typst-doc > rect.typst-page-inner')).rx")
             as? String == "\(PreviewScripts.cardRadius * 100)px")
         #expect(try await (web
-            .evaluateJavaScript("getComputedStyle(document.querySelector('.typst-doc > rect.typst-page-inner')).filter")
-            as? String)?.contains("drop-shadow") == true)
+                .evaluateJavaScript(
+                    "getComputedStyle(document.querySelector('.typst-doc > rect.typst-page-inner')).filter",
+                )
+                as? String)?.contains("drop-shadow") == true)
     }
 }
 

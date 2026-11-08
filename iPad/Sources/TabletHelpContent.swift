@@ -1,5 +1,5 @@
-import ProseCore
 import PDFKit
+import ProseCore
 import SwiftUI
 import UIKit
 

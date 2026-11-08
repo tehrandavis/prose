@@ -1,7 +1,7 @@
 import Foundation
+import PDFKit
 import ProseCore
 import ProseTestSupport
-import PDFKit
 import Testing
 
 @Test(.enabled(if: ProcessInfo.processInfo.environment["PROSE_INTEGRATION"] == "1"))

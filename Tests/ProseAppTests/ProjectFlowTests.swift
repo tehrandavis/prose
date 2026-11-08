@@ -39,7 +39,10 @@ extension WritingFlowTests {
         await app.layout()
         #expect(app.workspace.project?.root.path == folder.path)
         #expect(app.workspace.project?.name == "Thesis")
-        #expect(app.window.firstResponder === app.workspace.editor, "The sidebar's search must not take focus from the text")
+        #expect(
+            app.window.firstResponder === app.workspace.editor,
+            "The sidebar's search must not take focus from the text",
+        )
         #expect(app.workspace.sidebarVisible)
         #expect(app.workspace.fileURL == main)
         #expect(app.workspace.compilationURL == main)
@@ -106,7 +109,7 @@ extension WritingFlowTests {
         relaunched.projectWatcher?.stop()
     }
 
-    @Test func sidebarCreatesRenamesAndTrashesFilesInTheFolder() async throws {
+    @Test func sidebarCreatesRenamesAndTrashesFilesInTheFolder() throws {
         let app = try WritingFixture(text: "= Loose file\n", startService: false)
         defer { app.close() }
         let folder = try thesis(in: app.root)
@@ -147,7 +150,7 @@ extension WritingFlowTests {
         #expect(app.workspace.fileURL == thesis)
     }
 
-    @Test func foldersWithoutTypstFilesAndFoldersThatMoved() async throws {
+    @Test func foldersWithoutTypstFilesAndFoldersThatMoved() throws {
         let app = try WritingFixture(text: "= Loose file\n", startService: false)
         defer { app.close() }
         let empty = app.root.appendingPathComponent("Empty")

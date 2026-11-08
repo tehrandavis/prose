@@ -147,7 +147,7 @@ struct ProjectSidebar: View {
             return
         }
         let directory = targetFolder.flatMap { workspace.project?.contains($0) == true ? $0 : nil } ?? root
-        let name = folder ? ProjectTree.availableName(L10n.text("New Folder"), in: directory)
+        let name = folder ? ProjectTree.availableName(L10n.text("New Folder"), extension: nil, in: directory)
             : ProjectTree.availableName(L10n.text("Untitled"), extension: "typ", in: directory)
         if folder {
             workspace.createProjectFolder(in: directory, named: name)

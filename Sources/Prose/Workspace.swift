@@ -1,7 +1,7 @@
 import AppKit
 import Combine
-import ProseCore
 import PDFKit
+import ProseCore
 import UniformTypeIdentifiers
 
 struct DiagnosticItem: Identifiable {

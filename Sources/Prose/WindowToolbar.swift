@@ -215,7 +215,7 @@ struct ModeControl: View {
                     .accessibilityIdentifier("mode." + mode.rawValue)
                     .learningHelp(
                         L10n.text(mode.title),
-                        shortcut: "⌘\(EditorMode.allCases.firstIndex(of: mode)! + 1)",
+                        shortcut: "⌘\((EditorMode.allCases.firstIndex(of: mode) ?? 0) + 1)",
                         detail: mode == .code ? nil : L10n.text("Arrives in a later version"),
                     )
             }

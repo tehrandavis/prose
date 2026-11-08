@@ -143,7 +143,10 @@ struct ContentView: View {
             hovering: { sidebarDividerHovering = $0 },
             begin: { sidebarDragStart = sidebarWidth },
             drag: { distance in
-                sidebarWidth = min(max((sidebarDragStart ?? sidebarWidth) + distance, range.lowerBound), range.upperBound)
+                sidebarWidth = min(
+                    max((sidebarDragStart ?? sidebarWidth) + distance, range.lowerBound),
+                    range.upperBound,
+                )
             },
             end: {
                 sidebarDragStart = nil

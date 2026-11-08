@@ -1,8 +1,8 @@
 import Foundation
+import Nimble
 import ProseCore
 @testable import ProseTablet
 import ProseTestSupport
-import Nimble
 import StoreKit
 import StoreKitTest
 import Testing

@@ -1,8 +1,8 @@
 import AppKit
 import Darwin
+import PDFKit
 @testable import ProseApp
 import ProseCore
-import PDFKit
 import Testing
 
 extension WritingFlowTests {

@@ -1,6 +1,6 @@
 import AppKit
-import ProseCore
 import PDFKit
+import ProseCore
 
 @MainActor
 final class HoverExamplePreview: ObservableObject {

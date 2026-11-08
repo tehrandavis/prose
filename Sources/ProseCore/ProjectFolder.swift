@@ -135,7 +135,7 @@ public enum ProjectTree {
     }
 
     /// "Untitled.typ", then "Untitled 2.typ" and so on: the first unused name.
-    public static func availableName(_ base: String, extension ext: String? = nil, in directory: URL) -> String {
+    public static func availableName(_ base: String, extension ext: String?, in directory: URL) -> String {
         func name(_ index: Int) -> String {
             let stem = index == 1 ? base : "\(base) \(index)"
             return ext.map { stem + "." + $0 } ?? stem

@@ -73,7 +73,7 @@ extension Workspace {
         do {
             let root = try projectStore.resolve(record)
             let current = projectStore.recent().first { $0.id == record.id } ?? record
-            return openRemembered(try projectStore.remember(root), at: root, previous: current)
+            return try openRemembered(projectStore.remember(root), at: root, previous: current)
         } catch {
             try? projectStore.forget(record.id)
             showMessage(error.localizedDescription, persistent: true)
@@ -362,11 +362,11 @@ final class QuickLookPreview: NSObject, QLPreviewPanelDataSource {
         panel.makeKeyAndOrderFront(nil)
     }
 
-    nonisolated func numberOfPreviewItems(in _: QLPreviewPanel!) -> Int {
+    nonisolated func numberOfPreviewItems(in _: QLPreviewPanel?) -> Int {
         1
     }
 
-    nonisolated func previewPanel(_: QLPreviewPanel!, previewItemAt _: Int) -> (any QLPreviewItem)! {
+    nonisolated func previewPanel(_: QLPreviewPanel?, previewItemAt _: Int) -> (any QLPreviewItem)? {
         MainActor.assumeIsolated { url as NSURL? }
     }
 }

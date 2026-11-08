@@ -1,7 +1,7 @@
 import AppKit
+import PDFKit
 @testable import ProseApp
 import ProseCore
-import PDFKit
 import SwiftUI
 import Testing
 
