@@ -378,3 +378,39 @@ fn set_text_accepts_a_file_not_yet_on_disk() {
     assert!(Engine::new(Options::new(project.root.join("nowhere"), "main.typ")).is_err());
     assert!(Engine::new(Options::new(&project.root, "/elsewhere/main.typ")).is_err());
 }
+
+#[test]
+fn renders_and_refreshes_stay_correct_across_memo_evictions() {
+    // Enough compiled renders for several of Typst's cache evictions, with a
+    // refresh in between, so later renders and refreshes run on evicted caches.
+    let mut text = String::from(NUMBERED);
+    text.push_str("= Start <start>\n\n");
+    for n in 0..300 {
+        text.push_str(&format!("Paragraph {n}, after @start.\n\n"));
+    }
+    let project = Project::new(&[("main.typ", &text)]);
+    let mut options = Options::new(&project.root, "main.typ");
+    options.cache_budget = 64 * 1024;
+    let engine = Engine::new(options).unwrap();
+    let path = project.path("main.typ");
+    assert!(engine.refresh().ok);
+    let blocks = engine.blocks(&path).unwrap();
+    assert_eq!(blocks.len(), 301);
+    for (round, width) in [300.0, 280.0].into_iter().enumerate() {
+        for (n, block) in blocks.iter().skip(1).enumerate() {
+            let render = engine.render(&path, block.start, block.end, width).unwrap();
+            assert!(!render.cached);
+            let shown = render
+                .rendered
+                .text
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ");
+            assert_eq!(shown, format!("Paragraph {n}, after Section 1 ."));
+        }
+        let info = engine.refresh();
+        assert!(info.ok, "round {round}: {:?}", info.message);
+        assert_eq!((info.headings, info.references), (1, 1));
+    }
+    assert_eq!(engine.cache_stats().misses, 600);
+}

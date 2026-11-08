@@ -44,15 +44,12 @@ let package = Package(
         .executableTarget(
             name: "ProseLauncher",
             dependencies: ["ProseApp"],
-            // Keep the renderer's table in the app even before Swift calls it; the
-            // linker otherwise leaves out an unreferenced static library member.
-            linkerSettings: [.unsafeFlags(["-Xlinker", "-u", "-Xlinker", "_prose_render_api"])] +
-                (preview ? [.unsafeFlags([
-                    "-Xlinker",
-                    "-rpath",
-                    "-Xlinker",
-                    "@executable_path/../Frameworks",
-                ])] : []),
+            linkerSettings: preview ? [.unsafeFlags([
+                "-Xlinker",
+                "-rpath",
+                "-Xlinker",
+                "@executable_path/../Frameworks",
+            ])] : [],
         ),
         .target(name: "ProseTestSupport", path: "Tests/Support"),
         .testTarget(name: "ProseCoreTests", dependencies: ["ProseCore", "ProseRenderFFI", "ProseTestSupport"]),

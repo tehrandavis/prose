@@ -1,16 +1,78 @@
 //! Measures per-block rendering on a real document through the engine's
 //! Rust API. See docs/plans/2026-11-08-phase-2-engine-spike.md.
 //!
-//! render-spike <main.typ> [--width PT] [--sample N] [--budget MB] [--print] [--svg DIR]
+//! render-spike <main.typ> [--width PT] [--sample N] [--budget MB] [--edits N] [--passes N] [--print] [--svg DIR]
 //!
-//! Each block is rendered twice in a row: the first render compiles it, the
-//! second should come from the cache.
+//! After a cold refresh, the main file gets `--edits` one-paragraph edits (2
+//! by default), each followed by a refresh. Each block is then rendered twice
+//! in a row: the first render compiles it, the second should come from the
+//! cache. `--passes` renders them all again that many times, each time at a
+//! new width, as a long session would. A last edit and refresh shows whether
+//! the renders' evictions kept the full compile's memoized work. Memory is
+//! reported as peak resident (`ru_maxrss`) and as bytes in use in the malloc
+//! heap.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::Instant;
 
 use prose_render::{BlockKind, Engine, Options};
+
+/// `struct rusage` from `<sys/resource.h>` on macOS: two `timeval`s, then
+/// fourteen `long` counters, the first of which is `ru_maxrss`.
+#[repr(C)]
+struct Rusage {
+    times: [i64; 4],
+    maxrss: i64,
+    counters: [i64; 13],
+}
+
+extern "C" {
+    fn getrusage(who: i32, usage: *mut Rusage) -> i32;
+}
+
+/// The process's peak resident memory so far, in MB. macOS reports
+/// `ru_maxrss` in bytes.
+fn peak_resident_mb() -> f64 {
+    let mut usage = Rusage {
+        times: [0; 4],
+        maxrss: 0,
+        counters: [0; 13],
+    };
+    // SAFETY: RUSAGE_SELF (0) and a writable struct of the C layout.
+    if unsafe { getrusage(0, &mut usage) } != 0 {
+        return 0.0;
+    }
+    usage.maxrss as f64 / 1024.0 / 1024.0
+}
+
+/// `malloc_statistics_t` from `<malloc/malloc.h>`.
+#[repr(C)]
+#[derive(Default)]
+struct MallocStatistics {
+    blocks_in_use: u32,
+    size_in_use: usize,
+    max_size_in_use: usize,
+    size_allocated: usize,
+}
+
+extern "C" {
+    fn malloc_zone_statistics(zone: *mut std::ffi::c_void, stats: *mut MallocStatistics);
+}
+
+/// Peak resident memory, and the malloc heap's bytes in use now. Under
+/// memory pressure macOS compresses pages, so the heap figure is the steadier
+/// of the two.
+fn memory() -> String {
+    let mut stats = MallocStatistics::default();
+    // SAFETY: a null zone means all zones; the struct has the C layout.
+    unsafe { malloc_zone_statistics(std::ptr::null_mut(), &mut stats) };
+    format!(
+        "peak resident {:.0} MB, heap in use {:.0} MB",
+        peak_resident_mb(),
+        stats.size_in_use as f64 / 1024.0 / 1024.0
+    )
+}
 
 fn ms(start: Instant) -> f64 {
     start.elapsed().as_secs_f64() * 1000.0
@@ -54,6 +116,8 @@ fn main() {
     let sample: usize = option("--sample")
         .and_then(|v| v.parse().ok())
         .unwrap_or(200);
+    let edits: usize = option("--edits").and_then(|v| v.parse().ok()).unwrap_or(2);
+    let passes: usize = option("--passes").and_then(|v| v.parse().ok()).unwrap_or(0);
     let print = args.iter().any(|a| a == "--print");
     let svg_dir = option("--svg").map(PathBuf::from);
     let root = main_path.parent().unwrap().to_path_buf();
@@ -89,39 +153,51 @@ fn main() {
         info.equations,
         info.references
     );
+    println!("memory after the cold refresh: {}", memory());
 
-    // An edit in the middle of the main file, then a full refresh.
+    // Edits in the middle of the main file, each followed by a full refresh.
     let main_text = engine.text(&main_path).expect("main text");
     let main_blocks = engine.blocks(&main_path).expect("main blocks");
     let paragraphs: Vec<_> = main_blocks
         .iter()
         .filter(|b| b.kind == BlockKind::Paragraph)
         .collect();
-    if let Some(block) = paragraphs.get(paragraphs.len() / 2) {
+    let edit_at = paragraphs.get(paragraphs.len() / 2).map(|block| {
         let mut utf16 = 0;
-        let at = main_text
+        main_text
             .char_indices()
             .find(|(_, c)| {
                 let here = utf16 >= block.start;
                 utf16 += c.len_utf16();
                 here
             })
-            .map_or(main_text.len(), |(i, _)| i);
-        let mut edited = main_text.clone();
+            .map_or(main_text.len(), |(i, _)| i)
+    });
+    let mut edited = main_text.clone();
+    if let Some(at) = edit_at {
         edited.insert_str(at, "Edited ");
-        for round in 1..=2 {
+        let mut later = Vec::new();
+        for round in 1..=edits {
             engine.set_text(&main_path, &edited).unwrap();
             let start = Instant::now();
             let ok = engine.refresh().ok;
-            println!(
-                "refresh after a one-paragraph edit ({round}): {:.0} ms, ok {ok}",
-                ms(start)
-            );
+            if round <= 2 {
+                println!(
+                    "refresh after a one-paragraph edit ({round}): {:.0} ms, ok {ok}",
+                    ms(start)
+                );
+            } else {
+                later.push(ms(start));
+            }
             edited.insert(at, 'x');
+        }
+        if !later.is_empty() {
+            summary("  later refreshes after an edit", &mut later);
         }
         engine.set_text(&main_path, &main_text).unwrap();
         engine.refresh();
     }
+    println!("memory after the edits: {}", memory());
 
     // Files: the main file and the files it includes directly.
     let mut files = vec![main_path.clone()];
@@ -245,4 +321,38 @@ fn main() {
         stats.hits,
         stats.misses
     );
+    // A long session: more passes over the same blocks, each at a new width,
+    // so every render compiles again.
+    println!("memory after the renders: {}", memory());
+    for pass in 1..=passes {
+        let width = width - pass as f64;
+        let start = Instant::now();
+        let failed = chosen
+            .iter()
+            .filter(|(index, block)| {
+                engine
+                    .render(&files[*index], block.start, block.end, width)
+                    .is_err()
+            })
+            .count();
+        println!(
+            "pass {pass} at {width} pt: {:.0} ms, {failed} failures; {}",
+            ms(start),
+            memory()
+        );
+    }
+
+    // After the renders, one more edit and refresh: whether the evictions
+    // the renders caused kept the full compile's memoized work.
+    if let Some(at) = edit_at {
+        edited.insert(at, 'x');
+        engine.set_text(&main_path, &edited).unwrap();
+        let start = Instant::now();
+        let ok = engine.refresh().ok;
+        println!(
+            "refresh after the renders and an edit: {:.0} ms, ok {ok}",
+            ms(start)
+        );
+    }
+    println!("memory at the end: {}", memory());
 }

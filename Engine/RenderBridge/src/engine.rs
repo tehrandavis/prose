@@ -21,6 +21,23 @@ use crate::geometry::{first_baseline, walk, GlyphBounds, GlyphBox, Rect};
 use crate::outline::{split_tree, BlockKind, Outline};
 use crate::world::{Loader, Shared, View};
 
+/// How many evictions memoized Typst work (comemo) survives unused.
+///
+/// Typst memoizes evaluation and layout in process-wide caches that shrink
+/// only when told to. A full compile of a 450-page book leaves about 700 MB
+/// there, which the next refresh reuses to finish in a fifth of the time. A
+/// block render adds about 150 KB that nothing reuses once our own cache holds
+/// the result. Without eviction both grow for as long as the app runs.
+const MEMO_MAX_AGE: usize = 3;
+
+/// An eviction runs after every refresh and after this many renders that
+/// compiled (cache hits add nothing to Typst's caches). Work that every block
+/// shares, such as evaluating packages and context lines, is used by each
+/// render and so stays. The full compile's work survives 383 compiled renders
+/// without a refresh; after that, the next refresh starts cold. While typing,
+/// refreshes come far more often than that.
+const RENDERS_PER_EVICTION: usize = 128;
+
 /// How to create an engine.
 #[derive(Debug, Clone)]
 pub struct Options {
@@ -167,6 +184,8 @@ struct State {
     cache: Cache,
     glyph_bounds: GlyphBounds,
     error: Option<String>,
+    /// Renders that compiled since the last eviction.
+    compiled_renders: usize,
 }
 
 /// The render engine. Calls from several threads are safe and serialized.
@@ -287,6 +306,7 @@ impl Engine {
                 cache: Cache::new(options.cache_budget),
                 glyph_bounds: GlyphBounds::default(),
                 error: None,
+                compiled_renders: 0,
             }),
         })
     }
@@ -530,10 +550,17 @@ impl State {
                 ..self.context_counts()
             },
         };
-        // Drop memoized work that recent compiles have not used.
-        typst::comemo::evict(30);
+        self.evict();
         self.last = info.clone();
         info
+    }
+
+    /// Drops memoized Typst work that recent compiles have not used. The
+    /// caches are shared by every engine in the process, so one engine's
+    /// evictions also age the others' entries.
+    fn evict(&mut self) {
+        typst::comemo::evict(MEMO_MAX_AGE);
+        self.compiled_renders = 0;
     }
 
     fn context_counts(&self) -> RefreshInfo {
@@ -611,6 +638,10 @@ impl State {
             return Ok(Render::new(rendered, start16, true));
         }
 
+        self.compiled_renders += 1;
+        if self.compiled_renders >= RENDERS_PER_EVICTION {
+            self.evict();
+        }
         let block_id = sibling(id, "__prose_block__.typ");
         let block_source = Source::new(block_id, doc);
         let view = View::new(&self.shared, block_id, Some(&block_source));
