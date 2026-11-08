@@ -148,7 +148,7 @@ class PathClassificationTests(unittest.TestCase):
         listed = ci.MAC + ci.IPAD + ci.DOCS
         scripts = subprocess.check_output(['git', 'ls-files', 'scripts'], cwd=ROOT, text=True).split()
         shared = {'scripts/appstore_connect.py', 'scripts/ci_changes.py', 'scripts/coverage.py',
-                  'scripts/environment.sh', 'scripts/lint.sh', 'scripts/rust-licenses.py',
+                  'scripts/environment.sh', 'scripts/lint.sh', 'scripts/make-app-icon.py', 'scripts/rust-licenses.py',
                   'scripts/release_metadata.py', 'scripts/test-appstore-release.py', 'scripts/test-ci-policy.py',
                   'scripts/tinymist-vfs.patch', 'scripts/update-universe-snapshot.py'}
         for script in scripts:
