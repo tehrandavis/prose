@@ -29,6 +29,8 @@ enum Theme {
     // Accent at 10 percent on the light page and 22 percent on the dark page.
     static let selection = adaptive("selection", light: 0xF2E9F4, dark: 0x463B4F)
     static let selectedText = adaptive("selectedText", light: 0x1A1918, dark: 0xE8E4DE)
+    // Accent at 10 percent on the light sidebar and 22 percent on the dark one.
+    static let nativeSidebarSelection = adaptive("sidebarSelection", light: 0xE9E0ED, dark: 0x3D3146)
 
     // Code-mode syntax colours keep LeftBlank's Nano-derived set (spec Section 4.1).
     static let sourceText = adaptive("sourceText", light: 0x37474F, dark: 0xD5D9DE)
@@ -52,6 +54,7 @@ enum Theme {
     static let accent = Color(nsColor: nativeAccent)
     static let green = Color(nsColor: nativeGreen)
     static let red = Color(nsColor: nativeRed)
+    static let sidebarSelection = Color(nsColor: nativeSidebarSelection)
 
     @MainActor static func apply(_ preference: AppAppearance) {
         switch preference {

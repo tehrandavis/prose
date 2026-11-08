@@ -8,12 +8,20 @@ struct ContentView: View {
     @State private var splitFraction: CGFloat
     @State private var dragStartWidth: CGFloat?
     @State private var dividerHovering = false
+    /// The sidebar's width; per device, not synced.
+    @State private var sidebarWidth: CGFloat
+    @State private var sidebarDragStart: CGFloat?
+    @State private var sidebarDividerHovering = false
     private let defaults: UserDefaults
+    static let sidebarWidthKey = "sidebarWidth"
+    static let sidebarWidths: ClosedRange<CGFloat> = 240 ... 320
 
     init(workspace: Workspace, defaults: UserDefaults = .standard) {
         self.workspace = workspace
         self.defaults = defaults
         _splitFraction = State(initialValue: SplitLayout.storedFraction(in: defaults))
+        let stored = defaults.double(forKey: Self.sidebarWidthKey)
+        _sidebarWidth = State(initialValue: stored > 0 ? min(max(stored, 240), 320) : 260)
     }
 
     var body: some View {
@@ -52,6 +60,13 @@ struct ContentView: View {
     private var writing: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
+                if workspace.sidebarVisible {
+                    ProjectSidebar(workspace: workspace).frame(width: sidebarWidth)
+                    Rectangle().fill(sidebarDividerHovering || sidebarDragStart != nil ? Theme.accent.opacity(0.6) :
+                        Theme.border).frame(width: 1)
+                        .overlay { sidebarDivider.frame(width: SplitDividerView.hitWidth) }
+                        .zIndex(1)
+                }
                 GeometryReader { geometry in
                     let width = geometry.size.width
                     let split = workspace.layout == .split
@@ -118,6 +133,31 @@ struct ContentView: View {
                 }
             }
         }
+    }
+
+    private var sidebarDivider: some View {
+        let range = Self.sidebarWidths
+        let fraction = (sidebarWidth - range.lowerBound) / (range.upperBound - range.lowerBound)
+        return SplitDividerHandle(
+            fraction: fraction,
+            hovering: { sidebarDividerHovering = $0 },
+            begin: { sidebarDragStart = sidebarWidth },
+            drag: { distance in
+                sidebarWidth = min(max((sidebarDragStart ?? sidebarWidth) + distance, range.lowerBound), range.upperBound)
+            },
+            end: {
+                sidebarDragStart = nil
+                defaults.set(Double(sidebarWidth), forKey: Self.sidebarWidthKey)
+            },
+            reset: {
+                sidebarWidth = 260
+                defaults.set(Double(sidebarWidth), forKey: Self.sidebarWidthKey)
+            },
+            adjust: { steps in
+                sidebarWidth = min(max(sidebarWidth + CGFloat(steps) * 10, range.lowerBound), range.upperBound)
+                defaults.set(Double(sidebarWidth), forKey: Self.sidebarWidthKey)
+            },
+        )
     }
 
     private func divider(editorWidth: CGFloat, width: CGFloat) -> some View {

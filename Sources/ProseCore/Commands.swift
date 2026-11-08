@@ -187,7 +187,8 @@ public struct WritingCommand: Identifiable, Sendable {
 
     private static let directShortcuts: [String: [DirectShortcut]] = [
         "writing": [.init("1")], "split": [.init("2")], "preview": [.init("3")],
-        "outline": [.init("4")], "diagnostics": [.init("5")],
+        "outline": [.init("0")], "diagnostics": [.init("5")],
+        "openFolder": [.init("o", modifiers: [.command, .option])],
         "new": [.init("n")], "open": [.init("o")], "save": [.init("s")],
         "importDocument": [.init("o", modifiers: [.command, .shift])],
         "saveAs": [.init("s", modifiers: [.shift, .command])], "export": [.init("e", modifiers: [.shift, .command])],
@@ -308,6 +309,7 @@ public struct WritingCommand: Identifiable, Sendable {
         "new": "file-plus",
         "open": "folder-open",
         "importDocument": "tray-arrow-down",
+        "openFolder": "folders",
         "revealSource": "folder-simple",
         "save": "floppy-disk",
         "saveAs": "floppy-disk-back",
@@ -1187,9 +1189,9 @@ public struct WritingCommand: Identifiable, Sendable {
             "outline",
             "view",
             "o",
-            "Outline",
-            "See headings and sections in the left margin without moving your text.",
-            "outline headings 大纲 目录 脉络",
+            "Sidebar",
+            "Show or hide your files and the outline beside the text.",
+            "sidebar outline headings files 侧边栏 大纲 目录 脉络 文件",
         ),
         .init(
             "outlineExpand",
@@ -1264,6 +1266,14 @@ public struct WritingCommand: Identifiable, Sendable {
             "Your Writing",
             "Search and open documents in your library.",
             "open file library 文稿 资料库 打开",
+        ),
+        .init(
+            "openFolder",
+            "file",
+            "f",
+            "Open Folder",
+            "Open a folder of Typst files and edit them where they are.",
+            "open folder project thesis directory 打开 文件夹 项目",
         ),
         .init(
             "importDocument",

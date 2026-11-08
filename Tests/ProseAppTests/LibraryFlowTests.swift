@@ -213,11 +213,11 @@ extension WritingFlowTests {
             "Discard this title",
             replacementRange: NSRange(location: 0, length: cancelled.string.utf16.count),
         )
-        app.workspace.sidePanel = .outline
+        app.workspace.sidebarVisible = true
         app.window.sendEvent(app.key("\u{1b}", code: 53))
         #expect(!field.renaming)
         #expect(field.stringValue == "Field notes 中文")
-        #expect(app.workspace.sidePanel == .outline)
+        #expect(app.workspace.sidebarVisible)
 
         try click(1)
         try click(2)

@@ -230,6 +230,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             modifiers: [.command, .shift],
             target: self,
         )
+        item(
+            L10n.text("Open Folder…"),
+            #selector(openFolder),
+            "o",
+            file,
+            modifiers: [.command, .option],
+            target: self,
+        )
         item(L10n.text("Open external file…"), #selector(openDocument), "", file, target: self)
         file.addItem(.separator())
         item(L10n.text("Save"), #selector(saveDocument), "s", file, target: self)
@@ -354,6 +362,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc private func openLibrary() {
         workspace.openLibrary()
+    }
+
+    @objc private func openFolder() {
+        workspace.openFolderPanel()
     }
 
     @objc private func importDocument() {

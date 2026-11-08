@@ -86,6 +86,9 @@ private func thesisFixture() throws -> URL {
     }
     #expect(throws: ProjectError.outsideProject) { try ProjectTree.createFile(named: "x", in: outside, root: root) }
 
+    #expect(ProjectTree.availableName("main", extension: "typ", in: root) == "main 2.typ")
+    #expect(ProjectTree.availableName("Untitled", extension: "typ", in: root) == "Untitled.typ")
+    #expect(ProjectTree.availableName("sections", in: root) == "sections 2")
     let folder = try ProjectTree.createFolder(named: "appendix", in: root, root: root)
     #expect(try ProjectTree.children(of: root).contains { $0.name == "appendix" && $0.isDirectory })
     #expect(throws: ProjectError.exists) { try ProjectTree.createFolder(named: "appendix", in: root, root: root) }

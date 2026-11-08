@@ -38,13 +38,6 @@ final class WritingWindow: NSWindow {
                 workspace.checksOpen = false
                 return
             }
-            if event.keyCode == 53, workspace.sidePanel != nil,
-               (firstResponder as? NSTextView)?.isFieldEditor != true,
-               (firstResponder as? NSTextView)?.hasMarkedText() != true
-            {
-                workspace.sidePanel = nil
-                return
-            }
         }
         super.sendEvent(event)
     }

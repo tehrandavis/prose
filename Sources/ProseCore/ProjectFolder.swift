@@ -134,6 +134,19 @@ public enum ProjectTree {
         return String(path.dropFirst(base.count + 1))
     }
 
+    /// "Untitled.typ", then "Untitled 2.typ" and so on: the first unused name.
+    public static func availableName(_ base: String, extension ext: String? = nil, in directory: URL) -> String {
+        func name(_ index: Int) -> String {
+            let stem = index == 1 ? base : "\(base) \(index)"
+            return ext.map { stem + "." + $0 } ?? stem
+        }
+        var index = 1
+        while FileManager.default.fileExists(atPath: directory.appendingPathComponent(name(index)).path) {
+            index += 1
+        }
+        return name(index)
+    }
+
     /// A new Typst file. A name without an extension gets `.typ`.
     @discardableResult
     public static func createFile(named name: String, in directory: URL, root: URL) throws -> URL {

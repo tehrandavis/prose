@@ -39,6 +39,36 @@ struct LibraryBrowser: View {
         }
     }
 
+    /// Folders opened in place, most recent first. They are not library
+    /// documents: Prose edits their files where they are.
+    @ViewBuilder private var folders: some View {
+        let recent = workspace.projectStore.recent()
+        if !recent.isEmpty {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.text("Folders")).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.secondary)
+                    .padding(.horizontal, 10).padding(.bottom, 4)
+                ForEach(recent) { record in
+                    Button {
+                        workspace.libraryOpen = false
+                        workspace.openRecentFolder(record)
+                    } label: {
+                        HStack(spacing: 10) {
+                            PhosphorIcon(name: "folder-simple", size: 16).foregroundStyle(Theme.accent)
+                            Text(record.name).font(.system(size: 13)).foregroundStyle(Theme.text)
+                            Text((record.path as NSString).deletingLastPathComponent
+                                .replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+                                .font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(1)
+                                .truncationMode(.head)
+                            Spacer(minLength: 0)
+                        }.padding(.horizontal, 10).frame(height: 34).contentShape(Rectangle())
+                    }.buttonStyle(.plain).accessibilityIdentifier("library.folder." + record.name)
+                }
+                Text(L10n.text("Documents")).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.secondary)
+                    .padding(.horizontal, 10).padding(.top, 14).padding(.bottom, 4)
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 4)
+        }
+    }
+
     private var documents: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 16) {
@@ -49,6 +79,8 @@ struct LibraryBrowser: View {
                 }
                 Spacer()
                 Menu {
+                    Button(L10n.text("Open Folder…")) { workspace.openFolderPanel() }
+                    Divider()
                     Button(L10n.text("Import a document…")) { library.importPanel() }
                     Button(L10n.text("Import project folder…")) { library.importPanel(project: true) }
                     Divider()
@@ -92,6 +124,9 @@ struct LibraryBrowser: View {
             }
             ScrollView {
                 LazyVStack(spacing: 0) {
+                    if !showingTrash, query.isEmpty {
+                        folders
+                    }
                     if results.isEmpty {
                         VStack(spacing: 10) {
                             PhosphorIcon(name: showingTrash ? "clock-counter-clockwise" : "book-open-text", size: 28)

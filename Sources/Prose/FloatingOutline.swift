@@ -7,19 +7,16 @@ struct FloatingOutline: View {
     let availableMargin: CGFloat
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovering = false
-    @State private var pinHovering = false
-    @State private var suppressedUntilExit = false
     @State private var dismissTask: Task<Void, Never>?
-    private var pinned: Bool {
-        workspace.sidePanel == .outline
-    }
 
+    /// Hover expands the outline. The sidebar holds the persistent outline, so
+    /// this one is shown only while the sidebar is hidden.
     private var expanded: Bool {
-        (hovering && !suppressedUntilExit) || pinned
+        hovering
     }
 
     private var panelWidth: CGFloat {
-        // A pinned outline stays inside the existing margin. Hover can briefly
+        // The outline stays inside the existing margin. Hover can briefly
         // expand it for reading long headings without moving the manuscript.
         min(224, max(hovering ? 180 : 28, availableMargin - 24))
     }
@@ -37,7 +34,7 @@ struct FloatingOutline: View {
     }
 
     var body: some View {
-        if !workspace.outline.isEmpty || workspace.sidePanel == .outline {
+        if !workspace.outline.isEmpty, !workspace.sidebarVisible {
             VStack(alignment: .leading, spacing: 0) {
                 if expanded {
                     HStack(spacing: panelWidth < 70 ? 0 : 8) {
@@ -50,28 +47,16 @@ struct FloatingOutline: View {
                             foldButton(expand: !navigation.branches.allSatisfy(navigation.isExpanded))
                         }
                         Button {
-                            if pinned {
-                                workspace.sidePanel = nil
-                                hovering = false
-                                suppressedUntilExit = true
-                            } else {
-                                workspace.sidePanel = .outline
-                            }
+                            hovering = false
+                            workspace.sidebarVisible = true
                         } label: {
-                            ZStack {
-                                PhosphorIcon(name: "push-pin", size: 14)
-                                    .opacity(pinned && pinHovering ? 0 : 1)
-                                PhosphorIcon(name: "x", size: 14)
-                                    .opacity(pinned && pinHovering ? 1 : 0)
-                            }
-                            .foregroundStyle(pinned ? Theme.text : Theme.secondary)
-                            .frame(width: 28, height: 28)
+                            PhosphorIcon(name: "sidebar-simple", size: 14)
+                                .foregroundStyle(Theme.secondary)
+                                .frame(width: 28, height: 28)
                         }.buttonStyle(QuietControlStyle())
-                            .accessibilityIdentifier("outline.pin")
-                            .accessibilityLabel(L10n.text(pinned ? "Unpin outline" : "Pin outline"))
-                            .learningHelp(L10n.text(pinned ? "Unpin outline" : "Pin outline"), shortcut: "⌘4")
-                            .onHover { pinHovering = $0 }
-                            .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: pinHovering)
+                            .accessibilityIdentifier("outline.sidebar")
+                            .accessibilityLabel(L10n.text("Show in Sidebar"))
+                            .learningHelp(L10n.text("Show in Sidebar"), shortcut: "⌘0")
                     }.padding(.horizontal, panelWidth < 70 ? 0 : 10).padding(.top, 6).padding(.bottom, 4)
                     ScrollViewReader { proxy in
                         ScrollView {
@@ -97,7 +82,7 @@ struct FloatingOutline: View {
                             }
                     }
                 } else {
-                    Button { workspace.sidePanel = .outline } label: {
+                    Button { workspace.sidebarVisible = true } label: {
                         VStack(alignment: .leading, spacing: 11) {
                             ForEach(navigation.minimapBuckets(), id: \.lowerBound) { bucket in
                                 let active = workspace.activeOutlineIndex.map { bucket.contains($0) } ?? false
@@ -132,8 +117,6 @@ struct FloatingOutline: View {
                 if inside {
                     hovering = true
                 } else {
-                    suppressedUntilExit = false
-                    pinHovering = false
                     dismissTask = Task {
                         do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
                         hovering = false

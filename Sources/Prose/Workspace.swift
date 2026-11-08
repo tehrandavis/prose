@@ -13,7 +13,6 @@ struct DiagnosticItem: Identifiable {
 }
 
 enum EditorLayout: String { case writing, split, preview }
-enum SidePanel { case outline }
 
 @MainActor
 final class Workspace: ObservableObject {
@@ -96,9 +95,23 @@ final class Workspace: ObservableObject {
         }
     }
 
-    @Published var sidePanel: SidePanel? {
-        didSet { recordOperation("sidebar.changed", ["panel": sidePanel == .outline ? "outline" : "closed"]) }
+    /// The left column with the project's files and the outline.
+    @Published var sidebarVisible = false {
+        didSet {
+            if sidebarVisible != oldValue {
+                recordOperation("sidebar.changed", ["visible": String(sidebarVisible)])
+            }
+        }
     }
+
+    /// The folder or library document shown in the sidebar, if any.
+    @Published var project: OpenProject?
+    /// Bumped after Prose or another app changes files in the project.
+    @Published var projectRevision = 0
+    lazy var projectStore = ProjectStore(directory: stateDirectory.appendingPathComponent("Projects"))
+    /// Opens a file Prose does not edit, such as a PDF or an image. Tests replace it.
+    var previewFile: (URL) -> Void = { QuickLookPreview.shared.show($0) }
+    var projectWatcher: ProjectWatcher?
 
     @Published var checksOpen = false {
         didSet { recordOperation("checks.visibility", ["open": String(checksOpen)]) }
@@ -674,7 +687,7 @@ final class Workspace: ObservableObject {
         }
     }
 
-    private func present(_ panel: NSSavePanel, completion: @escaping @MainActor (URL) -> Void) {
+    func present(_ panel: NSSavePanel, completion: @escaping @MainActor (URL) -> Void) {
         guard let window = window ?? editor?.window, window.attachedSheet == nil else {
             return
         }
@@ -780,7 +793,12 @@ final class Workspace: ObservableObject {
             } else if !preservingMain {
                 navigationHistory.removeAll()
             }
-            mainFileURL = preservingMain && url != previousMain ? previousMain : nil
+            if let main = projectMain(for: url) {
+                // A project compiles its main entry, whichever file is open.
+                mainFileURL = main.standardizedFileURL == url.standardizedFileURL ? nil : main
+            } else {
+                mainFileURL = preservingMain && url != previousMain ? previousMain : nil
+            }
             fileURL = url
             text = content
             savedText = content
@@ -790,6 +808,7 @@ final class Workspace: ObservableObject {
             if let managedDocumentID {
                 library.noteOpened(managedDocumentID)
             }
+            updateProject(for: url)
             documentVersion += 1
             selection = NSRange(location: 0, length: 0)
             editor?.load(content, selection: selection)
@@ -861,7 +880,7 @@ final class Workspace: ObservableObject {
         previewStale = true
         paletteOpen = false
         checksOpen = false
-        sidePanel = nil
+        project = nil
         message = nil
         libraryOpen = false
         saveRecovery()
@@ -1157,11 +1176,13 @@ final class Workspace: ObservableObject {
             closePalette()
         case "preview": layout = .preview
             closePalette()
-        case "outline": sidePanel = sidePanel == .outline ? nil : .outline
+        case "outline": sidebarVisible.toggle()
             closePalette()
         case "outlineExpand", "outlineCollapse": expandOutline(command.id == "outlineExpand")
-            sidePanel = .outline
+            sidebarVisible = true
             closePalette()
+        case "openFolder": closePalette()
+            openFolderPanel()
         case "diagnostics": closePalette()
             checksOpen.toggle()
         case "restart": closePalette()

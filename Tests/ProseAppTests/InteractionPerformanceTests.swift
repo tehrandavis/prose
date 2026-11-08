@@ -53,24 +53,20 @@ extension WritingFlowTests {
             .init(title: "First", level: 1, offset: 0),
             .init(title: "Second", level: 2, offset: 16),
         ]
-        app.workspace.sidePanel = .outline
         await app.layout()
+        // The floating outline overlays the margin without moving the text.
         #expect(scroll.convert(scroll.bounds, to: nil) == frame)
         #expect(editor.textContainerInset == inset)
-        app.workspace.layout = .split
+        // The sidebar is a column: the editor narrows, its text inset stays.
+        app.workspace.sidebarVisible = true
         await app.layout()
-        let pin = try #require(descendants(app.window.contentView).compactMap { $0 as? HelpAnchor }
-            .first { $0.title == L10n.text("Unpin outline") })
-        let pinFrame = pin.convert(pin.bounds, to: nil)
-        let sourceLeadingEdge = editor.convert(NSPoint(x: editor.textContainerInset.width, y: 0), to: nil).x
-        #expect(
-            pinFrame.maxX <= sourceLeadingEdge,
-            "The pinned compact rail must fit beside the first source character",
-        )
+        let narrowed = scroll.convert(scroll.bounds, to: nil)
+        #expect(narrowed.minX > frame.minX + 200)
+        #expect(narrowed.maxX == frame.maxX)
         app.workspace.layout = .writing
         await app.layout()
         app.workspace.jump(to: 16)
-        app.workspace.sidePanel = nil
+        app.workspace.sidebarVisible = false
         app.workspace.togglePalette()
         await app.layout()
         let dockFrame = scroll.convert(scroll.bounds, to: nil)
