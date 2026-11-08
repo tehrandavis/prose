@@ -4,10 +4,13 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 license = "MIT"
-description = "Per-block Typst rendering for Prose's Writing mode. Phase 2 spike: library and measurement command, not yet linked into the app."
+description = "Per-block Typst rendering for Prose's Writing mode, behind a small C ABI."
 
 [lib]
-crate-type = ["rlib"]
+# staticlib: linked into the macOS app (Phase 2, Step B). It also carries the
+# syntax bridge, so the app links one Rust library and one Rust runtime.
+# rlib: the render-spike command and the tests use the Rust API.
+crate-type = ["staticlib", "rlib"]
 
 [[bin]]
 name = "render-spike"
@@ -19,9 +22,28 @@ typst = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v
 typst-layout = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }
 typst-svg = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }
 typst-kit = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1", features = ["embedded-fonts", "scan-fonts"] }
+# Glyph outlines for ink bounds. The same version Typst already uses.
+ttf-parser = "0.25.1"
+# Prose's parser bridge, re-exported so the static library exports
+# lb_syntax_api as well as prose_render_api.
+prose-syntax = { path = "../SyntaxBridge" }
 
 [profile.release]
 opt-level = 3
 debug = false
 lto = "thin"
 codegen-units = 1
+# panic = "unwind" (the default) lets every C entry point catch a panic
+# instead of aborting the app.
+
+# Stripping host proc-macro dylibs can leave them unloadable with newer Xcode
+# linkers ("mis-aligned LINKEDIT string pool"); they never ship.
+[profile.release.build-override]
+strip = "none"
+
+# The syntax bridge asks for typst-syntax 0.15.1 from crates.io. Point it at
+# the same fork tag as Typst above, so Cargo builds one copy of the parser.
+[patch.crates-io]
+typst-syntax = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }
+typst-timing = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }
+typst-utils = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }

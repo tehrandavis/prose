@@ -1470,10 +1470,19 @@ dependencies = [
 name = "prose-render"
 version = "0.1.0"
 dependencies = [
+ "prose-syntax",
+ "ttf-parser",
  "typst",
  "typst-kit",
  "typst-layout",
  "typst-svg",
+]
+
+[[package]]
+name = "prose-syntax"
+version = "0.1.0"
+dependencies = [
+ "typst-syntax",
 ]
 
 [[package]]
