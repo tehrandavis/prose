@@ -488,7 +488,7 @@ extension WritingFlowTests {
         await app.layout()
         try await waitForJavaScript(
             web,
-            condition: "getComputedStyle(document.getElementById('typst-app')).backgroundColor === 'rgb(250, 250, 250)'",
+            condition: "getComputedStyle(document.getElementById('typst-app')).backgroundColor === 'rgb(245, 245, 247)'",
         )
         // Query the actual hit-tested gap between two rendered pages, rather
         // than merely checking the inline body style (which CSS can override).
@@ -511,7 +511,7 @@ extension WritingFlowTests {
             return 'missing background';
         })()
         """) as? String
-        #expect(gapColor == "rgb(250, 250, 250)")
+        #expect(gapColor == "rgb(245, 245, 247)")
         #expect(try await web
             .evaluateJavaScript("getComputedStyle(document.querySelector('.typst-page-outer')).fill") as? String ==
             "none")

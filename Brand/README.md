@@ -6,8 +6,9 @@ The Prose icon is an italic serif capital P with a blue text caret, on a white r
 |-|-|
 | `Prose/icon-1024.png` | Source artwork: a 1254-pixel opaque PNG, the tile on a black surround |
 | `Prose/icon-macos-1024.png` | Transparent master on the macOS icon grid: an 824-pixel tile on a 1024-pixel canvas |
-| `../Resources/AppIcon.icns`, `../Resources/AppIconLight.icns` | macOS app and Dock icons, 16 to 1024 pixels. The dark and light files hold the same artwork for now |
-| `../iPad/Assets.xcassets/AppIcon.appiconset/icon.png`, `icon-dark.png` | Opaque, full-bleed iPad icons |
+| `Prose/icon-macos-dark-1024.png` | Dark master: the neutral paper and letter swap, the blue caret and wave stay. The script derives it; it is not hand-drawn |
+| `../Resources/AppIconLight.icns`, `../Resources/AppIcon.icns` | macOS Dock icons for light and dark appearances, 16 to 1024 pixels. `AppIcon.icns` is also the Finder icon |
+| `../iPad/Assets.xcassets/AppIcon.appiconset/icon.png`, `icon-dark.png` | Opaque, full-bleed iPad icons, light and dark |
 | `../Sources/ProseCore/Resources/Templates/prose-mark.png`, `../Examples/prose-mark.png` | 256-pixel mark in the header of the welcome guide |
 
 ## Regeneration

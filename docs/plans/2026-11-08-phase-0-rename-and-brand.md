@@ -79,7 +79,7 @@ Both `Cargo.lock` files change with the crate names.
 | `welcome-cover.png`, `welcome-cover.zh-Hans.png` (thumbnails that show the Sigma mark) | Regenerated from the new welcome guide |
 | `Brand/README.md` | Rewritten for the Prose icon |
 
-The source icon is a 1254-pixel opaque PNG: a white rounded tile on black. The script cuts the tile out of the black surround with a flood fill from the edges, softens the edge, and scales the tile to the macOS grid (an 824-pixel tile on a 1024-pixel canvas). The dark and light Dock variants use the same artwork for now. `DockIconController` still switches between the two files, so a dark variant can be added later without code changes.
+The source icon is a 1254-pixel opaque PNG: a white rounded tile on black. The script cuts the tile out of the black surround with a flood fill from the edges, softens the edge, and scales the tile to the macOS grid (an 824-pixel tile on a 1024-pixel canvas). `AppIconLight.icns` holds the source artwork. `AppIcon.icns`, the dark Dock icon, is derived: neutral pixels (paper and letter) swap lightness and the blue caret and wave stay. `DockIconController` switches between them, and a test requires the two to differ. A hand-drawn dark icon can replace the derived one later.
 
 ### Welcome guide
 

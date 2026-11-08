@@ -5,16 +5,16 @@ The source is an opaque square PNG: a white rounded tile on a black surround.
 This script cuts the tile out of the surround, scales it to the macOS icon grid
 (an 824-pixel tile on a 1024-pixel canvas) and writes:
 
-- Resources/AppIcon.icns and Resources/AppIconLight.icns (Dock, dark and light)
+- Resources/AppIconLight.icns, the source artwork, and Resources/AppIcon.icns,
+  a dark variant with dark paper and a light letter (Dock, light and dark)
 - iPad/Assets.xcassets/AppIcon.appiconset/icon.png and icon-dark.png
-- Brand/Prose/icon-macos-1024.png (transparent master)
+- Brand/Prose/icon-macos-1024.png and icon-macos-dark-1024.png (transparent masters)
 - the welcome-guide mark, prose-mark.png, in the templates and Examples/
 
 Requires Pillow, numpy, scipy and macOS iconutil. The app build uses the committed
 outputs and does not run this script.
 """
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -55,6 +55,22 @@ def place(tile):
     return canvas
 
 
+def darken(image):
+    """Swap the neutral paper and ink; keep the saturated caret and wave."""
+    rgba = np.asarray(image.convert('RGBA')).astype(np.float64) / 255
+    rgb, alpha = rgba[..., :3], rgba[..., 3:]
+    # Chroma, not saturation: the dark navy letter has little chroma but a
+    # high saturation ratio, and it must swap with the paper.
+    chroma = rgb.max(axis=2, keepdims=True) - rgb.min(axis=2, keepdims=True)
+    neutral = np.clip(1 - (chroma - 0.12) / 0.14, 0, 1)
+    luminance = rgb @ np.array([0.2126, 0.7152, 0.0722])
+    paper = np.array([0x2A, 0x2A, 0x2E]) / 255
+    ink = np.array([0xEE, 0xEC, 0xF2]) / 255
+    swapped = paper + (ink - paper) * (1 - luminance[..., None])
+    result = rgb * (1 - neutral) + swapped * neutral
+    return Image.fromarray((np.concatenate([result, alpha], axis=2) * 255).round().astype(np.uint8), 'RGBA')
+
+
 def icns(master, destination):
     with tempfile.TemporaryDirectory() as directory:
         iconset = Path(directory) / 'AppIcon.iconset'
@@ -70,8 +86,10 @@ def icns(master, destination):
 def main():
     master = place(cut_tile(Image.open(SOURCE)))
     master.save(ROOT / 'Brand/Prose/icon-macos-1024.png')
-    icns(master, ROOT / 'Resources/AppIcon.icns')
-    shutil.copyfile(ROOT / 'Resources/AppIcon.icns', ROOT / 'Resources/AppIconLight.icns')
+    dark = darken(master)
+    dark.save(ROOT / 'Brand/Prose/icon-macos-dark-1024.png')
+    icns(master, ROOT / 'Resources/AppIconLight.icns')
+    icns(dark, ROOT / 'Resources/AppIcon.icns')
     # iPadOS masks the icon itself and rejects transparency: use the full tile.
     tile = cut_tile(Image.open(SOURCE))
     inset = round(tile.width * 0.09)  # crop inside the rounded corners
@@ -79,8 +97,8 @@ def main():
     paper = Image.new('RGBA', square.size, (244, 243, 247, 255))
     square = Image.alpha_composite(paper, square).convert('RGB')
     square = square.resize((1024, 1024), Image.LANCZOS)
-    for name in ('icon.png', 'icon-dark.png'):
-        square.save(ROOT / 'iPad/Assets.xcassets/AppIcon.appiconset' / name)
+    square.save(ROOT / 'iPad/Assets.xcassets/AppIcon.appiconset/icon.png')
+    darken(square).convert('RGB').save(ROOT / 'iPad/Assets.xcassets/AppIcon.appiconset/icon-dark.png')
     mark = master.resize((256, 256), Image.LANCZOS)
     for destination in (ROOT / 'Sources/ProseCore/Resources/Templates/prose-mark.png', ROOT / 'Examples/prose-mark.png'):
         mark.save(destination, optimize=True)

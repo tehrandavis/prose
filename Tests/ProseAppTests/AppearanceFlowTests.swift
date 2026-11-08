@@ -65,7 +65,7 @@ extension WritingFlowTests {
             let appearance = editor.effectiveAppearance
             #expect(appearance.bestMatch(from: [.aqua, .darkAqua]) == (preference == .dark ? .darkAqua : .aqua))
             #expect(resolvedHex(editor.backgroundColor, appearance: appearance) ==
-                (preference == .dark ? 0x1C1F23 : 0xFFFFFF))
+                (preference == .dark ? 0x262626 : 0xFFFFFF))
             #expect(resolvedHex(Theme.sourceText, appearance: appearance) ==
                 (preference == .dark ? 0xD5D9DE : 0x37474F))
             #expect(resolvedHex(syntaxColor, appearance: appearance) == (preference == .dark ? 0xD5D9DE : 0x37474F))
@@ -97,7 +97,7 @@ extension WritingFlowTests {
             await app.layout()
             #expect(editor.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == inherited)
             #expect(resolvedHex(editor.backgroundColor, appearance: editor.effectiveAppearance) ==
-                (inherited == .darkAqua ? 0x1C1F23 : 0xFFFFFF))
+                (inherited == .darkAqua ? 0x262626 : 0xFFFFFF))
             #expect(editor.string == text)
         }
         app.window.appearance = nil
