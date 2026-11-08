@@ -3,7 +3,7 @@
 #set par(leading: 0.8em)
 #set heading(numbering: "1.")
 
-= 给想法一点Prose
+= 给想法一点留白
 
 好的文字，始于一个安静的地方。
 

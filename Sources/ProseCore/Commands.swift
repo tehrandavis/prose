@@ -894,7 +894,7 @@ public struct WritingCommand: Identifiable, Sendable {
             "p",
             "Content Padding",
             "Add space around a content block.",
-            "pad padding 内边距 Prose",
+            "pad padding 内边距 留白",
             fields: [.init("amount", "Padding · pt", "12")],
             placement: .block,
             documentation: "layout/pad/",

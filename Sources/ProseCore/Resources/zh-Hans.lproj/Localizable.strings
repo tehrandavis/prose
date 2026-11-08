@@ -8,8 +8,8 @@
 "1 document" = "1 篇文稿";
 "// Write code here" = "// 在这里写代码";
 "A place for your next idea" = "给下一个想法留个位置";
-"A quiet space for your words." = "Prose中的文字，安静地写作。";
-"About Prose" = "关于Prose";
+"A quiet space for your words." = "安静的写作空间。";
+"About Prose" = "关于 Prose";
 "Add a copy of a source document to your library." = "将源文稿的副本添加到文稿库。";
 "Add a heading level to the current paragraph." = "为当前段落添加标题层级。";
 "Add a subscript to the selected expression." = "为选中的表达式添加下标。";
@@ -90,7 +90,7 @@
 "Connecting" = "正在连接";
 "Connecting to packages.typst.org…" = "正在连接 packages.typst.org…";
 "Content Alignment" = "内容对齐";
-"Content Padding" = "内容Prose";
+"Content Padding" = "内容留白";
 "Contents" = "目录";
 "Copy" = "复制";
 "Copy the selected original Typst source." = "复制选中的原始 Typst 源码。";
@@ -201,7 +201,7 @@
 "Heading Numbers" = "标题编号";
 "Heading level · 1–6" = "标题层级 · 1–6";
 "Headings, images, equations and tables" = "标题、图片、公式与表格";
-"Hide Prose" = "隐藏Prose";
+"Hide Prose" = "隐藏 Prose";
 "Highlight" = "高亮";
 "Highlight content with a pale background and padding." = "用浅色背景和内边距突出一段内容。";
 "Highlight the selected text." = "为选中的文字加上背景标记。";
@@ -241,12 +241,12 @@
 "Insert a vector with vertically arranged entries." = "插入竖向排列的向量元素。";
 "Insert an $equation$ within a paragraph." = "在段落中插入 $公式$。";
 "Insert an arrow between two expressions." = "插入从一个表达式到另一个表达式的箭头。";
-"Insert horizontal space within a line." = "在同一行中插入指定宽度的Prose。";
+"Insert horizontal space within a line." = "在同一行中插入指定宽度的留白。";
 "Insert into Document" = "插入文稿";
 "Insert set membership and the real number field." = "插入集合属于关系与实数域。";
 "Insert subscript text, such as a chemical formula." = "插入下标文字，例如化学式。";
 "Insert superscript text for ordinals or units." = "插入上标文字，例如序数或单位。";
-"Insert vertical space between content blocks." = "在内容块之间插入指定高度的Prose。";
+"Insert vertical space between content blocks." = "在内容块之间插入指定高度的留白。";
 "Insert within body text or a single equation, without crossing code or comments." = "请在正文或同一个公式内插入，避免跨越代码或注释区域。";
 "Integral" = "积分";
 "Integrations" = "集成";
@@ -337,7 +337,7 @@
 "Preview Updated" = "排版已更新";
 "Preview failed to load: %@" = "预览加载失败：%@";
 "Preview temporarily unavailable: %@" = "预览暂时不可用：%@";
-"Quit Prose" = "退出Prose";
+"Quit Prose" = "退出 Prose";
 "Quote a passage worth keeping." = "引用一段值得保留的文字。";
 "Read the Preview" = "阅读成稿";
 "Read the finished pages in the whole window." = "用整个窗口查看排版结果。";
@@ -385,22 +385,22 @@
 "Search your writing" = "搜索文稿";
 "Second item" = "第二项";
 "Second step" = "第二步";
-"See headings and sections in the left margin without moving your text." = "在左侧Prose中查看标题与章节，不移动正文。";
+"See headings and sections in the left margin without moving your text." = "在左侧留白中查看标题与章节，不移动正文。";
 "Select All" = "全选";
 "Select the whole document." = "选中整篇文稿。";
 "Separate columns with commas and rows with semicolons. Tab moves between entries." = "逗号分隔列，分号分隔行；Tab 在元素之间移动。";
 "Separate sections with a fine rule." = "用一条细线划分文章内容。";
 "Set a language code for hyphenation and generated headings." = "设置语言代码，影响断词和自动生成的标题。";
 "Set an equation on its own line with room to breathe." = "让公式独占一行，保留清晰的呼吸空间。";
-"Set consistent margins at the top of the document." = "在文稿顶部设置统一的页面Prose。";
+"Set consistent margins at the top of the document." = "在文稿顶部设置统一的页面留白。";
 "Set the PDF title and author." = "设置 PDF 的标题和作者。";
 "Set the body font size in the finished document." = "设置排版输出的正文字号。";
-"Set the extra space between lines of text." = "设置相邻文字行之间的额外Prose。";
+"Set the extra space between lines of text." = "设置相邻文字行之间的额外留白。";
 "Set the horizontal alignment of a content block." = "设置一段内容的水平对齐方式。";
 "Set the paper size at the top of the document." = "在文稿顶部设置纸张。";
 "Set the selection in _italics_." = "用 _文字_ 设置斜体。";
 "Set the selection's color with a hexadecimal value." = "用十六进制色值设置选中文字的颜色。";
-"Set the space between paragraphs." = "设置段落之间的Prose。";
+"Set the space between paragraphs." = "设置段落之间的留白。";
 "Set units or mathematical text in upright letterforms." = "让单位或数学文字使用直立字形。";
 "Sets & Number Fields" = "集合与数域";
 "Settings" = "设置";
@@ -667,10 +667,10 @@
 // Template-first creation
 "Choose a blank page or a template for your next idea." = "为下一个想法选择空白页或模板。";
 "Start here" = "从这里开始";
-"A small guide to Prose, with equations, a diagram and code. Make it your own." = "一份Prose写作手记，包含公式、图解和代码。写成你自己的样子。";
+"A small guide to Prose, with equations, a diagram and code. Make it your own." = "一份 Prose 写作手记，包含公式、图解和代码。写成你自己的样子。";
 "Just a page and your next thought." = "一张空白页，等待你的下一个想法。";
 "Included · works offline" = "应用内置 · 离线可用";
-"Create your own copy of the Prose guide" = "创建属于你的Prose写作手记";
+"Create your own copy of the Prose guide" = "创建属于你的 Prose 写作手记";
 "Start with a blank page" = "从空白页开始";
 "Expand All Headings" = "展开全部标题";
 "Collapse All Headings" = "折叠全部标题";
@@ -709,7 +709,7 @@
 "Keep the latest 7 source snapshots on this Mac. No snapshots are created while a document is unchanged." = "在本机保留最新 7 个源文稿快照。文稿没有变化时不创建快照。";
 "Compare and restore recent versions of this source document." = "对比并恢复当前源文稿的近期版本。";
 "Light" = "浅色";
-"From Prose" = "从Prose开始";
+"From Prose" = "从 Prose 开始";
 "From the community" = "来自社区";
 "Browsing the included catalog · Checking for updates…" = "浏览内置目录 · 正在检查更新……";
 "Offline · Browsing the included catalog" = "离线 · 浏览内置目录";
@@ -889,7 +889,7 @@
 
 "Disconnect Coding Agent" = "断开编程智能体";
 
-"Enable a local coding agent to read and edit all documents in your library while Prose is running. You can disconnect at any time." = "启用连接后，本机编程智能体可以在Prose运行时读取和编辑文稿库里的全部文稿。你可以随时断开连接。";
+"Enable a local coding agent to read and edit all documents in your library while Prose is running. You can disconnect at any time." = "启用连接后，本机编程智能体可以在 Prose 运行时读取和编辑文稿库里的全部文稿。你可以随时断开连接。";
 
 "Read Only" = "只读";
 
