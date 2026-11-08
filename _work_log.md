@@ -33,3 +33,12 @@ Open items:
 - One preview test still times out occasionally under load (about one run in three); not reproduced alone.
 - Writing and Focus modes are placeholders until Phases 3 and 4.
 - `.bib` files open in Quick Look; editing them needs a non-Typst buffer.
+
+## 2026-11-08: Phase 2 engine spike
+
+- Spike note and results: `docs/plans/2026-11-08-phase-2-engine-spike.md`. New crate `Engine/RenderBridge` (`prose-render`) with the `render-spike` command and a fixture test; not linked into the app.
+- Every pass mark met. SICP: all 3,671 blocks render, median 0.9 ms, p95 4.9 ms, no failures, 100 percent of typed glyphs map back to source. War and Peace sample: median 0.6 ms. Thesis fixture: heading and equation numbers and reference texts match the full document.
+- Three fixes found on the way: references to outside labels use stubs filled with text read from the full document's links; an invisible element before each block keeps a leading label off the stubs; small vertical margins stop descenders clipping.
+- Fixed a Phase 0 slip: `scripts/make-app-icon.py` was not classified in the CI path table.
+
+Next: Phase 2 proper (C ABI, cache, background rendering), using the spike's findings.
