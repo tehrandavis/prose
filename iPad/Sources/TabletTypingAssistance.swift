@@ -1,4 +1,4 @@
-import LeftBlankCore
+import ProseCore
 import UIKit
 
 extension TabletWorkspace {

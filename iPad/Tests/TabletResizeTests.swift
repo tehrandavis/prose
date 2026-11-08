@@ -1,6 +1,6 @@
 import Foundation
-import LeftBlankCore
-@testable import LeftBlankTablet
+import ProseCore
+@testable import ProseTablet
 import SwiftUI
 import Testing
 import UIKit

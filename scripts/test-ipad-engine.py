@@ -141,7 +141,7 @@ def verify(library, scratch):
             })
             assert any(item["name"] == "Shared engine" for item in symbols), symbols
             preview = engine.command("tinymist.doStartPreview", [[
-                "--task-id=leftblank", "--data-plane-host=127.0.0.1:0",
+                "--task-id=prose", "--data-plane-host=127.0.0.1:0",
                 "--control-plane-host=127.0.0.1:0", "--no-open",
                 "--partial-rendering=true", "--invert-colors=never", str(source),
             ]])
@@ -170,7 +170,7 @@ def verify(library, scratch):
             assert second_bytes != first_bytes, "Export ignored the in-memory edit"
             # The engine must compile the open buffer without writing over disk.
             assert source.read_text() == original
-            engine.command("tinymist.doKillPreview", ["leftblank"])
+            engine.command("tinymist.doKillPreview", ["prose"])
         finally:
             engine.close()
     print("PASS: in-process LSP, outline, loopback preview, live edits, PDF export and shutdown")
@@ -194,7 +194,7 @@ def verify_immediate_exports(library, scratch):
                     'uri': path.as_uri(), 'languageId': 'typst', 'version': 1, 'text': path.read_text(),
                 }})
             engine.command('tinymist.doStartPreview', [[
-                '--task-id=leftblank', '--data-plane-host=127.0.0.1:0',
+                '--task-id=prose', '--data-plane-host=127.0.0.1:0',
                 '--control-plane-host=127.0.0.1:0', '--no-open', str(source),
             ]])
             # The stale-include race needed a concurrent compile and hit about 1% of

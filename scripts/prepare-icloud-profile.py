@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate a Developer ID profile and derive only LeftBlank's required entitlements."""
+"""Validate a Developer ID profile and derive only Prose's required entitlements."""
 import argparse
 import datetime
 import hashlib
@@ -8,10 +8,10 @@ import plistlib
 import subprocess
 
 
-def entitlements(profile, team, identity, now, app='app.leftblank.writer'):
-    if app not in ('app.leftblank.writer', 'app.leftblank.writer.preview'):
-        raise ValueError('Unsupported LeftBlank application identity.')
-    container = 'iCloud.app.leftblank.writer'
+def entitlements(profile, team, identity, now, app='com.tehrandavis.prose'):
+    if app not in ('com.tehrandavis.prose', 'com.tehrandavis.prose.preview'):
+        raise ValueError('Unsupported Prose application identity.')
+    container = 'iCloud.com.tehrandavis.prose'
     if profile.get('TeamIdentifier') != [team]:
         raise ValueError('Provisioning profile team does not match signing team.')
     if profile.get('ExpirationDate', datetime.datetime.min) <= now:
@@ -32,7 +32,7 @@ def entitlements(profile, team, identity, now, app='app.leftblank.writer'):
         'com.apple.developer.ubiquity-container-identifiers': [container],
         'com.apple.developer.icloud-services': ['CloudDocuments'],
         'com.apple.developer.icloud-container-environment': 'Production',
-        'com.apple.developer.ubiquity-kvstore-identifier': f'{prefix}.app.leftblank.writer',
+        'com.apple.developer.ubiquity-kvstore-identifier': f'{prefix}.com.tehrandavis.prose',
     }
     allowed = profile.get('Entitlements', {})
     for key, requested in expected.items():
@@ -50,7 +50,7 @@ def entitlements(profile, team, identity, now, app='app.leftblank.writer'):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--app', choices=['app.leftblank.writer', 'app.leftblank.writer.preview'], default='app.leftblank.writer')
+    parser.add_argument('--app', choices=['com.tehrandavis.prose', 'com.tehrandavis.prose.preview'], default='com.tehrandavis.prose')
     parser.add_argument('--profile', type=Path, required=True)
     parser.add_argument('--team', required=True)
     parser.add_argument('--identity', required=True)
@@ -60,7 +60,7 @@ def main():
     profile = plistlib.loads(decoded)
     result = entitlements(profile, args.team, args.identity, datetime.datetime.utcnow(), args.app)
     args.output.write_bytes(plistlib.dumps(result))
-    print('Validated Developer ID profile for LeftBlank iCloud Documents and preferences.')
+    print('Validated Developer ID profile for Prose iCloud Documents and preferences.')
 
 
 if __name__ == '__main__':

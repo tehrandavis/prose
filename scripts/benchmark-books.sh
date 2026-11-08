@@ -12,17 +12,17 @@ from pathlib import Path
 for name in ('war-and-peace.json', 'sicp.json', 'syntax.json', 'summary.md', 'book-preview-1.png', 'book-preview-224.png', 'book-preview-448.png'):
     (Path('build/benchmarks') / name).unlink(missing_ok=True)
 PYCLEAN
-LEFTBLANK_INTEGRATION=1 \
-  LEFTBLANK_LARGE_FIXTURE="$PWD/Examples/Books/WarAndPeace/war-and-peace-highlighted.typ" \
-  LEFTBLANK_PERFORMANCE_REPORT="$PWD/build/benchmarks/war-and-peace.json" \
+PROSE_INTEGRATION=1 \
+  PROSE_LARGE_FIXTURE="$PWD/Examples/Books/WarAndPeace/war-and-peace-highlighted.typ" \
+  PROSE_PERFORMANCE_REPORT="$PWD/build/benchmarks/war-and-peace.json" \
   swift test --skip-build --enable-code-coverage --filter realMultiMegabyteDocumentNavigationScrollingAndTyping || status=1
-LEFTBLANK_INTEGRATION=1 LEFTBLANK_CODE_WORD="define size" LEFTBLANK_SEARCH_WORD=procedure LEFTBLANK_BENCH_EXPORT=1 \
-  LEFTBLANK_LARGE_FIXTURE="$PWD/Examples/Books/SICP/main.typ" \
-  LEFTBLANK_PERFORMANCE_REPORT="$PWD/build/benchmarks/sicp.json" \
+PROSE_INTEGRATION=1 PROSE_CODE_WORD="define size" PROSE_SEARCH_WORD=procedure PROSE_BENCH_EXPORT=1 \
+  PROSE_LARGE_FIXTURE="$PWD/Examples/Books/SICP/main.typ" \
+  PROSE_PERFORMANCE_REPORT="$PWD/build/benchmarks/sicp.json" \
   swift test --skip-build --enable-code-coverage --filter realMultiMegabyteDocumentNavigationScrollingAndTyping || status=1
-LEFTBLANK_SYNTAX_REPORT="$PWD/build/benchmarks/syntax.json" \
+PROSE_SYNTAX_REPORT="$PWD/build/benchmarks/syntax.json" \
   swift test --skip-build --enable-code-coverage --filter bookLengthSourcesParseWithinBudget || status=1
-LEFTBLANK_INTEGRATION=1 LEFTBLANK_BOOK_PREVIEW=1 \
+PROSE_INTEGRATION=1 PROSE_BOOK_PREVIEW=1 \
   swift test --skip-build --enable-code-coverage --filter completeBookPreviewRemainsUsableInLargeWindow || status=1
 python3 - <<'PY'
 import json

@@ -1,13 +1,13 @@
 {
-  "bundle_id": "app.leftblank.writer",
+  "bundle_id": "com.tehrandavis.prose",
   "app_store_app_id": "6818442294",
   "platform": "IOS",
   "minimum_os": "17.0",
   "download_price": "0.00",
   "subscription": {
-    "product_id": "app.leftblank.writer.ipad.monthly",
-    "reference_name": "LeftBlank iPad Monthly",
-    "group_reference_name": "LeftBlank iPad",
+    "product_id": "com.tehrandavis.prose.ipad.monthly",
+    "reference_name": "Prose iPad Monthly",
+    "group_reference_name": "Prose iPad",
     "period": "ONE_MONTH",
     "base_territory": "USA",
     "base_price": "2.99",
@@ -19,17 +19,17 @@
     },
     "localizations": {
       "en-US": {
-        "name": "LeftBlank for iPad",
+        "name": "Prose for iPad",
         "description": "Write and typeset on iPad."
       },
       "zh-Hans": {
-        "name": "留白 iPad 版",
+        "name": "Prose iPad 版",
         "description": "在 iPad 上专注写作与排版。"
       }
     }
   },
-  "privacy_url": "https://leftblank.app/privacy.html",
-  "support_url": "https://github.com/leftblank-app/leftblank/issues",
+  "privacy_url": "https://github.com/tehrandavis/prose/privacy.html",
+  "support_url": "https://github.com/tehrandavis/prose/issues",
   "terms_url": "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
   "screenshots": {
     "en-US": [
@@ -44,7 +44,7 @@
     ]
   },
   "privacy_urls": {
-    "en-US": "https://leftblank.app/privacy.html",
-    "zh-Hans": "https://leftblank.app/privacy.html?lang=zh"
+    "en-US": "https://github.com/tehrandavis/prose/privacy.html",
+    "zh-Hans": "https://github.com/tehrandavis/prose/privacy.html?lang=zh"
   }
 }

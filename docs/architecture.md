@@ -1,4 +1,4 @@
-# LeftBlank architecture
+# Prose architecture
 
 The architecture prioritizes native input, maintainability, offline writing and reuse of Tinymist. Integrations follow the observed behavior of pinned versions rather than assumptions about undocumented protocols.
 
@@ -7,7 +7,7 @@ The architecture prioritizes native input, maintainability, offline writing and 
 - Swift 6.2 or later (Xcode 26 or later) and macOS 14 or later, with arm64 builds.
 - Swift Package Manager separates core logic, the importable app library and a thin launcher so tests exercise production app code.
 - AppKit owns windows, menus, dialogs and text editing; SwiftUI composes layouts, lists and command interfaces.
-- Tinymist **0.15.8** is built from its pinned upstream commit with LeftBlank's checked-in patches (macOS native TLS and a VFS revision fix) and bundled with every Mac edition. It contains Typst 0.15.1.
+- Tinymist **0.15.8** is built from its pinned upstream commit with Prose's checked-in patches (macOS native TLS and a VFS revision fix) and bundled with every Mac edition. It contains Typst 0.15.1.
 - typst-syntax 0.15.1 (the same Typst fork) is linked into the app as a static library behind a small C ABI ([parser bridge](visual-editing.md#parser-typst-syntax-through-a-c-abi)). On iPad it is part of the embedded engine library.
 - The running app needs no Rust toolchain, Homebrew or separate Typst installation. Uncached external packages may require a network download; cached packages work offline.
 - A small local set of Phosphor icons is bundled with its license.
@@ -46,7 +46,7 @@ Positions use Foundation `NSString` / `NSRange` UTF-16 units, consistent with th
 
 Full-buffer replacement is reserved for opening, external reload and deliberate formatting. Highlighting changes attributes without creating undo operations. Marked text delays styling and completion application. Insertion uses `NSTextView.insertText(_:replacementRange:)` and a single undo group. Because AppKit may create its undo manager only after the first edit, observation attaches at edit time and synchronizes workspace state after undo/redo completes.
 
-Both editors are TextKit 2 views styled by one `SourceStyler` from `LeftBlankCore` ([editor styles](visual-editing.md#the-editor-now)). `SourceStyleEngine`, an actor, mirrors the buffer in `SyntaxTree` (typst-syntax, incremental) and returns the heading, strong, emphasis and raw runs of the paragraphs each batch of edits reparsed; the main thread sets them as fonts on the text storage and never waits for it. The laid-out text is the source itself: no hidden characters, attachments or substituted display text (a visual layer that did that was removed on 2026-10-09). Semantic colours are rendering attributes, so a reply never re-lays out text.
+Both editors are TextKit 2 views styled by one `SourceStyler` from `ProseCore` ([editor styles](visual-editing.md#the-editor-now)). `SourceStyleEngine`, an actor, mirrors the buffer in `SyntaxTree` (typst-syntax, incremental) and returns the heading, strong, emphasis and raw runs of the paragraphs each batch of edits reparsed; the main thread sets them as fonts on the text storage and never waits for it. The laid-out text is the source itself: no hidden characters, attachments or substituted display text (a visual layer that did that was removed on 2026-10-09). Semantic colours are rendering attributes, so a reply never re-lays out text.
 
 Indentation and comments use text-range transformations. Formatting uses the real LSP response with revision, session and range validation.
 
@@ -118,7 +118,7 @@ Functional tests use production windows, text views, workspace, WebKit and Tinym
 
 Coverage merges test-bundle profiles and deduplicates LCOV file/line records. All first-party production Swift must be accounted for; missing files fail the report, and overall coverage must reach 80%. Raw LLVM JSON, LCOV, file summaries and HTML remain available. Coverage does not replace behavioral assertions or real visual checks.
 
-Local scripts keep downloads, build outputs and test data inside the checkout. `build/LeftBlank.app` has a development signature. Release scripts import a Developer ID identity into a temporary keychain, sign helpers and the app, notarize, staple and validate with Gatekeeper. Release commits must already belong to main, and version tags must match `Info.plist`. Missing credentials or failed validation stop publication. See [signing](signing.md).
+Local scripts keep downloads, build outputs and test data inside the checkout. `build/Prose.app` has a development signature. Release scripts import a Developer ID identity into a temporary keychain, sign helpers and the app, notarize, staple and validate with Gatekeeper. Release commits must already belong to main, and version tags must match `Info.plist`. Missing credentials or failed validation stop publication. See [signing](signing.md).
 
 GitHub Actions uses macOS 15 arm64 runners, pinned action commits and pinned dependency checksums. PR/main jobs run functional tests, coverage and release builds. Version tags rerun verification, produce an arm64 ZIP plus SHA-256, and publish a GitHub Release. Permissions are limited to each job's needs.
 
@@ -139,7 +139,7 @@ Localization uses native resource bundles and observable language changes withou
 The pinned Tinymist 0.15.8 frontend combines partial SVG pages with an optional
 canvas fallback inside SVG foreignObjects. With SICP this creates hundreds of
 canvas surfaces under a root SVG over a million CSS pixels tall at wide-window
-zoom. Real-window acceptance exposed incorrect/blank composition. LeftBlank disables
+zoom. Real-window acceptance exposed incorrect/blank composition. Prose disables
 that optional `feat$canvas` mixin on registered preview documents and retains
 Tinymist's viewport-driven SVG patches, source mapping and continuous scrolling.
 This is a version-specific frontend adapter; the complete-book preview integration

@@ -1,4 +1,4 @@
-import LeftBlankCore
+import ProseCore
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers

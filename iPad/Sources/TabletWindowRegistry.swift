@@ -1,5 +1,5 @@
 import Foundation
-import LeftBlankCore
+import ProseCore
 
 /// Windows share history serialization, but keep editor and engine state separate.
 @MainActor

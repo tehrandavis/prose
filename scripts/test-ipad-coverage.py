@@ -19,7 +19,7 @@ class CoverageContracts(unittest.TestCase):
         self.addCleanup(scratch.cleanup)
         self.root = Path(scratch.name)
         self.app = self.source("iPad/Sources/App.swift")
-        self.core = self.source("Sources/LeftBlankCore/Core.swift")
+        self.core = self.source("Sources/ProseCore/Core.swift")
         self.source(coverage.DECLARATION_ONLY)
         self.output = self.root / "output"
 

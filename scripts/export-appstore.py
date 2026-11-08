@@ -15,12 +15,12 @@ def run(*args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--app', type=Path, default=Path('build/LeftBlank.app'))
+    parser.add_argument('--app', type=Path, default=Path('build/Prose.app'))
     parser.add_argument('--profile', type=Path, required=True)
     parser.add_argument('--identity', required=True)
     parser.add_argument('--installer-identity', required=True)
     parser.add_argument('--keychain', required=True)
-    parser.add_argument('--output', type=Path, default=Path('build/LeftBlank-AppStore.pkg'))
+    parser.add_argument('--output', type=Path, default=Path('build/Prose-AppStore.pkg'))
     args = parser.parse_args()
     info_path = args.app / 'Contents/Info.plist'
     info = plistlib.loads(info_path.read_bytes())
@@ -28,8 +28,8 @@ def main():
     allowed = profile['Entitlements']
     team = profile['TeamIdentifier'][0]
     app_id = team + '.' + info['CFBundleIdentifier']
-    if info.get('LeftBlankDistribution') != 'appstore':
-        raise ValueError('Build with LEFTBLANK_DISTRIBUTION=appstore first')
+    if info.get('ProseDistribution') != 'appstore':
+        raise ValueError('Build with PROSE_DISTRIBUTION=appstore first')
     if (profile.get('Platform') != ['OSX'] or profile.get('ProvisionedDevices')
             or profile.get('ProvisionsAllDevices') or allowed.get('get-task-allow')
             or profile['ExpirationDate'] <= datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
@@ -38,8 +38,8 @@ def main():
     certs = [hashlib.sha1(cert).hexdigest().upper() for cert in profile['DeveloperCertificates']]
     if args.identity.upper() not in certs:
         raise ValueError('--identity must be the SHA-1 of a certificate included in the profile')
-    entitlements = plistlib.loads(Path('Resources/LeftBlank.AppStore.entitlements').read_bytes())
-    cloud = plistlib.loads(Path('Resources/LeftBlank.iCloud.entitlements.example').read_bytes())
+    entitlements = plistlib.loads(Path('Resources/Prose.AppStore.entitlements').read_bytes())
+    cloud = plistlib.loads(Path('Resources/Prose.iCloud.entitlements.example').read_bytes())
     cloud['com.apple.developer.ubiquity-kvstore-identifier'] = app_id
     for key, value in cloud.items():
         permitted = allowed.get(key)

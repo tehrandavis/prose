@@ -1,7 +1,7 @@
 import CoreText
 import Darwin
 import Foundation
-import LeftBlankCore
+import ProseCore
 
 @MainActor
 final class EmbeddedTinymist: TinymistTransport {
@@ -47,7 +47,7 @@ final class EmbeddedTinymist: TinymistTransport {
         // UI requests use asynchronous continuations; the main thread never joins this worker.
         DispatchQueue.global(qos: .default).async(qos: .default, flags: .enforceQoS) { [weak self] in
             let fonts = Self.fontDirectory()
-            let status = fonts.path.withCString { leftblank_tinymist_run(readFD, writeFD, $0) }
+            let status = fonts.path.withCString { prose_tinymist_run(readFD, writeFD, $0) }
             Task { @MainActor [weak self] in
                 guard let self else {
                     return

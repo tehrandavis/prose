@@ -157,7 +157,7 @@ jobs:
       cancel-in-progress: false
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      LEFTBLANK_DISTRIBUTION: appstore
+      PROSE_DISTRIBUTION: appstore
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -229,7 +229,7 @@ jobs:
         with:
           name: appstore-${{ inputs.tag || github.ref_name }}
           path: |
-            build/LeftBlank-AppStore.pkg
+            build/Prose-AppStore.pkg
             build/release-metadata.json
             build/appstore-submission.json
             build/appstore-source.json
@@ -266,5 +266,5 @@ jobs:
             gh release edit "$RELEASE_TAG" --draft=false --notes-file release/release-notes.md
           else
             gh release create "$RELEASE_TAG" release/*.zip release/*.sha256 --verify-tag \
-              --title "LeftBlank $RELEASE_TAG" --notes-file release/release-notes.md
+              --title "Prose $RELEASE_TAG" --notes-file release/release-notes.md
           fi

@@ -1,5 +1,5 @@
 import Foundation
-import LeftBlankCore
+import ProseCore
 
 extension TabletWorkspace {
     func schedulePreviewFollow() {

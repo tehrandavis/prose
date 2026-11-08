@@ -1,7 +1,7 @@
 import Foundation
-import LeftBlankCore
-@testable import LeftBlankTablet
-import LeftBlankTestSupport
+import ProseCore
+@testable import ProseTablet
+import ProseTestSupport
 import SwiftUI
 import Testing
 import UIKit

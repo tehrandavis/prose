@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>CFBundleIdentifier</key><string>app.leftblank.writer.preview</string>
-<key>CFBundleName</key><string>LeftBlank Preview</string>
-<key>CFBundleDisplayName</key><string>LeftBlank Preview</string>
-<key>SUFeedURL</key><string>https://github.com/leftblank-app/leftblank/releases/download/preview-latest/appcast.xml</string>
-<key>SUPublicEDKey</key><string>GpdnwyNX0wkQrGxB4efNZVIVOSKPcNHnlWZfe1dtV9Y=</string>
+<key>CFBundleIdentifier</key><string>com.tehrandavis.prose.preview</string>
+<key>CFBundleName</key><string>Prose Preview</string>
+<key>CFBundleDisplayName</key><string>Prose Preview</string>
+<key>SUFeedURL</key><string>https://github.com/tehrandavis/prose/releases/download/preview-latest/appcast.xml</string>
 <key>SUAllowsAutomaticUpdates</key><false/>
 <key>SUAutomaticallyUpdate</key><false/>
 <key>SUEnableSystemProfiling</key><false/>

@@ -1,5 +1,5 @@
 import Combine
-import LeftBlankCore
+import ProseCore
 import SwiftUI
 import UIKit
 
@@ -327,7 +327,7 @@ extension TabletWorkspace {
                 else {
                     return
                 }
-                _ = try await client.command("tinymist.scrollPreview", arguments: ["leftblank", [
+                _ = try await client.command("tinymist.scrollPreview", arguments: ["prose", [
                     "event": "panelScrollTo", "filepath": snapshot.url.path,
                     "line": position.line, "character": column,
                 ]])

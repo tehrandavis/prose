@@ -11,7 +11,7 @@ done
 python3 scripts/ipad_release.py --tag "$RELEASE_TAG"
 python3 scripts/ipad_release.py --tag "$RELEASE_TAG" --wait-for-ci 2700
 umask 077
-signing_dir=$(mktemp -d "$TMPDIR/leftblank-ipad-signing.XXXXXX")
+signing_dir=$(mktemp -d "$TMPDIR/prose-ipad-signing.XXXXXX")
 keychain="$signing_dir/signing.keychain-db"
 security list-keychains -d user > "$signing_dir/keychains.txt"
 set_keychains() {
@@ -69,27 +69,27 @@ test ! -e "$profile_destination" || { echo 'Refusing to overwrite an existing si
 profile_path="$profile_destination"
 cp "$signing_dir/profile.mobileprovision" "$profile_path"
 scripts/build-ipad.sh device
-env -u CC -u CXX xcodebuild -project iPad/LeftBlank.xcodeproj -scheme LeftBlank-iPad \
+env -u CC -u CXX xcodebuild -project iPad/Prose.xcodeproj -scheme Prose-iPad \
   -destination 'generic/platform=iOS' -derivedDataPath build/iPad \
   -clonedSourcePackagesDirPath .build/xcode-packages \
-  -archivePath build/iPad-release/LeftBlank.xcarchive \
+  -archivePath build/iPad-release/Prose.xcarchive \
   CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$team" CODE_SIGN_IDENTITY="$identity" \
-  LEFTBLANK_IPAD_PROVISIONING_PROFILE="$profile_uuid" OTHER_CODE_SIGN_FLAGS="--keychain $keychain" archive
-python3 scripts/ipad_release.py --tag "$RELEASE_TAG" --archive build/iPad-release/LeftBlank.xcarchive
+  PROSE_IPAD_PROVISIONING_PROFILE="$profile_uuid" OTHER_CODE_SIGN_FLAGS="--keychain $keychain" archive
+python3 scripts/ipad_release.py --tag "$RELEASE_TAG" --archive build/iPad-release/Prose.xcarchive
 python3 - "$signing_dir/export.plist" "$team" "$identity" "$profile_uuid" <<'PY'
 import pathlib, plistlib, sys
 path, team, identity, profile = sys.argv[1:]
 pathlib.Path(path).write_bytes(plistlib.dumps({
     'method': 'app-store-connect', 'destination': 'export', 'signingStyle': 'manual',
     'teamID': team, 'signingCertificate': identity,
-    'provisioningProfiles': {'app.leftblank.writer': profile},
+    'provisioningProfiles': {'com.tehrandavis.prose': profile},
     'manageAppVersionAndBuildNumber': False, 'uploadSymbols': True,
     'iCloudContainerEnvironment': 'Production',
 }))
 PY
-xcodebuild -exportArchive -archivePath build/iPad-release/LeftBlank.xcarchive \
+xcodebuild -exportArchive -archivePath build/iPad-release/Prose.xcarchive \
   -exportPath build/iPad-release/export -exportOptionsPlist "$signing_dir/export.plist"
-"${apple[@]}" upload --package build/iPad-release/export/LeftBlank.ipa
+"${apple[@]}" upload --package build/iPad-release/export/Prose.ipa
 if ! "${apple[@]}" submit; then
   "${apple[@]}" status > build/iPad-release/apple-status.json || true
   if [ -f build/iPad-release/review-prepared.json ]; then

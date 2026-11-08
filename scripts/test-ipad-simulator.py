@@ -206,7 +206,7 @@ class SimulatorContracts(unittest.TestCase):
             self.assertTrue(runner.test_device('11-inch', DEVICES[0][1], self.root / 'test.xctestrun',
                                              self.root, suite='unit', memory=True))
         command = next(call.args[0] for call in run.call_args_list if call.args[0][0] == 'xcodebuild')
-        self.assertIn('-only-testing:LeftBlankTabletTests', command)
+        self.assertIn('-only-testing:ProseTabletTests', command)
         self.assertIn('-derivedDataPath', command)
         self.assertEqual(command[command.index('-enableCodeCoverage') + 1], 'YES')
         self.assertNotIn('-enablePerformanceTestsDiagnostics', command)
@@ -364,12 +364,12 @@ class SimulatorContracts(unittest.TestCase):
         call = next(call for call in run.call_args_list if call.args[0][0] == 'xcodebuild')
         command = call.args[0]
         selected = [arg.split(':', 1)[1] for arg in command if arg.startswith('-only-testing:')]
-        self.assertEqual(selected, ['LeftBlankTabletTests', *runner.SMOKE_TESTS])
+        self.assertEqual(selected, ['ProseTabletTests', *runner.SMOKE_TESTS])
         self.assertTrue(2 <= len(runner.SMOKE_TESTS) <= 3)
         scenarios = (Path(__file__).resolve().parent.parent / 'iPad/UITests/WritingTests.swift').read_text()
         for test in runner.SMOKE_TESTS:
             target, case, name = test.split('/')
-            self.assertEqual((target, case), ('LeftBlankUITests', 'WritingTests'))
+            self.assertEqual((target, case), ('ProseUITests', 'WritingTests'))
             self.assertIn(f'func {name}()', scenarios)
         self.assertEqual(command[command.index('-enableCodeCoverage') + 1], 'NO')
         self.assertEqual(call.args[1], 600)
@@ -387,12 +387,12 @@ class SimulatorContracts(unittest.TestCase):
 
     def test_coverage_export_requires_fresh_run_and_includes_core_image(self):
         products = self.root / 'Build/Products'
-        app = products / 'Debug-iphonesimulator/LeftBlank.app'
+        app = products / 'Debug-iphonesimulator/Prose.app'
         app.mkdir(parents=True)
-        (app / 'LeftBlank.debug.dylib').touch()
-        framework = products / 'Debug-iphonesimulator/PackageFrameworks/LeftBlankCore.framework'
+        (app / 'Prose.debug.dylib').touch()
+        framework = products / 'Debug-iphonesimulator/PackageFrameworks/ProseCore.framework'
         framework.mkdir(parents=True)
-        (framework / 'LeftBlankCore').touch()
+        (framework / 'ProseCore').touch()
         injected = app / 'Frameworks/Testing.framework/Testing'
         injected.parent.mkdir(parents=True)
         injected.touch()
@@ -403,7 +403,7 @@ class SimulatorContracts(unittest.TestCase):
         profile.touch()
         with patch.object(runner, 'run', return_value=subprocess.CompletedProcess([], 0, stdout='real LCOV')) as run:
             runner.export_coverage(products / 'tests.xctestrun', DEVICES[0][1], self.root, '11-inch', 0)
-        self.assertIn(str(framework / 'LeftBlankCore'), run.call_args.args[0])
+        self.assertIn(str(framework / 'ProseCore'), run.call_args.args[0])
         self.assertNotIn(str(injected), run.call_args.args[0])
         self.assertEqual((self.root / '11-inch.lcov').read_text(), 'real LCOV')
 
@@ -411,8 +411,8 @@ class SimulatorContracts(unittest.TestCase):
         import plistlib
         bundle = self.prepare_bundle()
         bundle.write_bytes(plistlib.dumps({'TestConfigurations': []}))
-        for folder, image in [('iPad/Sources', 'LeftBlank.app/LeftBlank.debug.dylib'),
-                              ('Sources/LeftBlankCore', 'PackageFrameworks/LeftBlankCore.framework/LeftBlankCore')]:
+        for folder, image in [('iPad/Sources', 'Prose.app/Prose.debug.dylib'),
+                              ('Sources/ProseCore', 'PackageFrameworks/ProseCore.framework/ProseCore')]:
             base = self.root / folder
             base.mkdir(parents=True)
             (base / 'Source.swift').touch()
@@ -422,7 +422,7 @@ class SimulatorContracts(unittest.TestCase):
         with patch.object(runner, '__file__', str(self.root / 'scripts/ipad_simulator.py')):
             runner.configure_coverage(bundle)
         targets = plistlib.loads(bundle.read_bytes())['CodeCoverageBuildableInfos']
-        self.assertEqual([target['Name'] for target in targets], ['LeftBlank.app', 'LeftBlankCore.framework'])
+        self.assertEqual([target['Name'] for target in targets], ['Prose.app', 'ProseCore.framework'])
         self.assertTrue(all(target['IncludeInReport'] for target in targets))
         self.assertTrue(all('__TESTROOT__' in target['ProductPaths'][0] for target in targets))
 

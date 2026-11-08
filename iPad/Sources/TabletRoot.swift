@@ -1,4 +1,4 @@
-import LeftBlankCore
+import ProseCore
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -89,7 +89,7 @@ struct TabletRoot: View {
             }
         }
         .environment(\.locale, L10n.locale)
-        .onReceive(NotificationCenter.default.publisher(for: .leftblankLanguageChanged)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .proseLanguageChanged)) { _ in
             workspace.objectWillChange.send()
         }
         .fileImporter(isPresented: $importingProject, allowedContentTypes: [.folder]) { result in
@@ -123,7 +123,7 @@ struct TabletRoot: View {
             }
         }
         .alert(
-            L10n.text("LeftBlank"),
+            L10n.text("Prose"),
             isPresented: Binding(get: { workspace.message != nil }, set: {
                 if !$0 {
                     workspace.message = nil

@@ -23,7 +23,7 @@ import zipfile
 COMMIT = "bda03f79d6e2e8899ac2b5ca6a3732210e290a79"
 ARCHIVE_URL = f"https://codeload.github.com/sarabander/sicp/zip/{COMMIT}"
 ARCHIVE_SHA256 = "0cf3220c848fa74b90e3235ef352694df772839f96f459e5fbe8eb6dc78417a9"
-DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / ".tools/tmp/leftblank-sicp"
+DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / ".tools/tmp/prose-sicp"
 EXPECTED_COUNTS = {"code_blocks": 1122, "scheme_blocks": 1098, "math_expressions": 1356, "source_figures": 84, "footnotes": 339, "headings": 282}
 PRELUDE = r'''// SICP, second edition: a reading and editor-performance fixture.
 // Abelson and Sussman with Julie Sussman. HTML/figures by Andres Raba and
@@ -75,7 +75,7 @@ def sha256(data):
 
 def download_archive(cache):
     if not cache.exists():
-        request = urllib.request.Request(ARCHIVE_URL, headers={"User-Agent": "LeftBlank-fixture/1"})
+        request = urllib.request.Request(ARCHIVE_URL, headers={"User-Agent": "Prose-fixture/1"})
         with urllib.request.urlopen(request, timeout=60) as response:
             data = response.read(32 * 1024 * 1024 + 1)
         if len(data) > 32 * 1024 * 1024:

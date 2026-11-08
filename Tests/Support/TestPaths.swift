@@ -7,7 +7,7 @@ public enum TestPaths {
         #if os(iOS)
             // Device tests can write only inside their application sandbox.
             let root = FileManager.default.temporaryDirectory.appendingPathComponent(
-                "leftblank-tests",
+                "prose-tests",
                 isDirectory: true,
             )
         #else

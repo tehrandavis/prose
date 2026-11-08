@@ -1,16 +1,16 @@
-# Testing LeftBlank as a writing application
+# Testing Prose as a writing application
 
-LeftBlank's primary automated checks are feature integration tests, with an 80% production source-line coverage gate. Coverage is a useful floor; it cannot establish that a menu looks right or that a person can complete a workflow.
+Prose's primary automated checks are feature integration tests, with an 80% production source-line coverage gate. Coverage is a useful floor; it cannot establish that a menu looks right or that a person can complete a workflow.
 
 ## Running today
 
 Run `scripts/test.sh` from an SSD checkout. It exercises the real AppKit editor, SwiftUI hosting views, document storage, undo, Tinymist compilation and WebKit preview. Tests use isolated document directories and injected cloud stores, never a personal iCloud account. All native UI scenarios share one serialized suite because AppKit menus, field editors and sheet presentation are process-wide.
 
-The mandatory strict SwiftLint check rejects direct `Bundle.module` access outside `Sources/LeftBlankCore/CoreResources.swift`. Shared resources use `CoreResources.bundle` so installed apps resolve `Contents/Resources` before the development fallback. `scripts/test-swiftlint-policy.py` runs the pinned linter on known bad single-line, multiline and Foundation-qualified calls, plus allowed resolver code, comments and strings. These checks run on Mac and iPad source changes, regardless of whether a runtime scenario reaches the offending call.
+The mandatory strict SwiftLint check rejects direct `Bundle.module` access outside `Sources/ProseCore/CoreResources.swift`. Shared resources use `CoreResources.bundle` so installed apps resolve `Contents/Resources` before the development fallback. `scripts/test-swiftlint-policy.py` runs the pinned linter on known bad single-line, multiline and Foundation-qualified calls, plus allowed resolver code, comments and strings. These checks run on Mac and iPad source changes, regardless of whether a runtime scenario reaches the offending call.
 
 Every Mac-affecting pull request and main push also builds a Release app and cold-launches a relocated copy with the build-directory resource bundle hidden. The isolated library has saved, read-only MCP access so relaunch loads the authoring catalog. The check requires Chinese starter content, the application icon, a ready Tinymist service and a resumed MCP connection, then runs the authoring Hurl contract over the packaged helper's real HTTP listener. Its logs are retained as artifacts. Unit tests can find development resources; the packaged launch establishes that the installed app works without them. Hurl runs only in GitHub CI unless diagnosing a failed CI run.
 
-After nightly Mac validation succeeds, a separate job builds and notarizes LeftBlank Preview, validates its Developer ID signature and repeats the packaged launch and Hurl check before uploading the runnable app. Each nightly main run (and any manual `publish_preview` run) that passes Mac regression and App Store validation uploads a runnable Preview app for seven days and publishes it to the default nightly update channel; each Mac-affecting main push that passes Mac regression publishes the opt-in alpha channel. Neither channel waits for iPad results or the combined `build and test` gate; iPad failures still fail that required check. PRs cannot access release credentials. Tagged stable releases retain their separate signing and notarization workflow. The nightly run performs a separate App Store distribution check before Preview packaging to keep the external updater out of the App Store binary. PRs and main pushes skip that distribution rebuild.
+After nightly Mac validation succeeds, a separate job builds and notarizes Prose Preview, validates its Developer ID signature and repeats the packaged launch and Hurl check before uploading the runnable app. Each nightly main run (and any manual `publish_preview` run) that passes Mac regression and App Store validation uploads a runnable Preview app for seven days and publishes it to the default nightly update channel; each Mac-affecting main push that passes Mac regression publishes the opt-in alpha channel. Neither channel waits for iPad results or the combined `build and test` gate; iPad failures still fail that required check. PRs cannot access release credentials. Tagged stable releases retain their separate signing and notarization workflow. The nightly run performs a separate App Store distribution check before Preview packaging to keep the external updater out of the App Store binary. PRs and main pushes skip that distribution rebuild.
 
 For build-system-specific resource failures, reproduce the packaged launch with native SwiftPM on toolchains that still support it:
 
@@ -23,7 +23,7 @@ native_bin=$(swift build --build-system native -c release --show-bin-path)
 native_app=$(python3 scripts/package-app.py "$native_bin")
 scripts/sign-app.sh "$native_app"
 python3 scripts/smoke-app.py --app "$native_app" \
-  --development-resources "$native_bin/LeftBlank_LeftBlankCore.bundle"
+  --development-resources "$native_bin/Prose_ProseCore.bundle"
 ```
 
 Keep build and scratch paths inside the SSD checkout. The hosted CI toolchain is deliberately older than the development machine, so local success is not a substitute for its result.
@@ -153,7 +153,7 @@ Real iCloud delivery remains a two-Mac acceptance check: offline edits, nonoverl
 - Managed-document titles support single-click inline rename and double-click navigation; the library exposes direct trash/restore actions. Preview colors keep a fixed 68 × 28 hit target in both states.
 - Managed-document export dialogs now suggest the document title instead of the internal `main` filename.
 
-The first two were caught by CI and the icon defect by a real-window visual check. This is why LeftBlank needs complementary behavior and visual checks, in addition to its line-coverage target.
+The first two were caught by CI and the icon defect by a real-window visual check. This is why Prose needs complementary behavior and visual checks, in addition to its line-coverage target.
 
 ## Agent document tools and MCP
 

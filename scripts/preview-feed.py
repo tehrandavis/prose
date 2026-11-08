@@ -50,8 +50,8 @@ def make_feed(archive, build, channel=NIGHTLY):
     if channel not in CHANNELS:
         raise ValueError(f'Unknown Preview channel {channel!r}')
     with zipfile.ZipFile(archive) as bundle:
-        info = plistlib.loads(bundle.read('LeftBlank Preview.app/Contents/Info.plist'))
-    if info.get('CFBundleIdentifier') != 'app.leftblank.writer.preview' or info.get('CFBundleVersion') != build:
+        info = plistlib.loads(bundle.read('Prose Preview.app/Contents/Info.plist'))
+    if info.get('CFBundleIdentifier') != 'com.tehrandavis.prose.preview' or info.get('CFBundleVersion') != build:
         raise ValueError('Archive identity/build does not match the preview feed')
     expected = plistlib.loads(Path('Resources/Preview-Info.plist').read_bytes())
     if any(info.get(key) != value for key, value in expected.items()):
@@ -66,10 +66,10 @@ def make_feed(archive, build, channel=NIGHTLY):
                     'scripts/verify-update.swift', info['SUPublicEDKey'], signature, str(archive)], check=True)
     root = ET.Element('rss', version='2.0')
     feed_channel = ET.SubElement(root, 'channel')
-    ET.SubElement(feed_channel, 'title').text = 'LeftBlank Preview'
-    ET.SubElement(feed_channel, 'link').text = 'https://leftblank.app'
+    ET.SubElement(feed_channel, 'title').text = 'Prose Preview'
+    ET.SubElement(feed_channel, 'link').text = 'https://github.com/tehrandavis/prose'
     item = ET.SubElement(feed_channel, 'item')
-    ET.SubElement(item, 'title').text = f'LeftBlank Preview {info["CFBundleShortVersionString"]} ({build})'
+    ET.SubElement(item, 'title').text = f'Prose Preview {info["CFBundleShortVersionString"]} ({build})'
     ET.SubElement(item, 'pubDate').text = format_datetime(datetime.now(timezone.utc))
     ET.SubElement(item, f'{{{SPARKLE}}}version').text = build
     if channel == ALPHA:
@@ -79,9 +79,9 @@ def make_feed(archive, build, channel=NIGHTLY):
     ET.SubElement(item, f'{{{SPARKLE}}}minimumSystemVersion').text = '14.0.0'
     ET.SubElement(item, f'{{{SPARKLE}}}hardwareRequirements').text = 'arm64'
     kind = 'alpha' if channel == ALPHA else 'nightly'
-    ET.SubElement(item, 'description').text = f'Tested {kind} main build {build}. Commit {info["LeftBlankCommit"][:12]}. Your writing and preferences stay on this Mac.'
+    ET.SubElement(item, 'description').text = f'Tested {kind} main build {build}. Commit {info["ProseCommit"][:12]}. Your writing and preferences stay on this Mac.'
     ET.SubElement(item, 'enclosure', {
-        'url': f'https://github.com/leftblank-app/leftblank/releases/download/{release_tag(build, channel)}/{archive.name}',
+        'url': f'https://github.com/tehrandavis/prose/releases/download/{release_tag(build, channel)}/{archive.name}',
         'length': str(archive.stat().st_size), 'type': 'application/octet-stream',
         f'{{{SPARKLE}}}edSignature': signature,
     })

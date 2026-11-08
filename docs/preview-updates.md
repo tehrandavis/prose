@@ -1,28 +1,28 @@
 # Preview updates
 
-LeftBlank Preview (留白预览版) is the main-branch testing channel. It can coexist with
-LeftBlank, including the future App Store edition. The marketing version changes with
-releases; the build number identifies each CI build. About LeftBlank Preview also
+Prose Preview (Prose 预览版) is the main-branch testing channel. It can coexist with
+Prose, including the future App Store edition. The marketing version changes with
+releases; the build number identifies each CI build. About Prose Preview also
 shows the source commit.
 
 ## Local state and app identities
 
-| | LeftBlank | LeftBlank Preview |
+| | Prose | Prose Preview |
 | --- | --- | --- |
-| Bundle identifier and preferences domain | `app.leftblank.writer` | `app.leftblank.writer.preview` |
-| Application Support directory | `LeftBlank` | `LeftBlank Preview` |
+| Bundle identifier and preferences domain | `com.tehrandavis.prose` | `com.tehrandavis.prose.preview` |
+| Application Support directory | `Prose` | `Prose Preview` |
 | iCloud | On by default when available | On by default when available |
 
 Each directory contains its own library, history, recovery copies, exports,
 and logs. When sync is enabled, both editions use the shared
 iCloud library and writing preferences. Turn sync off to keep an independent local
 library.
-Opening an external file deliberately still edits that file. `LEFTBLANK_STATE_DIR`
+Opening an external file deliberately still edits that file. `PROSE_STATE_DIR`
 remains an explicit development and test override.
 
 ## Update experience
 
-Only a build made with `LEFTBLANK_DISTRIBUTION=preview` resolves and links Sparkle.
+Only a build made with `PROSE_DISTRIBUTION=preview` resolves and links Sparkle.
 Direct and App Store builds have no Sparkle dependency, update menu or feed.
 The App Store handles its own updates.
 
@@ -54,7 +54,7 @@ Preview uses Sparkle 2's native update flow:
   are checked before extraction, and archives contain signed, notarized apps.
   No analytics or system-profile collection is enabled.
 
-The package script supplies `SUFeedURL`, `SUPublicEDKey`, `LeftBlankCommit` and the
+The package script supplies `SUFeedURL`, `SUPublicEDKey`, `ProseCommit` and the
 internal build number. Signing and publishing credentials are CI secrets; no
 private key belongs in the app or repository. A feed always points to an
 immutable versioned archive, preserving the bytes covered by its signature.
@@ -118,7 +118,7 @@ To check a local development package:
 
 ```sh
 source scripts/environment.sh
-LEFTBLANK_DISTRIBUTION=preview scripts/build.sh release
+PROSE_DISTRIBUTION=preview scripts/build.sh release
 python3 scripts/test-preview-release.py
 ```
 
@@ -142,13 +142,13 @@ terminate another app's Sparkle helpers. Check that new PID before reconnecting
 the UI tool:
 
 ```sh
-python3 scripts/running_app.py --app '/path/to/LeftBlank Preview.app' \
+python3 scripts/running_app.py --app '/path/to/Prose Preview.app' \
   --pid NEW_PID --expected-build EXPECTED_BUILD
 ```
 
 This check reads the kernel's executable path and rejects a removed or relocated
 live executable. Reading `CFBundleVersion` from disk alone is insufficient.
-Then verify **About LeftBlank Preview**, **Check for Updates** (up to date), and saved
+Then verify **About Prose Preview**, **Check for Updates** (up to date), and saved
 writing. Cold-launch CI also verifies the process path, while a regression test
 replaces a bundle underneath a disposable process and confirms rejection.
 These checks complement, but do not replace, an interactive upgrade test.
@@ -164,17 +164,17 @@ preferences. Local state remains separate. Sync is attempted
 by default on startup unless the user has turned it off. An unavailable account
 or an unprovisioned build keeps local writing available and retries on a later launch.
 
-For signed previews, register `app.leftblank.writer.preview` with iCloud Documents,
-associate `iCloud.app.leftblank.writer`, and authorize the shared KVS identifier
-`<AppIdentifierPrefix>.app.leftblank.writer`. Generate a Developer ID provisioning
+For signed previews, register `com.tehrandavis.prose.preview` with iCloud Documents,
+associate `iCloud.com.tehrandavis.prose`, and authorize the shared KVS identifier
+`<AppIdentifierPrefix>.com.tehrandavis.prose`. Generate a Developer ID provisioning
 profile for the preview App ID and signing certificate. Store its base64 contents
 in the GitHub secret `ICLOUD_PREVIEW_PROVISIONING_PROFILE`. The release workflow
 validates and embeds that profile and verifies the signed entitlements. This
 secret is required: a missing or mismatched profile stops publication instead
 of shipping a Preview with iCloud disabled.
 
-On 2026-10-06, `app.leftblank.writer.preview` was registered and associated with
-the existing LeftBlank Documents container. **LeftBlank Preview Developer ID
+On 2026-10-06, `com.tehrandavis.prose.preview` was registered and associated with
+the existing Prose Documents container. **Prose Preview Developer ID
 iCloud** uses the existing Developer ID certificate; its profile passed the
 release validator for the Preview identity and shared KVS, and was stored in
 `ICLOUD_PREVIEW_PROVISIONING_PROFILE`.

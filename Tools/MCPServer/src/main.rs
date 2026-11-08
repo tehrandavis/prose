@@ -220,7 +220,7 @@ impl ServerHandler for Bridge {
                 .enable_tool_list_changed()
                 .build(),
         )
-        .with_server_info(Implementation::new("leftblank", env!("CARGO_PKG_VERSION")))
+        .with_server_info(Implementation::new("prose", env!("CARGO_PKG_VERSION")))
         .with_instructions(self.instructions.as_str())
     }
     async fn list_tools(
@@ -520,7 +520,7 @@ fn router(bridge: Bridge, token: &str, port: u16, sessions_state: Sessions) -> R
 async fn main() {
     if run().await.is_err() {
         // Never log configuration, bearer credentials, request arguments or document contents.
-        eprintln!("LeftBlank MCP helper could not start or lost its application connection.");
+        eprintln!("Prose MCP helper could not start or lost its application connection.");
         std::process::exit(1);
     }
 }

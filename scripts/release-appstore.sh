@@ -10,7 +10,7 @@ for variable in APPSTORE_DISTRIBUTION_P12 APPSTORE_INSTALLER_P12 APPSTORE_CERTIF
   test -n "${!variable:-}" || { echo "Missing release credential: $variable" >&2; exit 1; }
 done
 umask 077
-signing_dir=$(mktemp -d "$TMPDIR/leftblank-appstore.XXXXXX")
+signing_dir=$(mktemp -d "$TMPDIR/prose-appstore.XXXXXX")
 keychain="$signing_dir/signing.keychain-db"
 security list-keychains -d user > "$signing_dir/keychains.txt"
 set_keychains() {
@@ -56,7 +56,7 @@ installer=$(security find-identity -v -p basic "$keychain" | awk '/"3rd Party Ma
 for identity in "$distribution" "$installer"; do
   test "$(printf '%s\n' "$identity" | awk 'NF {n++} END {print n+0}')" = 1 || { echo 'Expected one valid identity of each certificate type.' >&2; exit 1; }
 done
-export LEFTBLANK_DISTRIBUTION=appstore
+export PROSE_DISTRIBUTION=appstore
 scripts/build.sh release
 python3 scripts/export-appstore.py --profile "$signing_dir/profile.provisionprofile" \
   --identity "$distribution" --installer-identity "$installer" --keychain "$keychain"
@@ -64,8 +64,8 @@ python3 - <<'PY'
 import json, plistlib
 from pathlib import Path
 expected = json.loads(Path('build/release-metadata.json').read_text())
-actual = plistlib.loads(Path('build/LeftBlank.app/Contents/Info.plist').read_bytes())
-for key, field in [('CFBundleShortVersionString', 'version'), ('CFBundleVersion', 'build'), ('LeftBlankCommit', 'commit')]:
+actual = plistlib.loads(Path('build/Prose.app/Contents/Info.plist').read_bytes())
+for key, field in [('CFBundleShortVersionString', 'version'), ('CFBundleVersion', 'build'), ('ProseCommit', 'commit')]:
     if actual[key] != expected[field]:
         raise SystemExit('Packaged app differs from the tag: ' + key)
 if actual.get('ITSAppUsesNonExemptEncryption') is not False:

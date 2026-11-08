@@ -13,9 +13,9 @@ from running_app import verify_running_app
 
 class RunningAppTests(unittest.TestCase):
     def test_replaced_bundle_does_not_make_old_process_healthy(self):
-        with tempfile.TemporaryDirectory(prefix='leftblank-process-', dir=os.environ['TMPDIR']) as temporary:
+        with tempfile.TemporaryDirectory(prefix='prose-process-', dir=os.environ['TMPDIR']) as temporary:
             root = Path(temporary)
-            app = root / 'LeftBlank.app'
+            app = root / 'Prose.app'
             # Copied system binaries such as /bin/sleep violate macOS launch constraints and are
             # killed at exec, so build an ad-hoc signed stand-in instead.
             sleeper = root / 'sleeper'
@@ -23,12 +23,12 @@ class RunningAppTests(unittest.TestCase):
                            input=b'#include <unistd.h>\nint main(void) { sleep(30); return 0; }\n')
 
             def make_app(build):
-                executable = app / 'Contents/MacOS/LeftBlank'
+                executable = app / 'Contents/MacOS/Prose'
                 executable.parent.mkdir(parents=True)
                 shutil.copyfile(sleeper, executable)
                 executable.chmod(0o755)
                 (app / 'Contents/Info.plist').write_bytes(plistlib.dumps({
-                    'CFBundleExecutable': 'LeftBlank', 'CFBundleVersion': build,
+                    'CFBundleExecutable': 'Prose', 'CFBundleVersion': build,
                 }))
                 return executable
 

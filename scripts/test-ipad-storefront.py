@@ -67,11 +67,11 @@ class Apple:
         self.posts = []
         self.automatic_app_prices = False
         self.app = '6818442294'
-        self.put('apps', 'app', {'bundleId': 'app.leftblank.writer'})
+        self.put('apps', 'app', {'bundleId': 'com.tehrandavis.prose'})
         self.put('appInfos', 'info', {'state': 'PREPARE_FOR_SUBMISSION'}, {'app': relationship('apps', self.app)})
         for locale in ('en-US', 'zh-Hans'):
-            self.put('appInfoLocalizations', locale, {'locale': locale, 'name': 'LeftBlank',
-                'privacyPolicyUrl': 'https://leftblank.app/privacy.html' + ('?lang=zh' if locale == 'zh-Hans' else '')}, {'appInfo': relationship('appInfos', 'info')})
+            self.put('appInfoLocalizations', locale, {'locale': locale, 'name': 'Prose',
+                'privacyPolicyUrl': 'https://github.com/tehrandavis/prose/privacy.html' + ('?lang=zh' if locale == 'zh-Hans' else '')}, {'appInfo': relationship('appInfos', 'info')})
         self.put('appPriceSchedules', 'schedule', {})
         self.put('appPrices', 'free', {'startDate': None, 'endDate': None},
                  {'appPricePoint': relationship('appPricePoints', 'zero')})
@@ -180,12 +180,12 @@ class Preparation(unittest.TestCase):
         self.assertTrue(first['firstSubscription'])
         self.assertFalse(first['submitted'])
         self.assertEqual(len(self.apple.posts), count, 'A retry must reuse every created resource')
-        self.assertEqual(first['subscription']['attributes']['productId'], 'app.leftblank.writer.ipad.monthly')
+        self.assertEqual(first['subscription']['attributes']['productId'], 'com.tehrandavis.prose.ipad.monthly')
         self.assertEqual(len(self.apple.rows['subscriptionLocalizations']), 2)
         self.assertEqual(len(self.apple.rows['subscriptionGroupLocalizations']), 2)
         version = first['appStoreVersion']
         self.assertEqual(version['relationships']['build']['data']['id'], self.apple.build['id'])
-        self.assertEqual(self.apple.rows['appInfoLocalizations']['en-US']['attributes']['name'], 'LeftBlank')
+        self.assertEqual(self.apple.rows['appInfoLocalizations']['en-US']['attributes']['name'], 'Prose')
 
     def test_manual_and_automatic_prices_require_a_free_download(self):
         for automatic in (False, True):

@@ -4,10 +4,10 @@ set -euo pipefail
 set +x
 cd "$(dirname "$0")/.."
 source scripts/environment.sh
-distribution=${LEFTBLANK_DISTRIBUTION:-direct}
+distribution=${PROSE_DISTRIBUTION:-direct}
 required=(SIGNING_CERTIFICATE_P12 SIGNING_CERTIFICATE_PASSWORD APP_STORE_CONNECT_KEY_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_PRIVATE_KEY APPLE_TEAM_ID)
 if [ "$distribution" = preview ]; then
-  required+=(LEFTBLANK_BUILD_NUMBER SPARKLE_PRIVATE_KEY ICLOUD_PREVIEW_PROVISIONING_PROFILE)
+  required+=(PROSE_BUILD_NUMBER SPARKLE_PRIVATE_KEY ICLOUD_PREVIEW_PROVISIONING_PROFILE)
 elif [ "$distribution" = direct ]; then
   required+=(ICLOUD_PROVISIONING_PROFILE)
 else
@@ -18,7 +18,7 @@ for variable in "${required[@]}"; do
 done
 test "$(uname -m)" = arm64 || { echo 'Public releases support Apple Silicon only.' >&2; exit 1; }
 umask 077
-signing_dir=$(mktemp -d "$TMPDIR/leftblank-signing.XXXXXX")
+signing_dir=$(mktemp -d "$TMPDIR/prose-signing.XXXXXX")
 keychain="$signing_dir/signing.keychain-db"
 security list-keychains -d user > "$signing_dir/keychains.txt"
 set_keychain_search_list() {
@@ -40,7 +40,7 @@ import base64, os, pathlib, sys
 folder = pathlib.Path(sys.argv[1])
 (folder / "certificate.p12").write_bytes(base64.b64decode(os.environ["SIGNING_CERTIFICATE_P12"], validate=True))
 (folder / "notary.p8").write_text(os.environ["APP_STORE_CONNECT_PRIVATE_KEY"])
-profile_key = "ICLOUD_PREVIEW_PROVISIONING_PROFILE" if os.environ.get("LEFTBLANK_DISTRIBUTION") == "preview" else "ICLOUD_PROVISIONING_PROFILE"
+profile_key = "ICLOUD_PREVIEW_PROVISIONING_PROFILE" if os.environ.get("PROSE_DISTRIBUTION") == "preview" else "ICLOUD_PROVISIONING_PROFILE"
 (folder / "icloud.provisionprofile").write_bytes(base64.b64decode(os.environ[profile_key], validate=True))
 PY
 security create-keychain -p "$keychain_password" "$keychain"
@@ -58,12 +58,12 @@ unset SIGNING_CERTIFICATE_P12 SIGNING_CERTIFICATE_PASSWORD APP_STORE_CONNECT_PRI
 identities=$(security find-identity -v -p codesigning "$keychain" | awk '/"Developer ID Application:/ {print $2}')
 test "$(printf '%s\n' "$identities" | awk 'NF {n++} END {print n+0}')" = 1 || { echo 'Expected exactly one valid Developer ID Application identity.' >&2; exit 1; }
 scripts/build.sh release
-app=build/LeftBlank.app
+app=build/Prose.app
 entitlements=""
-bundle_id=app.leftblank.writer
+bundle_id=com.tehrandavis.prose
 if [ "$distribution" = preview ]; then
-  app="build/LeftBlank Preview.app"
-  bundle_id=app.leftblank.writer.preview
+  app="build/Prose Preview.app"
+  bundle_id=com.tehrandavis.prose.preview
 fi
 python3 scripts/prepare-icloud-profile.py --app "$bundle_id" --profile "$signing_dir/icloud.provisionprofile" --team "$APPLE_TEAM_ID" --identity "$identities" --output "$signing_dir/icloud.entitlements"
 cp "$signing_dir/icloud.provisionprofile" "$app/Contents/embedded.provisionprofile"
@@ -108,13 +108,13 @@ python3 scripts/staple_app.py "$app"
 codesign --verify --deep --strict "$app"
 spctl --assess --type execute --verbose=2 "$app"
 version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)
-archive="LeftBlank-${version}-macOS-arm64.zip"
+archive="Prose-${version}-macOS-arm64.zip"
 if [ "$distribution" = preview ]; then
-  archive="LeftBlank-Preview-${version}-${LEFTBLANK_BUILD_NUMBER}-macOS-arm64.zip"
+  archive="Prose-Preview-${version}-${PROSE_BUILD_NUMBER}-macOS-arm64.zip"
 fi
 ditto -c -k --sequesterRsrc --keepParent "$app" "build/release/$archive"
 (cd build/release && shasum -a 256 "$archive" > "$archive.sha256")
 if [ "$distribution" = preview ]; then
-  python3 scripts/preview-feed.py "build/release/$archive" "$LEFTBLANK_BUILD_NUMBER" "${LEFTBLANK_PREVIEW_CHANNEL:-nightly}"
+  python3 scripts/preview-feed.py "build/release/$archive" "$PROSE_BUILD_NUMBER" "${PROSE_PREVIEW_CHANNEL:-nightly}"
 fi
 echo "Signed, notarized and stapled: build/release/$archive"

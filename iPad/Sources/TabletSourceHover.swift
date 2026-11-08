@@ -1,4 +1,4 @@
-import LeftBlankCore
+import ProseCore
 import OSLog
 import SwiftUI
 import UIKit
@@ -12,7 +12,7 @@ final class TabletSourceHover: NSObject, UIGestureRecognizerDelegate {
     private var range: NSRange?
     private var shown: NSRange?
     private var viewport: CGRect?
-    private let logger = Logger(subsystem: "app.leftblank.writer", category: "source-hover")
+    private let logger = Logger(subsystem: "com.tehrandavis.prose", category: "source-hover")
     private(set) var host: UIHostingController<TabletHoverCard>?
     /// No help is pending or shown; only new pointer movement asks for more.
     var isIdle: Bool {

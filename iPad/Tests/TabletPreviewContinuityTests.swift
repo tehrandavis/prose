@@ -1,7 +1,7 @@
 import Foundation
-import LeftBlankCore
-@testable import LeftBlankTablet
-import LeftBlankTestSupport
+import ProseCore
+@testable import ProseTablet
+import ProseTestSupport
 import Testing
 import UIKit
 import WebKit
@@ -13,18 +13,18 @@ import WebKit
         try await fixture.ready()
         let web = fixture.web
         #expect(try await web
-            .evaluateJavaScript("window.leftblankRestoreReading({page:1,x:.5,y:.4,viewportY:.2})") as? Bool == true)
+            .evaluateJavaScript("window.proseRestoreReading({page:1,x:.5,y:.4,viewportY:.2})") as? Bool == true)
         try await Task.sleep(for: .milliseconds(500))
-        let first = try #require(await web.evaluateJavaScript("window.leftblankCaptureReading()"))
+        let first = try #require(await web.evaluateJavaScript("window.proseCaptureReading()"))
         #expect(PreviewReadingAnchor(message: first)?.page == 1)
         // A rendering pass only adds glyphs. It must not restore an old page.
         try await web.evaluateJavaScript("""
-        window.leftblankPrepareResize();
+        window.prosePrepareResize();
         document.getElementById('typst-container-main').scrollTop = 2200;
         document.querySelector('.typst-page').innerHTML = '<rect width="600" height="1000"/>';
         """)
         try await Task.sleep(for: .milliseconds(500))
-        let last = try #require(await web.evaluateJavaScript("window.leftblankCaptureReading()"))
+        let last = try #require(await web.evaluateJavaScript("window.proseCaptureReading()"))
         #expect(PreviewReadingAnchor(message: last)?.page == 2)
     }
 
@@ -35,24 +35,24 @@ import WebKit
         let web = fixture.web
         let anchor = try #require(PreviewReadingAnchor(page: 1, x: 0.5, y: 0.35, viewportY: 0.2))
         #expect(try await web
-            .evaluateJavaScript("window.leftblankRestoreReading(\(anchor.javaScript))") as? Bool == true)
+            .evaluateJavaScript("window.proseRestoreReading(\(anchor.javaScript))") as? Bool == true)
         try await Task.sleep(for: .milliseconds(500))
-        let beforeMessage = try #require(await web.evaluateJavaScript("window.leftblankCaptureReading()"))
+        let beforeMessage = try #require(await web.evaluateJavaScript("window.proseCaptureReading()"))
         let before = try #require(PreviewReadingAnchor(message: beforeMessage))
         #expect(before.page == 1)
         #expect(abs(before.y - anchor.y) < 0.02)
         try await web
             .evaluateJavaScript(
-                "window.leftblankPrepareResize(); document.getElementById('typst-container').style.width = '140%'; window.dispatchEvent(new Event('resize'));",
+                "window.prosePrepareResize(); document.getElementById('typst-container').style.width = '140%'; window.dispatchEvent(new Event('resize'));",
             )
         try await Task.sleep(for: .milliseconds(500))
-        let zoomedMessage = try #require(await web.evaluateJavaScript("window.leftblankCaptureReading()"))
+        let zoomedMessage = try #require(await web.evaluateJavaScript("window.proseCaptureReading()"))
         let zoomed = try #require(PreviewReadingAnchor(message: zoomedMessage))
         #expect(zoomed.page == before.page)
         #expect(abs(zoomed.y - before.y) < 0.02)
         try await web
             .evaluateJavaScript(
-                "window.leftblankPrepareResize(); window.leftblankSourceJump(); document.getElementById('typst-container-main').scrollTop = 0;",
+                "window.prosePrepareResize(); window.proseSourceJump(); document.getElementById('typst-container-main').scrollTop = 0;",
             )
         try await Task.sleep(for: .milliseconds(500))
         #expect(try await web
@@ -60,9 +60,9 @@ import WebKit
         // A shortened document must still provide a bounded, valid return.
         try await web.evaluateJavaScript("document.querySelectorAll('.typst-page-inner')[2].remove();")
         #expect(try await web
-            .evaluateJavaScript("window.leftblankRestoreReading({page:99,x:.5,y:.3,viewportY:.2})") as? Bool == true)
+            .evaluateJavaScript("window.proseRestoreReading({page:99,x:.5,y:.3,viewportY:.2})") as? Bool == true)
         #expect(try await web
-            .evaluateJavaScript("window.leftblankRestoreReading({page:-1,x:.5,y:.3,viewportY:.2})") as? Bool == false)
+            .evaluateJavaScript("window.proseRestoreReading({page:-1,x:.5,y:.3,viewportY:.2})") as? Bool == false)
     }
 
     @Test func nativeReturnRestoresBookmarkedPageAndAcknowledgesSuccess() async throws {
@@ -85,7 +85,7 @@ import WebKit
         #expect(session.restore == nil)
         #expect(session.returnAnchor == nil)
         try await Task.sleep(for: .milliseconds(500))
-        let result = try #require(await fixture.web.evaluateJavaScript("window.leftblankCaptureReading()"))
+        let result = try #require(await fixture.web.evaluateJavaScript("window.proseCaptureReading()"))
         let anchor = try #require(PreviewReadingAnchor(message: result))
         #expect(anchor.page == 2)
         #expect(abs(anchor.y - 0.4) < 0.02)

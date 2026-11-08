@@ -3,7 +3,7 @@ import Foundation
 import Testing
 @testable import TextDiffing
 
-@Suite(.serialized) struct LeftBlankEvaluationTests {
+@Suite(.serialized) struct ProseEvaluationTests {
     @Test func roundTripsWritingEdits() {
         let cases = [
             ("macOS 26 Fedora 44", "#macOS 26 #Fedora44"),
@@ -30,7 +30,7 @@ import Testing
             let start = ContinuousClock.now
             let result = TextDiffer.diff(old, and: new, style: style)
             print(
-                "LEFTBLANK_DIFF rewritten bytes=\(old.utf8.count) duration=\(start.duration(to: .now)) changes=\(result.changeCount)",
+                "PROSE_DIFF rewritten bytes=\(old.utf8.count) duration=\(start.duration(to: .now)) changes=\(result.changeCount)",
             )
         }
         let book = (0 ..< 40000).map { "Line \($0): 思考与书写 $alpha + beta$.\n" }.joined()
@@ -38,7 +38,7 @@ import Testing
         let start = ContinuousClock.now
         let result = TextDiffer.diff(book, and: edited, style: style)
         print(
-            "LEFTBLANK_DIFF book bytes=\(book.utf8.count) duration=\(start.duration(to: .now)) changes=\(result.changeCount)",
+            "PROSE_DIFF book bytes=\(book.utf8.count) duration=\(start.duration(to: .now)) changes=\(result.changeCount)",
         )
     }
 }

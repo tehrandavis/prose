@@ -1,23 +1,23 @@
 # Template and package discovery
 
-LeftBlank treats a template as a starting document and a package as a tool for the current document. The two intents share the official catalog, but have separate collections and actions.
+Prose treats a template as a starting document and a package as a tool for the current document. The two intents share the official catalog, but have separate collections and actions.
 
 ## Starting a document
 
 **Command-N**, the New Document menu item and the matching discovery command open Templates. The library has one **Browse templates** action. Templates and the library use the same sheet; opening discovery while the library is already visible changes its contents without stacking another sheet. The blank page remains one explicit choice, always available offline, independent of old template preferences.
 
-The gallery begins without a selected community item or a detail pane. **Ink for your thoughts** and SICP share a compact opening row when space allows, with **Blank page** beside the section title. These three starters appear only in All templates. Narrow windows stack these starting points. The community grid follows under its own heading. Selecting a community card opens its details and keeps that card visible as the grid changes width. Back to results closes the details while preserving the browsing position; changing the query, collection or intent clears the selection. An unseen first result is never selected automatically.
+The gallery begins without a selected community item or a detail pane. **Write in Typst** and SICP share a compact opening row when space allows, with **Blank page** beside the section title. These three starters appear only in All templates. Narrow windows stack these starting points. The community grid follows under its own heading. Selecting a community card opens its details and keeps that card visible as the grid changes width. Back to results closes the details while preserving the browsing position; changing the query, collection or intent clears the selection. An unseen first result is never selected automatically.
 
-Two built-in choices lead the gallery: **Ink for your thoughts**, LeftBlank's original editable guide, and **Blank page**. A first launch starts with the guide in the selected app language and a side-by-side preview. Choosing the guide again also opens its preview. Switching languages never replaces existing writing, and recovery always wins over new welcome content. The guide combines prose, headings, inline and display equations, a table, a CeTZ diagram and a Codly code block. It introduces the outline, command discovery, preview, library and export with ordinary writing examples. Both English and Simplified Chinese versions have centered page numbers and the approved LeftBlank sigma mark in the opening header. The cover follows the app language. The source is a normal Typst document with explicit pinned imports and a relative `leftblank-mark.svg` asset. The mark is copied into the document project, retained by source-project export, and generated from the same geometry as the app icon. Existing manuscripts and their assets are never replaced by a language or app update. CeTZ 0.5.2, its oxifmt 1.0.0 dependency and Codly 1.3.0 ship as source with their licenses, so both built-in choices compile without a network request. Other Universe templates may download package code on first creation. Built-in choices remain visible when the catalog cannot be reached.
+Two built-in choices lead the gallery: **Write in Typst**, Prose's original editable guide, and **Blank page**. A first launch starts with the guide in the selected app language and a side-by-side preview. Choosing the guide again also opens its preview. Switching languages never replaces existing writing, and recovery always wins over new welcome content. The guide combines prose, headings, inline and display equations, a table, a CeTZ diagram and a Codly code block. It introduces the outline, command discovery, preview, library and export with ordinary writing examples. Both English and Simplified Chinese versions have centered page numbers and the approved Prose sigma mark in the opening header. The cover follows the app language. The source is a normal Typst document with explicit pinned imports and a relative `prose-mark.svg` asset. The mark is copied into the document project, retained by source-project export, and generated from the same geometry as the app icon. Existing manuscripts and their assets are never replaced by a language or app update. CeTZ 0.5.2, its oxifmt 1.0.0 dependency and Codly 1.3.0 ship as source with their licenses, so both built-in choices compile without a network request. Other Universe templates may download package code on first creation. Built-in choices remain visible when the catalog cannot be reached.
 
-The original guide is in `Sources/LeftBlankCore/Resources/Templates`, with an English copy in `Examples/Welcome.typ` and a generated first-page thumbnail. To regenerate its thumbnail with the pinned engine, run:
+The original guide is in `Sources/ProseCore/Resources/Templates`, with an English copy in `Examples/Welcome.typ` and a generated first-page thumbnail. To regenerate its thumbnail with the pinned engine, run:
 
 ```sh
 source scripts/environment.sh
 scripts/bootstrap.sh
 mkdir -p build/welcome-check
-.tools/tinymist compile --package-path Resources/Packages Sources/LeftBlankCore/Resources/Templates/Welcome.typ build/welcome-check/welcome.pdf
-pdftoppm -f 1 -singlefile -scale-to 520 -png build/welcome-check/welcome.pdf Sources/LeftBlankCore/Resources/Templates/welcome-cover
+.tools/tinymist compile --package-path Resources/Packages Sources/ProseCore/Resources/Templates/Welcome.typ build/welcome-check/welcome.pdf
+pdftoppm -f 1 -singlefile -scale-to 520 -png build/welcome-check/welcome.pdf Sources/ProseCore/Resources/Templates/welcome-cover
 ```
 
 The guide follows the official tutorial's progression from text to notation and reusable tools; examples and prose are original. These are editorial choices for usefulness, not a claimed popularity ranking. Mode controls and collection chips use their full visible bounds as hit targets.
@@ -66,7 +66,7 @@ The catalog store constructs the searchable index once off the UI actor. The bro
 
 Thumbnails load asynchronously from the official versioned `packages.typst.org/preview/thumbnails/` endpoints. Responses are bounded to 5 MiB and images are downsampled to at most 600 pixels before display. The decoded image cache is limited to 32 MiB / 60 entries, the URL cache to 48 MiB on disk, and concurrent connections to four per host. A normal URL session persists that cache across launches; cookies and credential storage are disabled. Duplicate in-flight requests share a task; once the last requesting view leaves the screen, its download is canceled. Cancellation does not count as a failure. Failed images have a five-minute cooldown, and explicit Refresh clears it so a restored connection can retry immediately. Missing previews never block a search or document creation.
 
-The app includes a metadata-only catalog snapshot for first-launch offline discovery. The network disk cache takes precedence and appears before a background refresh. Search, collection changes and switching Templates/Packages operate on the same local index; tab changes do not request the index again. A fresh cache is valid for 24 hours. Refresh requests have an eight-second inactivity limit and a fifteen-second total transfer limit, with a 12 MiB streaming size cap. A failed refresh preserves the displayed catalog, and closing discovery cancels its request. See the [snapshot provenance](../Sources/LeftBlankCore/Resources/Universe/README.txt) and [update script](../scripts/update-universe-snapshot.py).
+The app includes a metadata-only catalog snapshot for first-launch offline discovery. The network disk cache takes precedence and appears before a background refresh. Search, collection changes and switching Templates/Packages operate on the same local index; tab changes do not request the index again. A fresh cache is valid for 24 hours. Refresh requests have an eight-second inactivity limit and a fifteen-second total transfer limit, with a 12 MiB streaming size cap. A failed refresh preserves the displayed catalog, and closing discovery cancels its request. See the [snapshot provenance](../Sources/ProseCore/Resources/Universe/README.txt) and [update script](../scripts/update-universe-snapshot.py).
 
 Community template creation and the first SICP download still require a connection unless already cached; the welcome guide and blank page are fully included. An explicit Cancel action interrupts pending downloads and leaves the current writing open. Browsing package metadata does not download or execute package code.
 
@@ -78,10 +78,10 @@ Functional tests use controlled slow/error/canceled transports to check stale-in
 
 ```sh
 source scripts/environment.sh
-LEFTBLANK_INTEGRATION=1 LEFTBLANK_UNIVERSE_NETWORK=1 swift test --filter 'universe|Universe|templateGallery|templateCreationOpens|cachedPackageBrowser|discoveryModel'
+PROSE_INTEGRATION=1 PROSE_UNIVERSE_NETWORK=1 swift test --filter 'universe|Universe|templateGallery|templateCreationOpens|cachedPackageBrowser|discoveryModel'
 ```
 
-The network scenarios are opt-in so ordinary CI is deterministic. Set `LEFTBLANK_DISCOVERY_ARTIFACTS` to a directory to save the 620- and 1040-point gallery renders for visual inspection.
+The network scenarios are opt-in so ordinary CI is deterministic. Set `PROSE_DISCOVERY_ARTIFACTS` to a directory to save the 620- and 1040-point gallery renders for visual inspection.
 
 Native-window acceptance also checks selection while the gallery reflows: select
 `basic-resume` from All templates, confirm its outlined card stays visible beside
@@ -101,7 +101,7 @@ an unselected hosted view.
 
 ## A future Chinese book sample
 
-The strongest next candidate is [Dive into Deep Learning in Chinese](https://github.com/d2l-ai/d2l-zh): an extensive Chinese technical book with equations, illustrations, and executable Python examples. It complements SICP with a modern applied subject. Its chapter-based Markdown sources also fit LeftBlank's existing source-project model. This is a recommendation, not a bundled or converted book in this release.
+The strongest next candidate is [Dive into Deep Learning in Chinese](https://github.com/d2l-ai/d2l-zh): an extensive Chinese technical book with equations, illustrations, and executable Python examples. It complements SICP with a modern applied subject. Its chapter-based Markdown sources also fit Prose's existing source-project model. This is a recommendation, not a bundled or converted book in this release.
 
 Use the book's own attribution and licensing, rather than inferring everything from the repository badge: its [publication configuration](https://github.com/d2l-ai/d2l-zh/blob/master/config.ini) identifies CC-BY-SA-4.0 and MIT-0, while the repository also includes an Apache-2.0 license. A conversion should preserve notices, credit the authors, identify modifications, and check externally sourced figures.
 

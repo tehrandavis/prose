@@ -15,7 +15,7 @@ on:
         options: [full, smoke]
         default: full
       publish_preview:
-        description: Run only the Mac checks on main and publish LeftBlank Preview (ignores ipad_suite)
+        description: Run only the Mac checks on main and publish Prose Preview (ignores ipad_suite)
         type: boolean
         default: false
 
@@ -32,11 +32,11 @@ permissions:
 # - Pull requests and main pushes run exactly the same checks: the selected
 #   Mac regression and iPad smoke suite (native unit tests plus a few curated
 #   UI scenarios on one 11-inch simulator). A main push that selected the Mac
-#   jobs then publishes the opt-in alpha channel of LeftBlank Preview once
+#   jobs then publishes the opt-in alpha channel of Prose Preview once
 #   Mac regression passes, independently of the iPad results.
 # - The nightly schedule on main runs everything: the full iPad suite (every
 #   UI scenario on both sizes, coverage, memory metrics and sanitizers), Mac App
-#   Store validation and Mac memory safety, then signs and publishes LeftBlank
+#   Store validation and Mac memory safety, then signs and publishes Prose
 #   Preview once Mac regression and App Store validation pass. It skips only
 #   when this commit already had a fully successful nightly.
 # - Manual dispatches run everything at the `ipad_suite` depth (default full);
@@ -93,7 +93,7 @@ jobs:
     runs-on: macos-15
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      LEFTBLANK_DISTRIBUTION: preview
+      PROSE_DISTRIBUTION: preview
     # Leaves room for one cold patched Tinymist build after its inputs change.
     timeout-minutes: 60
     permissions:
@@ -180,7 +180,7 @@ jobs:
         run: |
           source scripts/environment.sh
           scripts/build.sh release
-          python3 scripts/smoke-app.py --app 'build/LeftBlank Preview.app' --development-resources "$(swift build -c release --show-bin-path)/LeftBlank_LeftBlankCore.bundle" --hurl .tools/hurl/bin/hurl
+          python3 scripts/smoke-app.py --app 'build/Prose Preview.app' --development-resources "$(swift build -c release --show-bin-path)/Prose_ProseCore.bundle" --hurl .tools/hurl/bin/hurl
       - name: Upload packaged launch diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -234,7 +234,7 @@ jobs:
     timeout-minutes: 15
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      LEFTBLANK_DISTRIBUTION: appstore
+      PROSE_DISTRIBUTION: appstore
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Cache Swift package sources
@@ -260,8 +260,8 @@ jobs:
         run: |
           source scripts/environment.sh
           scripts/build-syntax.sh
-          LEFTBLANK_INTEGRATION=1 swift test -Xswiftc -warnings-as-errors --filter distributionUsesMatchingAppIdentity
-          binary="$(swift build --show-bin-path)/LeftBlank"
+          PROSE_INTEGRATION=1 swift test -Xswiftc -warnings-as-errors --filter distributionUsesMatchingAppIdentity
+          binary="$(swift build --show-bin-path)/Prose"
           if otool -L "$binary" | grep -q Sparkle; then
             echo 'App Store binary unexpectedly links Sparkle.' >&2
             exit 1
@@ -279,7 +279,7 @@ jobs:
         check: [leaks, address]
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      LEFTBLANK_DISTRIBUTION: preview
+      PROSE_DISTRIBUTION: preview
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Cache Swift package sources
@@ -325,13 +325,13 @@ jobs:
       artifact-name: ${{ steps.package-name.outputs.name }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      LEFTBLANK_DISTRIBUTION: preview
-      LEFTBLANK_BUILD_NUMBER: ${{ github.run_number }}.${{ github.run_attempt }}
-      LEFTBLANK_PREVIEW_CHANNEL: ${{ needs.changes.outputs.channel }}
+      PROSE_DISTRIBUTION: preview
+      PROSE_BUILD_NUMBER: ${{ github.run_number }}.${{ github.run_attempt }}
+      PROSE_PREVIEW_CHANNEL: ${{ needs.changes.outputs.channel }}
     steps:
       - name: Identify this package
         id: package-name
-        run: echo "name=LeftBlank-Preview-${LEFTBLANK_BUILD_NUMBER}-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+        run: echo "name=Prose-Preview-${PROSE_BUILD_NUMBER}-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -390,7 +390,7 @@ jobs:
         run: |
           source scripts/environment.sh
           scripts/prepare-mcp-hurl.sh
-          python3 scripts/smoke-app.py --app 'build/LeftBlank Preview.app' --development-resources "$(swift build -c release --show-bin-path)/LeftBlank_LeftBlankCore.bundle" --hurl .tools/hurl/bin/hurl
+          python3 scripts/smoke-app.py --app 'build/Prose Preview.app' --development-resources "$(swift build -c release --show-bin-path)/Prose_ProseCore.bundle" --hurl .tools/hurl/bin/hurl
       - name: Upload runnable app
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -448,7 +448,7 @@ jobs:
         platform: [engine, device]
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      LEFTBLANK_DISTRIBUTION: appstore
+      PROSE_DISTRIBUTION: appstore
       CARGO_BUILD_JOBS: 2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -528,7 +528,7 @@ jobs:
     timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      LEFTBLANK_DISTRIBUTION: appstore
+      PROSE_DISTRIBUTION: appstore
       CARGO_BUILD_JOBS: 2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -601,7 +601,7 @@ jobs:
         include: ${{ fromJSON(needs.changes.outputs.suite == 'smoke' && '[{"size":"11-inch","appearance":"light"}]' || '[{"size":"11-inch","appearance":"light"},{"size":"13-inch","appearance":"dark"}]') }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      LEFTBLANK_DISTRIBUTION: appstore
+      PROSE_DISTRIBUTION: appstore
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Select Xcode for simulator services
@@ -654,7 +654,7 @@ jobs:
         check: [address, thread]
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      LEFTBLANK_DISTRIBUTION: appstore
+      PROSE_DISTRIBUTION: appstore
       CARGO_BUILD_JOBS: 2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

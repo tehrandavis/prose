@@ -1,7 +1,7 @@
 # iPad App Store release
 
 The iPad download is free. Creating and editing documents requires the monthly
-`app.leftblank.writer.ipad.monthly` auto-renewable subscription. Eligible new
+`com.tehrandavis.prose.ipad.monthly` auto-renewable subscription. Eligible new
 subscribers receive **two weeks free**, followed by **US $2.99/month** in the USA.
 The app displays Apple's localized price and checks introductory-offer eligibility;
 it never starts a local countdown or treats installing the app as a subscription.
@@ -29,7 +29,7 @@ submitted binary to change that historical workflow result.
 accept Apple's iCloud entitlement allowlists; that tag remains immutable. Subsequent iPad
 releases must increase the build number; Apple preflight checks previous iOS builds.
 
-CI creates or reuses the iOS version in app **6818442294**, the **LeftBlank iPad**
+CI creates or reuses the iOS version in app **6818442294**, the **Prose iPad**
 subscription group, its monthly product and English/Chinese localizations. It
 configures the USA $2.99 price and Apple's equalizations, plus a two-week free
 trial without an end date in every supported territory. Existing conflicting
@@ -127,7 +127,7 @@ Apple Settings and capture Control Center and SpringBoard diagnostics, so an
 accepted XCTest orientation request cannot conceal an unchanged app window.
 Fresh hosted simulators complete first-boot migration and appearance setup, then
 fully shut down and boot again before the measured suite. In run 37125166334,
-SpringBoard crashed during first-boot setup; after its restart both LeftBlank and
+SpringBoard crashed during first-boot setup; after its restart both Prose and
 Apple Settings stayed in portrait despite delivered landscape events. The full
 boot separates that setup from testing; it is not an application-test retry.
 Both device/appearance configurations require real rotation and passing tests.

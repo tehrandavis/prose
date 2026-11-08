@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Every @rpath library the iPad app links must resolve inside the installed bundle.
 
-The simulator resolves LeftBlankCore through the build products directory, so a
+The simulator resolves ProseCore through the build products directory, so a
 missing runpath only crashes on a device, at launch.
 """
 from pathlib import Path
@@ -40,14 +40,14 @@ def unresolved(app, binary, rpaths, libraries):
 
 
 def check_app(app):
-    for binary in [app / 'LeftBlank', *app.glob('*.debug.dylib')]:
+    for binary in [app / 'Prose', *app.glob('*.debug.dylib')]:
         missing = unresolved(app, binary, *load_commands(binary))
         if missing:
             raise ValueError(f'{binary.name} links {", ".join(missing)} without a runpath inside the app bundle')
 
 
 def main(products):
-    apps = list(Path(products).glob('**/LeftBlank.app'))
+    apps = list(Path(products).glob('**/Prose.app'))
     if not apps:
         raise SystemExit('No built iPad application found for the framework check')
     for app in apps:

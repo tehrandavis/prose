@@ -1,3 +1,0 @@
-import LeftBlankApp
-
-LeftBlankApplication.main()

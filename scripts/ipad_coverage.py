@@ -15,10 +15,10 @@ import subprocess
 import sys
 
 
-SOURCE_FOLDERS = ("iPad/Sources", "Sources/LeftBlankCore")
+SOURCE_FOLDERS = ("iPad/Sources", "Sources/ProseCore")
 # On iOS this file contains only the TinymistTransport protocol; the concrete
 # Process implementation is macOS-only. Count it if executable code is added.
-DECLARATION_ONLY = "Sources/LeftBlankCore/TinymistTransport.swift"
+DECLARATION_ONLY = "Sources/ProseCore/TinymistTransport.swift"
 
 
 def executable_lines(archive):
@@ -120,7 +120,7 @@ def write_report(root, output, source_lines, minimum):
         {"covered": covered, "total": total, "percent": percent, "files": files}, indent=2) + "\n")
     summary = (f"iPad application source-line coverage: **{percent:.2f}%** ({covered}/{total}), "
                f"required **{minimum:g}%**.\n\n"
-               "All executable lines in `iPad/Sources` and the iOS build of `Sources/LeftBlankCore` "
+               "All executable lines in `iPad/Sources` and the iOS build of `Sources/ProseCore` "
                "count once, including UI. XCTest and UI runs supply actual LLVM execution counts. "
                "Dependencies, test code, generated code and the uninstrumented Rust engine are "
                "outside this Swift coverage report. `TinymistTransport.swift` has only protocol "

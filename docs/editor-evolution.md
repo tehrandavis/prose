@@ -14,7 +14,7 @@ This iteration completed command discovery, feedback and recovery while establis
 
 ## Architecture and acceptance
 
-SwiftUI, AppKit/NSTextView, LeftBlankCore and pinned Tinymist remain the foundation. An importable app library and thin launcher let tests exercise the real workspace, native editor and language-service process. Filesystem and user state use isolated test directories.
+SwiftUI, AppKit/NSTextView, ProseCore and pinned Tinymist remain the foundation. An importable app library and thin launcher let tests exercise the real workspace, native editor and language-service process. Filesystem and user state use isolated test directories.
 
 The coverage target is at least 80% of all first-party core and app Swift lines, reported per file. UI files are not excluded to inflate results. Functional integration takes priority: discovery → parameters → insertion → placeholders → undo; file conflicts and recovery; real compilation, export and multiple files; preview failure and recovery. Small parsing and boundary tests complement these flows. Real app checks cover visuals and interaction.
 

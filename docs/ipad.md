@@ -1,7 +1,7 @@
 # iPad development
 
 The native iPad target requires iPadOS 17 or later and Xcode 26.3 or later. Open
-`iPad/LeftBlank.xcodeproj` and use the **LeftBlank-iPad** scheme. Set the signing
+`iPad/Prose.xcodeproj` and use the **Prose-iPad** scheme. Set the signing
 team before installing on a physical iPad; the app uses the same bundle identifier
 and iCloud document container as the Mac App Store target.
 
@@ -15,7 +15,7 @@ Tinymist 0.15.8 / Typst 0.15.1 is pinned to the same engine generation as Mac.
 On iPad, Tinymist runs as a Rust static library on a background worker, with the
 same framed LSP and local WebKit preview. It does not launch an executable. Pipes
 connect the Swift client to the engine without replacing application stdin/stdout
-or changing its working directory. The same library carries LeftBlank's
+or changing its working directory. The same library carries Prose's
 typst-syntax parser bridge, which the app hands to `SyntaxTree.install` at launch
 ([parser bridge](visual-editing.md#parser-typst-syntax-through-a-c-abi)), so the app links one Rust runtime. Each
 document connection owns its worker and runtime. Closing the client delivers EOF and shuts down that worker. The embedded
@@ -47,7 +47,7 @@ last. Existing Mac typography and app interface fonts remain unchanged; iPad
 Chinese text can use Noto offline. An unavailable explicitly named system font
 can still produce a warning. Older manuscripts retain their font declarations.
 The welcome document now copies its relative SVG asset during both first launch
-and template creation. Opening an older LeftBlank starter repairs a missing mark
+and template creation. Opening an older Prose starter repairs a missing mark
 without replacing an existing asset or rewriting the manuscript.
 
 The UIKit editor is a TextKit 2 `UITextView` with the Mac's styles
@@ -129,7 +129,7 @@ PDF sharing, plus English and Chinese welcome rendering. Run it with an availabl
 iPad simulator:
 
 ```sh
-xcodebuild -project iPad/LeftBlank.xcodeproj -scheme LeftBlank-iPad \
+xcodebuild -project iPad/Prose.xcodeproj -scheme Prose-iPad \
   -destination 'platform=iOS Simulator,id=<iPad simulator UUID>' \
   -derivedDataPath build/iPad -clonedSourcePackagesDirPath .build/xcode-packages \
   CODE_SIGNING_ALLOWED=NO test
@@ -216,7 +216,7 @@ XCTest's once-per-second predicate expectations.
 
 ## Current evidence and remaining work
 
-GitHub [run 37021201574](https://github.com/leftblank-app/leftblank/actions/runs/37021201574)
+GitHub [run 37021201574](https://github.com/tehrandavis/prose/actions/runs/37021201574)
 passed Mac regression and all three iPad engine/simulator/device build jobs.
 Both independent iOS 26.2 UI runners completed six cases, with five passing.
 Only the Chinese welcome case failed: after the first document creation, the

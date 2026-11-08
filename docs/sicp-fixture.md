@@ -16,12 +16,12 @@ scripts or the book's Scheme programs.
 ```sh
 source scripts/environment.sh
 python3 scripts/prepare-sicp.py --compile \
-  --typst "$PWD/build/LeftBlank.app/Contents/Helpers/tinymist"
+  --typst "$PWD/build/Prose.app/Contents/Helpers/tinymist"
 ```
 
 The `--typst` argument also accepts a normal Typst executable. Omit `--compile`
 to prepare source only. The default destination is
-`.tools/tmp/leftblank-sicp` in the checkout. The verified book, PDF, diagrams and original editable Texinfo source are also
+`.tools/tmp/prose-sicp` in the checkout. The verified book, PDF, diagrams and original editable Texinfo source are also
 committed under `Examples/Books/SICP`; generation uses that working directory
 so it does not overwrite the checked-in example automatically.
 
@@ -47,7 +47,7 @@ pinned to commit `bda03f79d6e2e8899ac2b5ca6a3732210e290a79`. Its lineage is the
 Unofficial Texinfo edition and the original MIT Press HTML edition. The book is
 by Harold Abelson and Gerald Jay Sussman, with Julie Sussman. Both the HTML and
 SVG diagrams are expressly licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
-The generated adaptation keeps that license; LeftBlank's code license does not
+The generated adaptation keeps that license; Prose's code license does not
 replace it.
 
 The downloaded archive is verified against SHA-256
@@ -86,7 +86,7 @@ Typst paragraph boundaries or PDF pagination.
 
 ## Verified output
 
-On 2026-10-01 with Pandoc 3.11 and LeftBlank's bundled Tinymist 0.15.8 / Typst 0.15.1:
+On 2026-10-01 with Pandoc 3.11 and Prose's bundled Tinymist 0.15.8 / Typst 0.15.1:
 
 | Item | Size or count |
 | --- | ---: |
@@ -115,5 +115,5 @@ redundant web lists of exercises and figures are omitted. The complete book's
 exercise text, figure captions and term index remain.
 
 The PDF code is set in a restrained monochrome style. Editor highlighting is
-provided independently by LeftBlank's Scheme grammar. No code execution is performed
+provided independently by Prose's Scheme grammar. No code execution is performed
 by this conversion or required to read the book.

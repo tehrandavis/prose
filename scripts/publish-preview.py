@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import preview_channels as channels  # noqa: E402
 
-REPO = 'leftblank-app/leftblank'
+REPO = 'tehrandavis/prose'
 FEED_TAG = 'preview-latest'
 
 
@@ -42,15 +42,15 @@ def main():
     # GITHUB_SHA must be the commit that passed the dependency job, never a fresh checkout of main.
     subprocess.run(['git', 'merge-base', '--is-ancestor', commit, 'origin/main'], check=True)
     notes = directory / 'notes.md'
-    notes.write_text(f'Tested {channel} main build **{build}**, commit `{commit}`.\n\nDownload the ZIP, unzip and drag **LeftBlank Preview.app** to Applications. Preview uses its own local library and offers signed updates. It does not access the stable app\'s iCloud library.\n')
+    notes.write_text(f'Tested {channel} main build **{build}**, commit `{commit}`.\n\nDownload the ZIP, unzip and drag **Prose Preview.app** to Applications. Preview uses its own local library and offers signed updates. It does not access the stable app\'s iCloud library.\n')
     if not release_exists(tag):
         gh('release', 'create', tag, *map(str, directory.glob('*.zip')), *map(str, directory.glob('*.sha256')),
            str(directory / 'appcast.xml'), '--target', commit, '--prerelease', '--latest=false',
-           '--title', f'LeftBlank Preview {build}' + (' (alpha)' if channel == channels.ALPHA else ''),
+           '--title', f'Prose Preview {build}' + (' (alpha)' if channel == channels.ALPHA else ''),
            '--notes-file', str(notes))
     if not release_exists(FEED_TAG):
         gh('release', 'create', FEED_TAG, '--target', commit, '--prerelease', '--latest=false',
-           '--title', 'LeftBlank Preview updates', '--notes', 'Signed update feed for LeftBlank Preview: the newest nightly build, plus the newest alpha build for apps that opt in. The feed tag stays fixed; each app archive has its own immutable build tag.')
+           '--title', 'Prose Preview updates', '--notes', 'Signed update feed for Prose Preview: the newest nightly build, plus the newest alpha build for apps that opt in. The feed tag stays fixed; each app archive has its own immutable build tag.')
     # Reject an old rerun so it can never move its channel back. The feed was
     # merged when this build was signed; if the other channel published since,
     # its item reverts until that channel's next publication.
@@ -63,7 +63,7 @@ def main():
             print(f'The {channel} channel already offers a build at least as new as {build}; preserving it.')
             return
     gh('release', 'upload', FEED_TAG, str(directory / 'appcast.xml'), '--clobber')
-    print(f'Published LeftBlank Preview {build} to the {channel} channel.')
+    print(f'Published Prose Preview {build} to the {channel} channel.')
     # Only after the new feed is live, and never what it points to.
     tags = gh('release', 'list', '--limit', '1000', '--json', 'tagName', '--jq', '.[].tagName').split()
     for old in channels.alpha_tags_to_prune(tags, feed):

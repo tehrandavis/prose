@@ -1,4 +1,4 @@
-import LeftBlankCore
+import ProseCore
 import PDFKit
 import SwiftUI
 import UIKit

@@ -1,12 +1,12 @@
-// A LeftBlank original. Keep, change or remove any part of this document.
-// These pinned packages are included with LeftBlank; this example works offline.
+// A Prose original. Keep, change or remove any part of this document.
+// These pinned packages are included with Prose; this example works offline.
 #import "@preview/cetz:0.5.2": canvas, draw
 #import "@preview/codly:1.3.0": codly, codly-init
 
 #let ink = rgb("253238")
 #let muted = rgb("66736d")
 #let sage = rgb("dbe6df")
-#set document(title: "Ink for your thoughts", author: "LeftBlank")
+#set document(title: "Write in Typst", author: "Prose")
 #set page(paper: "a4", margin: (x: 25mm, y: 22mm), numbering: "01", number-align: center)
 #set text(font: ("Libertinus Serif", "PingFang SC", "Noto Sans SC"), size: 11pt, fill: ink)
 #set par(leading: 0.75em)
@@ -17,16 +17,16 @@
 #codly(display-name: false, display-icon: false, zebra-fill: none)
 
 #grid(columns: (10mm, 1fr), align: (left, horizon),
-  image("leftblank-mark.svg", width: 9mm),
-  text(size: 9pt, tracking: 3pt, fill: muted)[L E F T B L A N K   /   A FIELD GUIDE],
+  image("prose-mark.svg", width: 9mm),
+  text(size: 9pt, tracking: 3pt, fill: muted)[P R O S E   /   A FIELD GUIDE],
 )
 #v(9mm)
-= Ink for your thoughts
+= Write in Typst
 
 #text(size: 15pt, fill: muted)[Begin with a thought. Give it room to grow.]
 #v(7mm)
 
-A sentence, a sketch, a relationship you cannot quite explain yet. LeftBlank keeps your writing close and its tools within reach, so that an unfinished idea has somewhere to go.
+A sentence, a sketch, a relationship you cannot quite explain yet. Prose keeps your writing close and its tools within reach, so that an unfinished idea has somewhere to go.
 
 This document is yours. Change a word and watch the page respond. Keep a passage you like, replace an example, or start fresh with a blank page.
 
@@ -58,7 +58,7 @@ Press *⌘J* to discover commands, then follow a category or search for what you
 ]
 
 #pagebreak()
-#text(size: 9pt, tracking: 3pt, fill: muted)[L E F T B L A N K   /   IDEAS IN MANY FORMS]
+#text(size: 9pt, tracking: 3pt, fill: muted)[P R O S E   /   IDEAS IN MANY FORMS]
 #v(7mm)
 == Give a relationship a shape
 
@@ -97,7 +97,7 @@ print(connections)
 #v(2mm)
 == Make it your own
 
-LeftBlank saves your writing as you go. Edit freely, undo a change, or export the source when you want to take it elsewhere. A document can include local styles and illustrations while staying one piece of writing in your library.
+Prose saves your writing as you go. Edit freely, undo a change, or export the source when you want to take it elsewhere. A document can include local styles and illustrations while staying one piece of writing in your library.
 
 For a closer look at the page's language, explore the #link("https://typst.app/docs/tutorial/")[Typst tutorial]. For community ideas, visit #link("https://typst.app/universe/package/cetz/")[CeTZ] and #link("https://typst.app/universe/package/codly/")[Codly].
 

@@ -1,6 +1,6 @@
 # Authoring guides for coding agents
 
-LeftBlank's MCP exposes application-owned creative workflows as a discoverable,
+Prose's MCP exposes application-owned creative workflows as a discoverable,
 read-only catalog. An agent can translate a vague document request into a brief,
 select a suitable example, write editable Typst, and inspect the result using the
 existing document tools. The server does not run a second language model or make
@@ -39,19 +39,19 @@ Example protocol sequence (JSON-RPC envelopes and transport metadata omitted):
 ```text
 prompts/list
 prompts/get {"name":"dimensional-drawing","arguments":{"request":"画一张设备外壳尺寸图，尺寸暂未提供"}}
-resources/read {"uri":"leftblank://guides/dimensional-drawing/drawing-kit.typ"}
-resources/read {"uri":"leftblank://guides/dimensional-drawing/product.typ"}
-resources/read {"uri":"leftblank://guides/dimensional-drawing/license.txt"}
+resources/read {"uri":"prose://guides/dimensional-drawing/drawing-kit.typ"}
+resources/read {"uri":"prose://guides/dimensional-drawing/product.typ"}
+resources/read {"uri":"prose://guides/dimensional-drawing/license.txt"}
 ```
 
 Each guide has one prompt. Each catalog file has one concrete URI of the form
-`leftblank://guides/<id>/<path>`. Only exact catalog entries can be read: caller
+`prose://guides/<id>/<path>`. Only exact catalog entries can be read: caller
 URIs are never normalized into filesystem paths. There are no parameterized
 resources, so `resources/templates/list` returns an empty list.
 
 Namespaced `_meta` fields describe application semantics, not extra MCP methods:
-`app.leftblank/authoringGuide` contains `id`, `version`, and `fallback`;
-resource metadata also contains `app.leftblank/path` and `app.leftblank/entrypoint`.
+`app.prose/authoringGuide` contains `id`, `version`, and `fallback`;
+resource metadata also contains `app.prose/path` and `app.prose/entrypoint`.
 When no specialized guide fits, the client can select the described general
 fallback. Human-readable descriptions remain sufficient for selection.
 
@@ -83,14 +83,14 @@ browser, image-generation API, or raster asset. The Xiaohei adaptation keeps
 labels and geometry editable; its look is a native sketch approximation, and
 quality still depends on adapting the visual action to the content.
 
-The guide explains the limits of the output path. LeftBlank MCP does not thereby
+The guide explains the limits of the output path. Prose MCP does not thereby
 gain image generation or PPTX export. Existing resources can be uploaded in a complete import_project manifest within its encoded size limit. A slide-sized
 Typst document is not a PowerPoint deck. An agent may use separately available
 capabilities when requested, but must describe what it actually delivered.
 
 ## Extending the catalog
 
-Content lives in `Sources/LeftBlankCore/AuthoringGuides/`, one directory per guide:
+Content lives in `Sources/ProseCore/AuthoringGuides/`, one directory per guide:
 
 ```text
 AuthoringGuides/
@@ -164,11 +164,11 @@ in addition to page layout.
 The fallback teaches an agent to turn an unfamiliar request into a brief, search
 [Typst Universe](https://typst.app/universe/) using its available network tools,
 read the candidate's versioned documentation and minimal example, check compiler
-requirements and licensing, then test one representative page in LeftBlank's
+requirements and licensing, then test one representative page in Prose's
 actual engine. It records source URLs, selected versions, unresolved dependencies,
 and visual review. Package imports pin the version that was actually inspected.
 
-LeftBlank currently exposes document tools rather than MCP package-search or
+Prose currently exposes document tools rather than MCP package-search or
 package-source-reading tools. The guide relies on the client's existing web/HTTP
 capabilities for research and the application's engine for package resolution.
 Without those research tools, it uses supplied/project examples or native Typst

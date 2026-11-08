@@ -1,4 +1,4 @@
-import LeftBlankCore
+import ProseCore
 import UIKit
 
 /// The iPad half of the TextKit 2 editor: the same `SourceStyler` as the Mac,

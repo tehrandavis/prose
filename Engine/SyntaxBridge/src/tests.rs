@@ -103,7 +103,7 @@ fn kind_codes_are_unique_named_and_stable() {
         !codes.contains(&0),
         "0 is reserved for kinds the Swift side does not know"
     );
-    // Spot-check codes that LeftBlankCore and saved plans depend on.
+    // Spot-check codes that ProseCore and saved plans depend on.
     for (kind, expected) in [
         (SyntaxKind::Markup, 1),
         (SyntaxKind::Strong, 9),

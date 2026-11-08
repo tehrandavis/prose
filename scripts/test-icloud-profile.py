@@ -23,10 +23,10 @@ class ProfileValidation(unittest.TestCase):
             'ExpirationDate': datetime.datetime(2030, 1, 1), 'ProvisionsAllDevices': True,
             'DeveloperCertificates': [self.cert],
             'Entitlements': {
-                'com.apple.application-identifier': 'TESTPREFIX.app.leftblank.writer',
+                'com.apple.application-identifier': 'TESTPREFIX.com.tehrandavis.prose',
                 'com.apple.developer.team-identifier': 'TESTTEAM',
-                'com.apple.developer.icloud-container-identifiers': ['iCloud.app.leftblank.writer'],
-                'com.apple.developer.ubiquity-container-identifiers': ['iCloud.app.leftblank.writer'],
+                'com.apple.developer.icloud-container-identifiers': ['iCloud.com.tehrandavis.prose'],
+                'com.apple.developer.ubiquity-container-identifiers': ['iCloud.com.tehrandavis.prose'],
                 'com.apple.developer.icloud-services': '*',
                 'com.apple.developer.icloud-container-environment': 'Production',
                 'com.apple.developer.ubiquity-kvstore-identifier': 'TESTPREFIX.*',
@@ -36,26 +36,26 @@ class ProfileValidation(unittest.TestCase):
     def validate(self, profile):
         return module.entitlements(profile, 'TESTTEAM', self.identity, self.now)
 
-    def test_valid_profile_scopes_wildcards_to_leftblank(self):
+    def test_valid_profile_scopes_wildcards_to_prose(self):
         result = self.validate(self.profile)
-        self.assertEqual(result['com.apple.developer.ubiquity-kvstore-identifier'], 'TESTPREFIX.app.leftblank.writer')
+        self.assertEqual(result['com.apple.developer.ubiquity-kvstore-identifier'], 'TESTPREFIX.com.tehrandavis.prose')
         self.assertEqual(result['com.apple.developer.icloud-services'], ['CloudDocuments'])
         self.assertNotIn('keychain-access-groups', result)
 
     def test_preview_uses_own_app_identity_and_shared_cloud_storage(self):
         profile = copy.deepcopy(self.profile)
-        profile['Entitlements']['com.apple.application-identifier'] = 'TESTPREFIX.app.leftblank.writer.preview'
-        result = module.entitlements(profile, 'TESTTEAM', self.identity, self.now, 'app.leftblank.writer.preview')
-        self.assertEqual(result['com.apple.application-identifier'], 'TESTPREFIX.app.leftblank.writer.preview')
-        self.assertEqual(result['com.apple.developer.ubiquity-kvstore-identifier'], 'TESTPREFIX.app.leftblank.writer')
-        self.assertEqual(result['com.apple.developer.ubiquity-container-identifiers'], ['iCloud.app.leftblank.writer'])
+        profile['Entitlements']['com.apple.application-identifier'] = 'TESTPREFIX.com.tehrandavis.prose.preview'
+        result = module.entitlements(profile, 'TESTTEAM', self.identity, self.now, 'com.tehrandavis.prose.preview')
+        self.assertEqual(result['com.apple.application-identifier'], 'TESTPREFIX.com.tehrandavis.prose.preview')
+        self.assertEqual(result['com.apple.developer.ubiquity-kvstore-identifier'], 'TESTPREFIX.com.tehrandavis.prose')
+        self.assertEqual(result['com.apple.developer.ubiquity-container-identifiers'], ['iCloud.com.tehrandavis.prose'])
         with self.assertRaises(ValueError): self.validate(profile)
         with self.assertRaises(ValueError):
-            module.entitlements(self.profile, 'TESTTEAM', self.identity, self.now, 'app.leftblank.writer.preview')
+            module.entitlements(self.profile, 'TESTTEAM', self.identity, self.now, 'com.tehrandavis.prose.preview')
 
     def test_preview_release_requires_own_profile_before_signing(self):
-        env = {**os.environ, 'LEFTBLANK_DISTRIBUTION': 'preview',
-               'LEFTBLANK_BUILD_NUMBER': '1.1', 'SPARKLE_PRIVATE_KEY': 'fixture',
+        env = {**os.environ, 'PROSE_DISTRIBUTION': 'preview',
+               'PROSE_BUILD_NUMBER': '1.1', 'SPARKLE_PRIVATE_KEY': 'fixture',
                'ICLOUD_PROVISIONING_PROFILE': 'standard-profile-is-not-a-preview-profile'}
         for name in ('SIGNING_CERTIFICATE_P12', 'SIGNING_CERTIFICATE_PASSWORD',
                      'APP_STORE_CONNECT_KEY_ID', 'APP_STORE_CONNECT_ISSUER_ID',

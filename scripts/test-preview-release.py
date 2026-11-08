@@ -22,14 +22,14 @@ def feed_root(*items):
     """A feed with (build, channel) items, as previously published."""
     root = ET.Element('rss', version='2.0')
     channel = ET.SubElement(root, 'channel')
-    ET.SubElement(channel, 'title').text = 'LeftBlank Preview'
+    ET.SubElement(channel, 'title').text = 'Prose Preview'
     for build, name in items:
         item = ET.SubElement(channel, 'item')
         ET.SubElement(item, SPARKLE + 'version').text = build
         if name == channels.ALPHA:
             ET.SubElement(item, SPARKLE + 'channel').text = name
-        ET.SubElement(item, 'enclosure', url='https://github.com/leftblank-app/leftblank/releases/download/'
-                      f'{channels.release_tag(build, name)}/LeftBlank-Preview.zip')
+        ET.SubElement(item, 'enclosure', url='https://github.com/tehrandavis/prose/releases/download/'
+                      f'{channels.release_tag(build, name)}/Prose-Preview.zip')
     return root
 
 
@@ -42,7 +42,7 @@ class PreviewReleaseTests(unittest.TestCase):
         key = base64.b64encode(os.urandom(32))
         public = subprocess.check_output(['swift', '-module-cache-path', str(ROOT / '.build/update-module-cache'),
                                           str(ROOT / 'scripts/verify-update.swift'), '--public-key'], input=key).decode().strip()
-        with tempfile.TemporaryDirectory(prefix='leftblank-update-contract-', dir=os.environ['TMPDIR']) as temporary:
+        with tempfile.TemporaryDirectory(prefix='prose-update-contract-', dir=os.environ['TMPDIR']) as temporary:
             root = Path(temporary)
             (root / 'scripts').symlink_to(ROOT / 'scripts', target_is_directory=True)
             (root / '.tools').symlink_to(ROOT / '.tools', target_is_directory=True)
@@ -50,10 +50,10 @@ class PreviewReleaseTests(unittest.TestCase):
             info = plistlib.loads((ROOT / 'Resources/Preview-Info.plist').read_bytes())
             info['SUPublicEDKey'] = public
             (root / 'Resources/Preview-Info.plist').write_bytes(plistlib.dumps(info))
-            info.update(CFBundleVersion='91.1', CFBundleShortVersionString='0.5.0', LeftBlankCommit='abcdef123456')
-            archive = root / 'LeftBlank-Preview-test.zip'
+            info.update(CFBundleVersion='91.1', CFBundleShortVersionString='0.5.0', ProseCommit='abcdef123456')
+            archive = root / 'Prose-Preview-test.zip'
             with zipfile.ZipFile(archive, 'w') as bundle:
-                bundle.writestr('LeftBlank Preview.app/Contents/Info.plist', plistlib.dumps(info))
+                bundle.writestr('Prose Preview.app/Contents/Info.plist', plistlib.dumps(info))
             # No published feed yet; never read the live feed from a test.
             environment = {**os.environ, 'SPARKLE_PRIVATE_KEY': key.decode(), 'PREVIEW_CURRENT_FEED': ''}
             def generate(build='91.1', **extra):
@@ -84,7 +84,7 @@ class PreviewReleaseTests(unittest.TestCase):
         public = subprocess.check_output(['swift', '-module-cache-path', str(ROOT / '.build/update-module-cache'),
                                           str(ROOT / 'scripts/verify-update.swift'), '--public-key'], input=key).decode().strip()
         signer = str(ROOT / '.tools/sparkle/bin/sign_update')
-        with tempfile.TemporaryDirectory(prefix='leftblank-channels-contract-', dir=os.environ['TMPDIR']) as temporary:
+        with tempfile.TemporaryDirectory(prefix='prose-channels-contract-', dir=os.environ['TMPDIR']) as temporary:
             root = Path(temporary)
             (root / 'scripts').symlink_to(ROOT / 'scripts', target_is_directory=True)
             (root / '.tools').symlink_to(ROOT / '.tools', target_is_directory=True)
@@ -92,13 +92,13 @@ class PreviewReleaseTests(unittest.TestCase):
             info = plistlib.loads((ROOT / 'Resources/Preview-Info.plist').read_bytes())
             info['SUPublicEDKey'] = public
             (root / 'Resources/Preview-Info.plist').write_bytes(plistlib.dumps(info))
-            archive, feed = root / 'LeftBlank-Preview-test.zip', root / 'appcast.xml'
+            archive, feed = root / 'Prose-Preview-test.zip', root / 'appcast.xml'
 
             def publish(build, channel, current):
                 with zipfile.ZipFile(archive, 'w') as bundle:
-                    bundle.writestr('LeftBlank Preview.app/Contents/Info.plist', plistlib.dumps(
+                    bundle.writestr('Prose Preview.app/Contents/Info.plist', plistlib.dumps(
                         {**info, 'CFBundleVersion': build, 'CFBundleShortVersionString': '0.5.0',
-                         'LeftBlankCommit': 'abcdef123456'}))
+                         'ProseCommit': 'abcdef123456'}))
                 result = subprocess.run(['python3', str(ROOT / 'scripts/preview-feed.py'), str(archive), build, channel],
                                         cwd=root, capture_output=True, env={
                                             **os.environ, 'SPARKLE_PRIVATE_KEY': key.decode(),
@@ -132,8 +132,8 @@ class PreviewReleaseTests(unittest.TestCase):
             # A tampered published feed is never merged.
             later.write_bytes(later.read_bytes().replace(b'93.1', b'99.1'))
             with zipfile.ZipFile(archive, 'w') as bundle:
-                bundle.writestr('LeftBlank Preview.app/Contents/Info.plist', plistlib.dumps(
-                    {**info, 'CFBundleVersion': '94.1', 'LeftBlankCommit': 'abcdef123456',
+                bundle.writestr('Prose Preview.app/Contents/Info.plist', plistlib.dumps(
+                    {**info, 'CFBundleVersion': '94.1', 'ProseCommit': 'abcdef123456',
                      'CFBundleShortVersionString': '0.5.0'}))
             result = subprocess.run(['python3', str(ROOT / 'scripts/preview-feed.py'), str(archive), '94.1', 'alpha'],
                                     cwd=root, capture_output=True, env={
@@ -163,7 +163,7 @@ class PreviewChannelTests(unittest.TestCase):
         merged = channels.merge(feed_root(('90.1', 'nightly')), feed_root(('91.1', 'alpha')))
         self.assertEqual(set(channels.items_by_channel(merged)), {'nightly', 'alpha'})
         self.assertEqual(channels.merge(None, feed_root(('91.1', 'nightly'))).findtext('./channel/title'),
-                         'LeftBlank Preview')
+                         'Prose Preview')
 
     def test_an_older_build_never_moves_its_channel_back(self):
         current = feed_root(('91.1', 'nightly'), ('95.1', 'alpha'))

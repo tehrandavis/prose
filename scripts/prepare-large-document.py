@@ -15,7 +15,7 @@ import urllib.request
 if "TMPDIR" not in os.environ:
     raise SystemExit("Source scripts/environment.sh first; it sets TMPDIR for fixtures.")
 temporary = Path(os.environ["TMPDIR"]).resolve(strict=True)
-root = temporary / "leftblank-large-document"
+root = temporary / "prose-large-document"
 root.mkdir(parents=True, exist_ok=True)
 url = "https://www.gutenberg.org/ebooks/2600.txt.utf-8"
 original = root / "war-and-peace.txt"
@@ -37,7 +37,7 @@ for line in source.splitlines():
         lines.extend(["", "= " + stripped, ""])
         if chapters % 20 == 1:
             blocks += 1
-            lines.extend([f"// LeftBlank benchmark block {blocks}", "```python", "total = sum(range(1, 11))", "print(total)", "```", "", "$alpha + beta = gamma$", "", "*A highlighted passage* with _emphasis_ and `inline code`. 中文与 emoji 😀.", ""])
+            lines.extend([f"// Prose benchmark block {blocks}", "```python", "total = sum(range(1, 11))", "print(total)", "```", "", "$alpha + beta = gamma$", "", "*A highlighted passage* with _emphasis_ and `inline code`. 中文与 emoji 😀.", ""])
     else:
         lines.append(re.sub(r"([\\#\[\]*_$<>@`])", r"\\\1", line))
 document = root / "war-and-peace-highlighted.typ"

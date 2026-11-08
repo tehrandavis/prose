@@ -13,7 +13,7 @@ MCP-Protocol-Version: 2025-11-25
     "protocolVersion": "2025-11-25",
     "capabilities": {},
     "clientInfo": {
-      "name": "leftblank-hurl",
+      "name": "prose-hurl",
       "version": "1"
     }
   }
@@ -83,7 +83,7 @@ MCP-Protocol-Version: 2025-11-25
 HTTP 200
 [Asserts]
 jsonpath "$.result.messages[1].content.type" == "resource"
-jsonpath "$.result.messages[1].content.resource.uri" == "leftblank://guides/xiaohei-illustrations/guide.md"
+jsonpath "$.result.messages[1].content.resource.uri" == "prose://guides/xiaohei-illustrations/guide.md"
 jsonpath "$.result.messages[1].content.resource.text" isString
 jsonpath "$.result.messages[2].content.text" contains "反馈帮助改进设计"
 jsonpath "$.result.messages[0].content.text" contains "feedback.typ"
@@ -119,7 +119,7 @@ MCP-Protocol-Version: 2025-11-25
   "id": 605,
   "method": "resources/read",
   "params": {
-    "uri": "leftblank://guides/xiaohei-illustrations/../catalog.json"
+    "uri": "prose://guides/xiaohei-illustrations/../catalog.json"
   }
 }
 HTTP 200

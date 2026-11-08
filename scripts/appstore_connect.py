@@ -20,7 +20,7 @@ EDITABLE = {'PREPARE_FOR_SUBMISSION', 'DEVELOPER_REJECTED', 'REJECTED', 'METADAT
 # Mac submissions too and asks where to buy it (2.1(b), Mac 1.0 review).
 MAC_REVIEW_NOTES = (
     'The Mac app is free and has no in-app purchases. The auto-renewable subscription '
-    'in this app record (app.leftblank.writer.ipad.monthly) is offered only in the iPad '
+    'in this app record (com.tehrandavis.prose.ipad.monthly) is offered only in the iPad '
     'app; the Mac app never offers, sells or checks it. No login is required. Rendering '
     'runs locally. Additional Typst packages are downloaded over HTTPS.')
 
@@ -139,8 +139,8 @@ class Release:
 
     def preflight(self):
         app = self.client.request('GET', f'/v1/apps/{self.app}')['data']
-        if app['attributes']['bundleId'] != 'app.leftblank.writer':
-            raise RuntimeError('APP_STORE_APP_ID does not identify LeftBlank')
+        if app['attributes']['bundleId'] != 'com.tehrandavis.prose':
+            raise RuntimeError('APP_STORE_APP_ID does not identify Prose')
         versions = self.versions()
         current = next((v for v in versions if v['attributes']['versionString'] == self.metadata['version']), None)
         if current:
@@ -224,7 +224,7 @@ class Release:
             notes = ['--notes-file', 'build/release-metadata.md'] if self.platform == 'MAC_OS' else [
                 '--notes', 'iPad App Store build provenance. Initial app and subscription review is submitted together in App Store Connect.']
             subprocess.run(['gh', 'release', 'create', tag, '--verify-tag', '--draft',
-                            '--title', 'LeftBlank ' + tag, *notes], check=True)
+                            '--title', 'Prose ' + tag, *notes], check=True)
         path = Path('build') / asset
         path.write_text(json.dumps(self.metadata, ensure_ascii=False, indent=2) + '\n')
         subprocess.run(['gh', 'release', 'upload', tag, str(path)], check=True)
@@ -327,7 +327,7 @@ def main():
     parser.add_argument('command', choices=['preflight', 'claim', 'upload', 'submit', 'status', 'profile', 'prepare'])
     parser.add_argument('--metadata', type=Path, default=Path('build/release-metadata.json'))
     parser.add_argument('--key', type=Path, required=True)
-    parser.add_argument('--package', type=Path, default=Path('build/LeftBlank-AppStore.pkg'))
+    parser.add_argument('--package', type=Path, default=Path('build/Prose-AppStore.pkg'))
     parser.add_argument('--platform', choices=['MAC_OS', 'IOS'], default='MAC_OS')
     parser.add_argument('--identity', help='SHA-1 of the existing Apple Distribution certificate')
     parser.add_argument('--profile-output', type=Path)

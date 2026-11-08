@@ -1,0 +1,40 @@
+{
+  "configurations": [
+    {
+      "id": "745A7E29-F623-4C27-999F-2EED92835665",
+      "name": "iPad",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "codeCoverage": true,
+    "mainThreadCheckerEnabled": true,
+    "storeKitConfigurationFileReference": {
+      "identifier": "Storefront/Prose.storekit"
+    },
+    "targetForVariableExpansion": {
+      "containerPath": "container:Prose.xcodeproj",
+      "identifier": "A00000000000000000000005",
+      "name": "ProseTablet"
+    }
+  },
+  "testTargets": [
+    {
+      "parallelizable": false,
+      "target": {
+        "containerPath": "container:Prose.xcodeproj",
+        "identifier": "E00000000000000000000001",
+        "name": "ProseTabletTests"
+      }
+    },
+    {
+      "parallelizable": false,
+      "target": {
+        "containerPath": "container:Prose.xcodeproj",
+        "identifier": "B00000000000000000000001",
+        "name": "ProseUITests"
+      }
+    }
+  ],
+  "version": 1
+}

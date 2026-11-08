@@ -21,9 +21,9 @@ import uuid
 # Pull requests run every native unit test plus these UI scenarios: writing,
 # split view, autosave, preview, rotation, rendering and PDF sharing. Main and
 # full dispatches run the complete UI suite.
-SMOKE_TESTS = ('LeftBlankUITests/WritingTests/testEditingPersistsAcrossPreviewAndRotation',
-               'LeftBlankUITests/WritingTests/testWelcomePreviewAndPDFExport',
-               'LeftBlankUITests/WritingTests/testRenderedFunctionHelpKeepsTheManuscript')
+SMOKE_TESTS = ('ProseUITests/WritingTests/testEditingPersistsAcrossPreviewAndRotation',
+               'ProseUITests/WritingTests/testWelcomePreviewAndPDFExport',
+               'ProseUITests/WritingTests/testRenderedFunctionHelpKeepsTheManuscript')
 
 
 def wait_for_tests(process, startup_timeout, execution_timeout):
@@ -157,7 +157,7 @@ def diagnostics(path, device=None):
     # Xcode's bounded diagnostics can omit the actual simulator crash report.
     # Retain only this application's newest reports, with a fixed size limit.
     reports = Path.home() / 'Library/Logs/DiagnosticReports'
-    crashes = [report for pattern in ('LeftBlank*.ips', 'LeftBlank*.crash')
+    crashes = [report for pattern in ('Prose*.ips', 'Prose*.crash')
                for report in reports.glob(pattern)]
     for report in sorted(crashes, key=lambda item: item.stat().st_mtime, reverse=True)[:3]:
         if report.stat().st_size <= 5 * 1024 * 1024:
@@ -207,12 +207,12 @@ def export_coverage(bundle, device, results, size, started):
         run(['xcrun', 'llvm-profdata', 'merge', '-sparse', *map(str, profiles), '-o', str(profile)], 60)
     elif not profile.is_file() or profile.stat().st_mtime < started:
         raise RuntimeError('This simulator run must produce a fresh coverage profile')
-    app = products / 'Debug-iphonesimulator/LeftBlank.app'
-    executable = app / 'LeftBlank.debug.dylib'
+    app = products / 'Debug-iphonesimulator/Prose.app'
+    executable = app / 'Prose.debug.dylib'
     if not executable.is_file():
-        executable = app / 'LeftBlank'
+        executable = app / 'Prose'
     images = [executable]
-    core = products / 'Debug-iphonesimulator/PackageFrameworks/LeftBlankCore.framework/LeftBlankCore'
+    core = products / 'Debug-iphonesimulator/PackageFrameworks/ProseCore.framework/ProseCore'
     if not core.is_file():
         raise RuntimeError('Coverage requires the instrumented shared Core image')
     # Only our app and Core are instrumented for the production denominator.
@@ -232,10 +232,10 @@ def configure_coverage(bundle):
     # Declare the two actual instrumented images using Apple's xctestrun schema.
     root = Path(__file__).resolve().parent.parent
     products = bundle.parent
-    images = [('LeftBlank.app', 'A00000000000000000000005:primary', 'iPad/Sources',
-               'LeftBlank.app/LeftBlank.debug.dylib'),
-              ('LeftBlankCore.framework', 'LeftBlankCore:primary', 'Sources/LeftBlankCore',
-               'PackageFrameworks/LeftBlankCore.framework/LeftBlankCore')]
+    images = [('Prose.app', 'A00000000000000000000005:primary', 'iPad/Sources',
+               'Prose.app/Prose.debug.dylib'),
+              ('ProseCore.framework', 'ProseCore:primary', 'Sources/ProseCore',
+               'PackageFrameworks/ProseCore.framework/ProseCore')]
     targets = []
     for name, identifier, folder, image in images:
         base = root / folder
@@ -283,7 +283,7 @@ def test_device(size, device, bundle, results, *, suite='all', memory=False, cov
         selection = []
         if suite != 'all':
             selection = ['-only-testing:' + test for test in
-                         ('LeftBlankTabletTests', *(SMOKE_TESTS if suite == 'smoke' else ()))]
+                         ('ProseTabletTests', *(SMOKE_TESTS if suite == 'smoke' else ()))]
         started = time.time()
         run(['xcodebuild', '-xctestrun', str(bundle),
              '-derivedDataPath', str(bundle.parent.parent.parent),
@@ -345,7 +345,7 @@ def main(argv=None):
         device = select_device(devices, args.size)
         if args.fresh_device:
             runtime = next(runtime for runtime, entries in devices.items() if device in entries)
-            name = 'LeftBlank-' + args.size + '-' + uuid.uuid4().hex[:8]
+            name = 'Prose-' + args.size + '-' + uuid.uuid4().hex[:8]
             identifier = run(['xcrun', 'simctl', 'create', name,
                               device['deviceTypeIdentifier'], runtime], 60, capture=True).stdout.strip()
             uuid.UUID(identifier)

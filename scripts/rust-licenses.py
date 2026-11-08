@@ -12,10 +12,10 @@ root = Path(__file__).resolve().parents[1]
 BUNDLES = {
     # The macOS MCP helper executable (scripts/build-mcp.sh).
     'mcp': ('Tools/MCPServer/Cargo.toml', '.tools/MCP-LICENSES.txt',
-            'LeftBlank macOS MCP helper dependency notices.'),
+            'Prose macOS MCP helper dependency notices.'),
     # typst-syntax linked into the macOS app (scripts/build-syntax.sh).
     'syntax': ('Engine/SyntaxBridge/Cargo.toml', '.tools/SYNTAX-LICENSES.txt',
-               'LeftBlank macOS Typst parser (typst-syntax) dependency notices.'),
+               'Prose macOS Typst parser (typst-syntax) dependency notices.'),
 }
 # Crates whose published archive or git subdirectory omits the repository-root license.
 SHARED_LICENSES = {

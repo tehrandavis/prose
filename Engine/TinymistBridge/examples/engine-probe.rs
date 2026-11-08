@@ -8,7 +8,7 @@ fn main() {
     let output = unsafe { dup(1) };
     assert!(input >= 0 && output >= 0);
     let status =
-        unsafe { leftblank_tinymist::leftblank_tinymist_run(input, output, std::ptr::null()) };
+        unsafe { prose_tinymist::prose_tinymist_run(input, output, std::ptr::null()) };
     if std::env::args().any(|argument| argument == "--linger") {
         // An embedded app remains alive after a document worker stops. Give
         // in-flight Rayon callbacks time to expose a delayed shutdown panic.

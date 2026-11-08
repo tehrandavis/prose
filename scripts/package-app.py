@@ -11,9 +11,9 @@ import sys
 
 def package(binary_dir, distribution):
     if distribution not in ('direct', 'preview', 'appstore'):
-        raise ValueError('Unknown LEFTBLANK_DISTRIBUTION')
+        raise ValueError('Unknown PROSE_DISTRIBUTION')
     preview = distribution == 'preview'
-    name = 'LeftBlank Preview' if preview else 'LeftBlank'
+    name = 'Prose Preview' if preview else 'Prose'
     app = Path('build') / (name + '.app')
     if app.exists():
         shutil.rmtree(app)
@@ -26,17 +26,17 @@ def package(binary_dir, distribution):
         signing_file.unlink()
     for directory in ('MacOS', 'Helpers'):
         (contents / directory).mkdir(parents=True)
-    shutil.copy2(binary_dir / 'LeftBlank', contents / 'MacOS/LeftBlank')
+    shutil.copy2(binary_dir / 'Prose', contents / 'MacOS/Prose')
     # Every channel bundles the patched source build; refuse a stale or release binary.
     subprocess.run(['scripts/build-tinymist.sh', '--check'], check=True)
     shutil.copy2('.tools/tinymist', contents / 'Helpers/tinymist')
-    shutil.copy2('.tools/leftblank-mcp', contents / 'Helpers/leftblank-mcp')
+    shutil.copy2('.tools/prose-mcp', contents / 'Helpers/prose-mcp')
     shutil.copy2('.tools/MCP-LICENSES.txt', resources / 'MCP-LICENSES.txt')
     # typst-syntax is statically linked into the executable (scripts/build-syntax.sh).
     shutil.copy2('.tools/SYNTAX-LICENSES.txt', resources / 'TypstSyntax-LICENSES.txt')
     # Native SwiftPM embeds its PackageFrameworks path ahead of the app's rpath.
     # Remove build-machine paths so cold-launch checks exercise bundled code.
-    executable = contents / 'MacOS/LeftBlank'
+    executable = contents / 'MacOS/Prose'
     commands = subprocess.check_output(['otool', '-l', str(executable)], text=True)
     for path in re.findall(r'cmd LC_RPATH\s+cmdsize \d+\s+path (.*?) \(offset', commands):
         if path.startswith(str(Path('.build').resolve()) + '/'):
@@ -44,14 +44,14 @@ def package(binary_dir, distribution):
     for bundle in binary_dir.glob('*.bundle'):
         shutil.copytree(bundle, resources / bundle.name, symlinks=True)
     info = plistlib.loads(Path('Resources/Info.plist').read_bytes())
-    info['LeftBlankDistribution'] = distribution
+    info['ProseDistribution'] = distribution
     if distribution == 'appstore':
         # The App Store engine uses Apple's Security Framework for HTTPS.
         info['ITSAppUsesNonExemptEncryption'] = False
-    info['LeftBlankCommit'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+    info['ProseCommit'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     if preview:
         info.update(plistlib.loads(Path('Resources/Preview-Info.plist').read_bytes()))
-        build = os.environ.get('LEFTBLANK_BUILD_NUMBER', '1.0')
+        build = os.environ.get('PROSE_BUILD_NUMBER', '1.0')
         if not re.fullmatch(r'[1-9][0-9]*\.[1-9][0-9]*|1\.0', build):
             raise ValueError('Preview build must be run_number.run_attempt')
         info['CFBundleVersion'] = build
@@ -60,7 +60,7 @@ def package(binary_dir, distribution):
             raise RuntimeError('Expected one resolved Sparkle framework')
         (contents / 'Frameworks').mkdir()
         shutil.copytree(frameworks[0], contents / 'Frameworks/Sparkle.framework', symlinks=True)
-        for language, title in [('en', 'LeftBlank Preview'), ('zh-Hans', '留白预览版')]:
+        for language, title in [('en', 'Prose Preview'), ('zh-Hans', 'Prose 预览版')]:
             (resources / (language + '.lproj') / 'InfoPlist.strings').write_text(
                 f'"CFBundleName" = "{title}";\n"CFBundleDisplayName" = "{title}";\n')
     (contents / 'Info.plist').write_bytes(plistlib.dumps(info))
@@ -68,4 +68,4 @@ def package(binary_dir, distribution):
 
 
 if __name__ == '__main__':
-    package(Path(sys.argv[1]), os.environ.get('LEFTBLANK_DISTRIBUTION', 'direct'))
+    package(Path(sys.argv[1]), os.environ.get('PROSE_DISTRIBUTION', 'direct'))

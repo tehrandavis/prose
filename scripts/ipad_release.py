@@ -13,7 +13,7 @@ import time
 import ipad_frameworks
 
 ROOT = Path(__file__).resolve().parent.parent
-BUNDLE = 'app.leftblank.writer'
+BUNDLE = 'com.tehrandavis.prose'
 PRODUCT = BUNDLE + '.ipad.monthly'
 
 
@@ -52,7 +52,7 @@ def metadata(root):
             or subscription['currency'] != 'USD' or subscription['introductory_offer'] != {
                 'mode': 'FREE_TRIAL', 'duration': 'TWO_WEEKS', 'number_of_periods': 1}):
         raise ValueError('iPad business model must be free download, two weeks trial, then US $2.99/month')
-    configuration = json.loads((root / 'iPad/Storefront/LeftBlank.storekit').read_text())
+    configuration = json.loads((root / 'iPad/Storefront/Prose.storekit').read_text())
     products = [product for group in configuration['subscriptionGroups'] for product in group['subscriptions']]
     if (len(products) != 1 or products[0]['productID'] != PRODUCT or products[0]['displayPrice'] != '2.99'
             or products[0]['recurringSubscriptionPeriod'] != 'P1M'
@@ -105,7 +105,7 @@ def validate_profile(profile, identity, now=None):
     if ('iOS' not in profile.get('Platform', []) or 'OSX' in profile.get('Platform', []) or profile.get('ProvisionedDevices')
             or profile.get('ProvisionsAllDevices') or allowed.get('get-task-allow')
             or profile['ExpirationDate'] <= now or allowed.get('application-identifier') != team + '.' + BUNDLE):
-        raise ValueError('Expected a current App Store iOS distribution profile matching LeftBlank')
+        raise ValueError('Expected a current App Store iOS distribution profile matching Prose')
     certificates = [hashlib.sha1(cert).hexdigest().upper() for cert in profile['DeveloperCertificates']]
     if identity.upper() not in certificates:
         raise ValueError('The signing certificate is not included in the iPad profile')
@@ -130,7 +130,7 @@ def validate_profile(profile, identity, now=None):
 
 
 def validate_archive(archive, expected):
-    app = archive / 'Products/Applications/LeftBlank.app'
+    app = archive / 'Products/Applications/Prose.app'
     info = plistlib.loads((app / 'Info.plist').read_bytes())
     for key, value in [('CFBundleIdentifier', BUNDLE), ('CFBundleShortVersionString', expected['version']),
                        ('CFBundleVersion', expected['build']), ('UIDeviceFamily', [2]),
@@ -144,7 +144,7 @@ def validate_archive(archive, expected):
             raise ValueError('iPad archive contains a desktop-only component: ' + path.name)
     if not (app / info['CFBundleExecutable']).is_file():
         raise ValueError('iPad archive is missing its executable')
-    if not (app / 'Frameworks/LeftBlankCore.framework/LeftBlankCore').is_file():
+    if not (app / 'Frameworks/ProseCore.framework/ProseCore').is_file():
         raise ValueError('iPad archive is missing its shared Core framework')
     ipad_frameworks.check_app(app)
     if any(app.rglob('*.storekit')) or any(app.rglob('*.xctest')):
@@ -217,7 +217,7 @@ def main():
     if args.archive:
         app = validate_archive(args.archive, expected)
         subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
-        linked = subprocess.check_output(['otool', '-L', str(app / 'LeftBlank')], text=True).lower()
+        linked = subprocess.check_output(['otool', '-L', str(app / 'Prose')], text=True).lower()
         if any(name in linked for name in ('sparkle', 'mcp', 'automation')):
             raise ValueError('iPad executable links a desktop-only component')
     args.output.parent.mkdir(parents=True, exist_ok=True)

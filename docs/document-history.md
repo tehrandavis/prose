@@ -1,6 +1,6 @@
 # Document history
 
-LeftBlank keeps the latest seven snapshots of each source document on this Mac. Open
+Prose keeps the latest seven snapshots of each source document on this Mac. Open
 **Documents → Document History**, or discover it with **⌘J → f → h** (⌘K when
 configured). History does not add a button to the writing toolbar.
 
@@ -45,7 +45,7 @@ preventing the document from saving.
   between local and iCloud storage retains the same history identity. External
   documents use their canonical file URL; moving an external file starts a new
   history identity.
-- Storage is `Application Support/LeftBlank/History/<SHA-256 of identity>/`. Snapshot
+- Storage is `Application Support/Prose/History/<SHA-256 of identity>/`. Snapshot
   source files and the seven-entry JSON index are written atomically. Source
   SHA-256 hashes are verified before comparison or restoration. The index is
   committed before obsolete payloads are removed. Orphans from an interrupted

@@ -1,0 +1,932 @@
+/* Prose app strings. English source keys; keep placeholders identical across languages. */
+"%@ commands" = "%@ commands";
+"%@ packages · Local index %@" = "%@ packages · Local index %@";
+"%@ packages · Updated %@" = "%@ packages · Updated %@";
+"%@ words" = "%@ words";
+"%@, version %@" = "%@, version %@";
+"%d documents" = "%d documents";
+"1 document" = "1 document";
+"// Write code here" = "// Write code here";
+"A place for your next idea" = "A place for your next idea";
+"A quiet space for your words." = "A quiet space for your words.";
+"About Prose" = "About Prose";
+"Add a copy of a source document to your library." = "Add a copy of a source document to your library.";
+"Add a heading level to the current paragraph." = "Add a heading level to the current paragraph.";
+"Add a subscript to the selected expression." = "Add a subscript to the selected expression.";
+"Add a vector arrow above an expression." = "Add a vector arrow above an expression.";
+"Add an exponent to the selected expression." = "Add an exponent to the selected expression.";
+"Add centered page numbers." = "Add centered page numbers.";
+"Add context without interrupting the text." = "Add context without interrupting the text.";
+"Add space around a content block." = "Add space around a content block.";
+"Add text to the bottom of each page, replacing the default page-number position." = "Add text to the bottom of each page, replacing the default page-number position.";
+"Add text to the top of each page." = "Add text to the top of each page.";
+"Align equals signs with & and start each line with a backslash." = "Align equals signs with & and start each line with a backslash.";
+"Align paragraphs to both left and right edges." = "Align paragraphs to both left and right edges.";
+"Aligned Equations" = "Aligned Equations";
+"Alignment · left / center / right" = "Alignment · left / center / right";
+"All Packages" = "All Packages";
+"Another app changed this file. Your work is safe; reload from disk or save a copy." = "Another app changed this file. Your work is safe; reload from disk or save a copy.";
+"App Language" = "App Language";
+"Apply Settings" = "Apply Settings";
+"Arrange content in two or more columns." = "Arrange content in two or more columns.";
+"Arrange content side by side in a grid. Use a table for data." = "Arrange content side by side in a grid. Use a table for data.";
+"Arrange terms alongside their definitions." = "Arrange terms alongside their definitions.";
+"Arrange two content blocks side by side with spacing." = "Arrange two content blocks side by side with spacing.";
+"Arrows & Mappings" = "Arrows & Mappings";
+"Author" = "Author";
+"Basic Operations" = "Basic Operations";
+"Bibliography" = "Bibliography";
+"Bibliography file · .bib / .yaml" = "Bibliography file · .bib / .yaml";
+"Binomial Coefficient" = "Binomial Coefficient";
+"Blank page" = "Blank page";
+"Block Quote" = "Block Quote";
+"Body rows · 1–20" = "Body rows · 1–20";
+"Bold" = "Bold";
+"Books" = "Books";
+"Bring an existing document or project into your library." = "Bring an existing document or project into your library.";
+"Browse Library" = "Browse Library";
+"Bullet List" = "Bullet List";
+"CVs" = "CVs";
+"Callout" = "Callout";
+"Cancel" = "Cancel";
+"Cannot reach Typst Universe. Refresh when connected; the cached index is still available." = "Cannot reach Typst Universe. Refresh when connected; the cached index is still available.";
+"Category" = "Category";
+"Cell" = "Cell";
+"Change the preview colors. Exported PDFs keep the document's original colors." = "Change the preview colors. Exported PDFs keep the document's original colors.";
+"Check Document" = "Check Document";
+"Check Source" = "Check Source";
+"Choose a new name and location for this document." = "Choose a new name and location for this document.";
+"Choose a project folder containing the selected Typst source file." = "Choose a project folder containing the selected Typst source file.";
+"Choose a shortcut for command discovery. Spaces and standard macOS editing shortcuts remain available." = "Choose a shortcut for command discovery. Spaces and standard macOS editing shortcuts remain available.";
+"Choose a4, a5 or us-letter for the paper size." = "Choose a4, a5 or us-letter for the paper size.";
+"Choose an installed font for the finished document." = "Choose an installed font for the finished document.";
+"Choose left, center or right." = "Choose left, center or right.";
+"Choose the project's main document" = "Choose the project's main document";
+"Citation" = "Citation";
+"Citation key" = "Citation key";
+"Citations, bibliography and contents" = "Citations, bibliography and contents";
+"Cite a source by its key. The document needs a bibliography." = "Cite a source by its key. The document needs a bibliography.";
+"Close Commands" = "Close Commands";
+"Close Sidebar" = "Close Sidebar";
+"Close Window" = "Close Window";
+"Close library" = "Close library";
+"Code" = "Code";
+"Code Block" = "Code Block";
+"Code language" = "Code language";
+"Code language names may contain letters, numbers, underscores, plus signs or hyphens." = "Code language names may contain letters, numbers, underscores, plus signs or hyphens.";
+"Code notes" = "Code notes";
+"Color · hexadecimal" = "Color · hexadecimal";
+"Column Vector" = "Column Vector";
+"Columns" = "Columns";
+"Columns · 1–8" = "Columns · 1–8";
+"Columns · 2–4" = "Columns · 2–4";
+"Columns, alignment and containers" = "Columns, alignment and containers";
+"Command Discovery Shortcut" = "Command Discovery Shortcut";
+"Commands  /  %@" = "Commands  /  %@";
+"Comment or uncomment the current line or selection." = "Comment or uncomment the current line or selection.";
+"Complete" = "Complete";
+"Complete Syntax" = "Complete Syntax";
+"Components" = "Components";
+"Connecting" = "Connecting";
+"Connecting to packages.typst.org…" = "Connecting to packages.typst.org…";
+"Content Alignment" = "Content Alignment";
+"Content Padding" = "Content Padding";
+"Contents" = "Contents";
+"Copy" = "Copy";
+"Copy the selected original Typst source." = "Copy the selected original Typst source.";
+"Could not save the recovery copy: %@" = "Could not save the recovery copy: %@";
+"Create a table. Use Tab to move between cells." = "Create a table. Use Tab to move between cells.";
+"Cross-reference" = "Cross-reference";
+"Current Document" = "Current Document";
+"Cut" = "Cut";
+"Cut the selected source text." = "Cut the selected source text.";
+"Dark" = "Dark";
+"Dark preview" = "Dark preview";
+"Decrease Editor Text Size" = "Decrease Editor Text Size";
+"Decrease Text Size" = "Decrease Text Size";
+"Decrease the editor font size without changing the finished document." = "Decrease the editor font size without changing the finished document.";
+"Define Variable" = "Define Variable";
+"Define text that you can reuse with #name." = "Define text that you can reuse with #name.";
+"Definition" = "Definition";
+"Disconnected" = "Disconnected";
+"Discover Commands" = "Discover Commands";
+"Discover Commands %@" = "Discover Commands %@";
+"Discover Typst names and parameters at the caret." = "Discover Typst names and parameters at the caret.";
+"Discover Universe Packages" = "Discover Universe Packages";
+"Discover commands" = "Discover commands";
+"Discover fractions, matrices and more" = "Discover fractions, matrices and more";
+"Dismiss Message" = "Dismiss Message";
+"Display Equation" = "Display Equation";
+"Divider" = "Divider";
+"Document Checks" = "Document Checks";
+"Document Editor" = "Document Editor";
+"Document Font" = "Document Font";
+"Document Font Size" = "Document Font Size";
+"Document Language" = "Document Language";
+"Document Metadata" = "Document Metadata";
+"Document Needs Attention" = "Document Needs Attention";
+"Document Preview" = "Document Preview";
+"Document Structure" = "Document Structure";
+"Document title" = "Document title";
+"Documentation ↗" = "Documentation ↗";
+"Documents" = "Documents";
+"Done" = "Done";
+"Draft" = "Draft";
+"Draft Save Failed" = "Draft Save Failed";
+"Draft Saved" = "Draft Saved";
+"Drawing & Visualization" = "Drawing & Visualization";
+"Edit" = "Edit";
+"Editable source · Tab between placeholders · ⌘Z to undo" = "Editable source · Tab between placeholders · ⌘Z to undo";
+"Editing & Code" = "Editing & Code";
+"Editing, code and Universe packages" = "Editing, code and Universe packages";
+"Editor text size: %d" = "Editor text size: %d";
+"Editor, preview and writing tools" = "Editor, preview and writing tools";
+"Emphasize the selection with *bold text*." = "Emphasize the selection with *bold text*.";
+"Empty document" = "Empty document";
+"Enable hierarchical numbering for headings." = "Enable hierarchical numbering for headings.";
+"Enter Greek letters by name. Tab moves between examples." = "Enter Greek letters by name. Tab moves between examples.";
+"Enter a 3-, 6- or 8-digit hexadecimal color, such as 245c73." = "Enter a 3-, 6- or 8-digit hexadecimal color, such as 245c73.";
+"Enter a category with its letter, choose with ↑ ↓ and run with ↵. Shortcuts are always here to discover." = "Enter a category with its letter, choose with ↑ ↓ and run with ↵. Shortcuts are always here to discover.";
+"Enter a number between %@ and %@." = "Enter a number between %@ and %@.";
+"Enter a two- or three-letter language code, such as en, zh or ja." = "Enter a two- or three-letter language code, such as en, zh or ja.";
+"Enter an integer between %@ and %@." = "Enter an integer between %@ and %@.";
+"Equation Numbers" = "Equation Numbers";
+"Equation Structures" = "Equation Structures";
+"Esc to go back" = "Esc to go back";
+"Explore mathematical expressions" = "Explore mathematical expressions";
+"Explore with letter keys, or press / to search all commands." = "Explore with letter keys, or press / to search all commands.";
+"Export PDF" = "Export PDF";
+"Export PDF…" = "Export PDF…";
+"Export source project" = "Export source project";
+"Export source project…" = "Export source project…";
+"Export the current document as a shareable PDF." = "Export the current document as a shareable PDF.";
+"Export the current document in its original colors." = "Export the current document in its original colors.";
+"Fill the workspace with your finished pages." = "Fill the workspace with your finished pages.";
+"Find a command in English or Chinese…" = "Find a command in English or Chinese…";
+"Find drawing, charting and typesetting packages, then insert a versioned import." = "Find drawing, charting and typesetting packages, then insert a versioned import.";
+"Find in Document" = "Find in Document";
+"Find text in the current document." = "Find text in the current document.";
+"Find the current paragraph in the finished page." = "Find the current paragraph in the finished page.";
+"Find the right tools for your document, from drawing to typesetting." = "Find the right tools for your document, from drawing to typesetting.";
+"Find, organize and open your writing." = "Find, organize and open your writing.";
+"Find…" = "Find…";
+"Finish the current input before inserting a package." = "Finish the current input before inserting a package.";
+"First item" = "First item";
+"First step" = "First step";
+"First-line Indent" = "First-line Indent";
+"First-line indent · em" = "First-line indent · em";
+"Flyers" = "Flyers";
+"Focus on Writing" = "Focus on Writing";
+"Follow System" = "Follow System";
+"Font name" = "Font name";
+"Font size · pt" = "Font size · pt";
+"Footer text" = "Footer text";
+"Footnote" = "Footnote";
+"Format Source" = "Format Source";
+"Format the current document with Tinymist." = "Format the current document with Tinymist.";
+"Fraction" = "Fraction";
+"Fractions, roots and scripts" = "Fractions, roots and scripts";
+"Fun" = "Fun";
+"Generate a bibliography from a BibLaTeX or Hayagriva file." = "Generate a bibliography from a BibLaTeX or Hayagriva file.";
+"Generate a table of contents with page numbers." = "Generate a table of contents with page numbers.";
+"Give a heading, equation or image a referenceable name." = "Give a heading, equation or image a referenceable name.";
+"Give your words the right emphasis" = "Give your words the right emphasis";
+"Give your writing the whole window." = "Give your writing the whole window.";
+"Go Back" = "Go Back";
+"Greek Letters" = "Greek Letters";
+"Greek letters, sets and vectors" = "Greek letters, sets and vectors";
+"Group expressions and conditions with a brace." = "Group expressions and conditions with a brace.";
+"Header text" = "Header text";
+"Heading" = "Heading";
+"Heading Numbers" = "Heading Numbers";
+"Heading level · 1–6" = "Heading level · 1–6";
+"Headings, images, equations and tables" = "Headings, images, equations and tables";
+"Hide Prose" = "Hide Prose";
+"Highlight" = "Highlight";
+"Highlight content with a pale background and padding." = "Highlight content with a pale background and padding.";
+"Highlight the selected text." = "Highlight the selected text.";
+"Horizontal Space" = "Horizontal Space";
+"Horizontal Stack" = "Horizontal Stack";
+"Image" = "Image";
+"Image caption" = "Image caption";
+"Import Document" = "Import Document";
+"Import Local Module" = "Import Local Module";
+"Import a document" = "Import a document";
+"Import a document…" = "Import a document…";
+"Import into This Document" = "Import into This Document";
+"Import project folder" = "Import project folder";
+"Import project folder…" = "Import project folder…";
+"Import reusable local definitions at the top of the document." = "Import reusable local definitions at the top of the document.";
+"Include Document" = "Include Document";
+"Include another .typ document at the current position." = "Include another .typ document at the current position.";
+"Increase Editor Text Size" = "Increase Editor Text Size";
+"Increase Text Size" = "Increase Text Size";
+"Increase the editor font size without changing the finished document." = "Increase the editor font size without changing the finished document.";
+"Indent" = "Indent";
+"Indent the current line or selected lines." = "Indent the current line or selected lines.";
+"Indent the first line of body paragraphs." = "Indent the first line of body paragraphs.";
+"Index not loaded yet" = "Index not loaded yet";
+"Inline Code" = "Inline Code";
+"Inline Equation" = "Inline Equation";
+"Insert" = "Insert";
+"Insert Content" = "Insert Content";
+"Insert Import" = "Insert Import";
+"Insert a code block in the chosen language." = "Insert a code block in the chosen language.";
+"Insert a definite integral and differential." = "Insert a definite integral and differential.";
+"Insert a limit condition and expression." = "Insert a limit condition and expression.";
+"Insert a numerator and denominator. Existing equations use math syntax directly." = "Insert a numerator and denominator. Existing equations use math syntax directly.";
+"Insert a root with an editable degree." = "Insert a root with an editable degree.";
+"Insert a stacked binomial coefficient." = "Insert a stacked binomial coefficient.";
+"Insert a sum with bounds and a term." = "Insert a sum with bounds and a term.";
+"Insert a vector with vertically arranged entries." = "Insert a vector with vertically arranged entries.";
+"Insert an $equation$ within a paragraph." = "Insert an $equation$ within a paragraph.";
+"Insert an arrow between two expressions." = "Insert an arrow between two expressions.";
+"Insert horizontal space within a line." = "Insert horizontal space within a line.";
+"Insert into Document" = "Insert into Document";
+"Insert set membership and the real number field." = "Insert set membership and the real number field.";
+"Insert subscript text, such as a chemical formula." = "Insert subscript text, such as a chemical formula.";
+"Insert superscript text for ordinals or units." = "Insert superscript text for ordinals or units.";
+"Insert vertical space between content blocks." = "Insert vertical space between content blocks.";
+"Insert within body text or a single equation, without crossing code or comments." = "Insert within body text or a single equation, without crossing code or comments.";
+"Integral" = "Integral";
+"Integrations" = "Integrations";
+"Italic" = "Italic";
+"Justify Text" = "Justify Text";
+"Keep text visible while marking a deletion or revision." = "Keep text visible while marking a deletion or revision.";
+"Keep your library and writing preferences together across your Macs. Local originals are preserved when you turn sync on." = "Keep your library and writing preferences together across your Macs. Local originals are preserved when you turn sync on.";
+"Label" = "Label";
+"Label name" = "Label name";
+"Language" = "Language";
+"Language code · en / zh / ja" = "Language code · en / zh / ja";
+"Layout" = "Layout";
+"Layout Grid" = "Layout Grid";
+"Left content" = "Left content";
+"Letters to explore · ↑ ↓ to select · ↵ to confirm" = "Letters to explore · ↑ ↓ to select · ↵ to confirm";
+"Library" = "Library";
+"Library actions" = "Library actions";
+"License  %@" = "License  %@";
+"Limit" = "Limit";
+"Line Break" = "Line Break";
+"Line Spacing" = "Line Spacing";
+"Line spacing · em" = "Line spacing · em";
+"Link" = "Link";
+"Link URL" = "Link URL";
+"Link the selected text to a web address." = "Link the selected text to a web address.";
+"Loaded the disk version. Your edits are preserved in a draft copy." = "Loaded the disk version. Your edits are preserved in a draft copy.";
+"Local Draft" = "Local Draft";
+"Make room for more ideas" = "Make room for more ideas";
+"Margins · mm" = "Margins · mm";
+"Math Subscript" = "Math Subscript";
+"Mathematics" = "Mathematics";
+"Matrices, cases and calculus" = "Matrices, cases and calculus";
+"Matrix" = "Matrix";
+"Minimize" = "Minimize";
+"Move to Trash" = "Move to Trash";
+"New Document" = "New Document";
+"New document" = "New document";
+"No completions are available here." = "No completions are available here.";
+"No issues found" = "No issues found";
+"No matching commands" = "No matching commands";
+"No matching documents" = "No matching documents";
+"No matching packages\nTry another keyword or category." = "No matching packages\nTry another keyword or category.";
+"Nth Root" = "Nth Root";
+"Number display equations in parentheses." = "Number display equations in parentheses.";
+"Numbered List" = "Numbered List";
+"Office" = "Office";
+"Offline · Using index from %@ · %@ packages" = "Offline · Using index from %@ · %@ packages";
+"On this Mac" = "On this Mac";
+"Only changes preview colors. Exported PDFs are unchanged." = "Only changes preview colors. Exported PDFs are unchanged.";
+"Open Diagnostic Logs" = "Open Diagnostic Logs";
+"Open Document" = "Open Document";
+"Open a .typ document." = "Open a .typ document.";
+"Open external file…" = "Open external file…";
+"Open local activity logs to investigate crashes and errors." = "Open local activity logs to investigate crashes and errors.";
+"Open, save and export" = "Open, save and export";
+"Open…" = "Open…";
+"Organize your thoughts, one item at a time." = "Organize your thoughts, one item at a time.";
+"Original" = "Original";
+"Outdent" = "Outdent";
+"Outdent the current line or selected lines." = "Outdent the current line or selected lines.";
+"Outline" = "Outline";
+"PDF exported using the document version from when export began." = "PDF exported using the document version from when export began.";
+"PDF exported: %@" = "PDF exported: %@";
+"PDF title" = "PDF title";
+"Padding · pt" = "Padding · pt";
+"Page Break" = "Page Break";
+"Page Footer" = "Page Footer";
+"Page Header" = "Page Header";
+"Page Margins" = "Page Margins";
+"Page Numbers" = "Page Numbers";
+"Page Setup" = "Page Setup";
+"Paper Size" = "Paper Size";
+"Paper · a4 / us-letter / a5" = "Paper · a4 / us-letter / a5";
+"Paper, margins and page numbers" = "Paper, margins and page numbers";
+"Papers" = "Papers";
+"Paragraph Spacing" = "Paragraph Spacing";
+"Paragraph spacing · em" = "Paragraph spacing · em";
+"Paste" = "Paste";
+"Piecewise Function" = "Piecewise Function";
+"Pin outline" = "Pin outline";
+"Please wait for the typesetting service to be ready." = "Please wait for the typesetting service to be ready.";
+"Posters" = "Posters";
+"Power & Exponent" = "Power & Exponent";
+"Presentations" = "Presentations";
+"Preserve local edits in a recovery copy, then read the file from disk." = "Preserve local edits in a recovery copy, then read the file from disk.";
+"Preserved copy" = "Preserved copy";
+"Preview Colors" = "Preview Colors";
+"Preview Updated" = "Preview Updated";
+"Preview failed to load: %@" = "Preview failed to load: %@";
+"Preview temporarily unavailable: %@" = "Preview temporarily unavailable: %@";
+"Quit Prose" = "Quit Prose";
+"Quote a passage worth keeping." = "Quote a passage worth keeping.";
+"Read the Preview" = "Read the Preview";
+"Read the finished pages in the whole window." = "Read the finished pages in the whole window.";
+"Ready" = "Ready";
+"Reconnect" = "Reconnect";
+"Reconnect Typesetting Service" = "Reconnect Typesetting Service";
+"Recover Draft Copy" = "Recover Draft Copy";
+"Recover Draft Copy…" = "Recover Draft Copy…";
+"Redo" = "Redo";
+"Refer to a label. Enable numbering on the target heading, equation or image." = "Refer to a label. Enable numbering on the target heading, equation or image.";
+"References" = "References";
+"Refresh Index" = "Refresh Index";
+"Reload from Disk" = "Reload from Disk";
+"Rename" = "Rename";
+"Rename document" = "Rename document";
+"Rename…" = "Rename…";
+"Reopen a draft saved before switching documents or reloading." = "Reopen a draft saved before switching documents or reloading.";
+"Reports" = "Reports";
+"Requires Typst %@ or later" = "Requires Typst %@ or later";
+"Resolve the current save conflict before continuing." = "Resolve the current save conflict before continuing.";
+"Restart Tinymist and synchronize the current document." = "Restart Tinymist and synchronize the current document.";
+"Restore" = "Restore";
+"Restore the edit you just undid." = "Restore the edit you just undid.";
+"Restore this document from Trash before opening it." = "Restore this document from Trash before opening it.";
+"Return to Document" = "Return to Document";
+"Return to Main Document" = "Return to Main Document";
+"Reveal in Preview" = "Reveal in Preview";
+"Reveal the current document's source file." = "Reveal the current document's source file.";
+"Review errors and suggestions, then jump to their source." = "Review errors and suggestions, then jump to their source.";
+"Right content" = "Right content";
+"Save" = "Save";
+"Save As" = "Save As";
+"Save As…" = "Save As…";
+"Save Document" = "Save Document";
+"Save Needs Attention" = "Save Needs Attention";
+"Save the current document to disk." = "Save the current document to disk.";
+"Saved" = "Saved";
+"Saved on this Mac" = "Saved on this Mac";
+"Saving Draft" = "Saving Draft";
+"Scripting" = "Scripting";
+"Search Commands" = "Search Commands";
+"Search and open documents in your library." = "Search and open documents in your library.";
+"Search package names, uses or keywords" = "Search package names, uses or keywords";
+"Search titles and content" = "Search titles and content";
+"Search your writing" = "Search your writing";
+"Second item" = "Second item";
+"Second step" = "Second step";
+"See headings and sections in the left margin without moving your text." = "See headings and sections in the left margin without moving your text.";
+"Select All" = "Select All";
+"Select the whole document." = "Select the whole document.";
+"Separate columns with commas and rows with semicolons. Tab moves between entries." = "Separate columns with commas and rows with semicolons. Tab moves between entries.";
+"Separate sections with a fine rule." = "Separate sections with a fine rule.";
+"Set a language code for hyphenation and generated headings." = "Set a language code for hyphenation and generated headings.";
+"Set an equation on its own line with room to breathe." = "Set an equation on its own line with room to breathe.";
+"Set consistent margins at the top of the document." = "Set consistent margins at the top of the document.";
+"Set the PDF title and author." = "Set the PDF title and author.";
+"Set the body font size in the finished document." = "Set the body font size in the finished document.";
+"Set the extra space between lines of text." = "Set the extra space between lines of text.";
+"Set the horizontal alignment of a content block." = "Set the horizontal alignment of a content block.";
+"Set the paper size at the top of the document." = "Set the paper size at the top of the document.";
+"Set the selection in _italics_." = "Set the selection in _italics_.";
+"Set the selection's color with a hexadecimal value." = "Set the selection's color with a hexadecimal value.";
+"Set the space between paragraphs." = "Set the space between paragraphs.";
+"Set units or mathematical text in upright letterforms." = "Set units or mathematical text in upright letterforms.";
+"Sets & Number Fields" = "Sets & Number Fields";
+"Settings" = "Settings";
+"Settings…" = "Settings…";
+"Shortcut" = "Shortcut";
+"Show Source in Finder" = "Show Source in Finder";
+"Show Trash" = "Show Trash";
+"Show documents" = "Show documents";
+"Show outline" = "Show outline";
+"Show source in Finder" = "Show source in Finder";
+"Show the selection literally without interpreting its Typst syntax." = "Show the selection literally without interpreting its Typst syntax.";
+"Showing Last Preview · Check Source" = "Showing Last Preview · Check Source";
+"Side-by-side Preview" = "Side-by-side Preview";
+"Sign in to iCloud and enable iCloud Drive in System Settings before turning on sync." = "Sign in to iCloud and enable iCloud Drive in System Settings before turning on sync.";
+"Small Capitals" = "Small Capitals";
+"Space · pt" = "Space · pt";
+"Square Root" = "Square Root";
+"Start a new line within the same paragraph." = "Start a new line within the same paragraph.";
+"Start labels with an English letter; use letters, numbers, hyphens or underscores." = "Start labels with an English letter; use letters, numbers, hyphens or underscores.";
+"Start the following content on a new page." = "Start the following content on a new page.";
+"Start with a word" = "Start with a word";
+"Strikethrough" = "Strikethrough";
+"Style headings and emphasis in the editor" = "Style headings and emphasis in the editor";
+"Style headings and emphasis while showing source in the active paragraph." = "Style headings and emphasis while showing source in the active paragraph.";
+"Subscript" = "Subscript";
+"Summation" = "Summation";
+"Superscript" = "Superscript";
+"Symbols & Letterforms" = "Symbols & Letterforms";
+"Sync update" = "Sync update";
+"Sync with iCloud" = "Sync with iCloud";
+"Syntax Reference ↗" = "Syntax Reference ↗";
+"Table" = "Table";
+"Table of Contents" = "Table of Contents";
+"Take the square root of a selection or enter a new expression." = "Take the square root of a selection or enter a new expression.";
+"Term" = "Term";
+"Term Definition" = "Term Definition";
+"Text" = "Text";
+"Text Color" = "Text Color";
+"Text Style" = "Text Style";
+"The Universe index is invalid. Please refresh again later." = "The Universe index is invalid. Please refresh again later.";
+"The current engine is Typst %@. This package requires a newer version." = "The current engine is Typst %@. This package requires a newer version.";
+"The diagnostic log folder is not writable." = "The diagnostic log folder is not writable.";
+"The document cannot be compiled. Resolve the errors before exporting." = "The document cannot be compiled. Resolve the errors before exporting.";
+"The document could not be opened. Your current writing is preserved." = "The document could not be opened. Your current writing is preserved.";
+"The document is already formatted." = "The document is already formatted.";
+"The export destination already exists. Choose a different name to preserve both copies." = "The export destination already exists. Choose a different name to preserve both copies.";
+"The iCloud container is unavailable. Your current library has not been changed." = "The iCloud container is unavailable. Your current library has not been changed.";
+"The package name or version is invalid, so an import cannot be generated." = "The package name or version is invalid, so an import cannot be generated.";
+"The preview service did not return a valid address." = "The preview service did not return a valid address.";
+"The project contains a symbolic link or unsupported file. Copy the required resources into the project first." = "The project contains a symbolic link or unsupported file. Copy the required resources into the project first.";
+"The recovery copy could not be written. Save to a writable location before quitting." = "The recovery copy could not be written. Save to a writable location before quitting.";
+"The typesetting service could not be found. Rebuild the app or check the Tinymist path." = "The typesetting service could not be found. Rebuild the app or check the Tinymist path.";
+"The typesetting service did not produce a valid PDF." = "The typesetting service did not produce a valid PDF.";
+"The typesetting service disconnected. You can still edit and save your writing." = "The typesetting service disconnected. You can still edit and save your writing.";
+"The typesetting service encountered an error." = "The typesetting service encountered an error.";
+"The typesetting service exited (%@). Your writing is still safe." = "The typesetting service exited (%@). Your writing is still safe.";
+"The typesetting service is not ready to check the insertion position. You can still edit directly." = "The typesetting service is not ready to check the insertion position. You can still edit directly.";
+"The typesetting service timed out. Try again or reconnect." = "The typesetting service timed out. Try again or reconnect.";
+"Theses" = "Theses";
+"This build is not provisioned for iCloud. Your documents remain available locally." = "This build is not provisioned for iCloud. Your documents remain available locally.";
+"This command does not insert text." = "This command does not insert text.";
+"This command works in body text. Move out of equations, code or comments and try again. Your text is unchanged." = "This command works in body text. Move out of equations, code or comments and try again. Your text is unchanged.";
+"This document is downloading from iCloud. Try opening it again in a moment." = "This document is downloading from iCloud. Try opening it again in a moment.";
+"This document is no longer available in the library." = "This document is no longer available in the library.";
+"This document's library metadata could not be read. Its files have been preserved." = "This document's library metadata could not be read. Its files have been preserved.";
+"This file's text encoding is unsupported. Please use UTF-8." = "This file's text encoding is unsupported. Please use UTF-8.";
+"This package version is already imported." = "This package version is already imported.";
+"This paragraph changed on another device. Your writing is safe; resolve the conflict before saving." = "This paragraph changed on another device. Your writing is safe; resolve the conflict before saving.";
+"This version is pinned. Typst downloads and caches the package when needed. See the documentation for usage." = "This version is pinned. Typst downloads and caches the package when needed. See the documentation for usage.";
+"This version requires a newer Typst. Check Universe for a compatible version." = "This version requires a newer Typst. Check Universe for a compatible version.";
+"Title" = "Title";
+"Toggle Dark Preview" = "Toggle Dark Preview";
+"Toggle Editor Styling" = "Toggle Editor Styling";
+"Toggle Line Comments" = "Toggle Line Comments";
+"Trash is empty" = "Trash is empty";
+"Trash ×" = "Trash ×";
+"Try CeTZ for drawings or Fletcher for diagrams.\nChoose a package to read about it and see how to use it." = "Try CeTZ for drawings or Fletcher for diagrams.\nChoose a package to read about it and see how to use it.";
+"Try “table”, “fraction”, or a Chinese name." = "Try “table”, “fraction”, or a Chinese name.";
+"Typesetting" = "Typesetting";
+"Typesetting connection interrupted: %@" = "Typesetting connection interrupted: %@";
+"Unavailable" = "Unavailable";
+"Underline" = "Underline";
+"Underline the selected text." = "Underline the selected text.";
+"Undo" = "Undo";
+"Undo the most recent document edit." = "Undo the most recent document edit.";
+"Universe package category" = "Universe package category";
+"Unknown Issue" = "Unknown Issue";
+"Unpin outline" = "Unpin outline";
+"Unsaved" = "Unsaved";
+"Unsaved Work Restored" = "Unsaved Work Restored";
+"Unspecified" = "Unspecified";
+"Untitled" = "Untitled";
+"Untitled.typ" = "Untitled.typ";
+"Upright Math" = "Upright Math";
+"Use a document title between 1 and 200 characters." = "Use a document title between 1 and 200 characters.";
+"Use numbers to show order and steps." = "Use numbers to show order and steps.";
+"Use small capital letterforms." = "Use small capital letterforms.";
+"Utilities" = "Utilities";
+"Variable name" = "Variable name";
+"Variable names cannot be Typst keywords." = "Variable names cannot be Typst keywords.";
+"Variable text" = "Variable text";
+"Vector Accent" = "Vector Accent";
+"Version %@" = "Version %@";
+"Vertical Space" = "Vertical Space";
+"View" = "View";
+"Waiting for Typesetting" = "Waiting for Typesetting";
+"Welcome" = "Welcome";
+"What would you like to do?" = "What would you like to do?";
+"Window" = "Window";
+"Workspace" = "Workspace";
+"Write alongside a live preview of the finished page." = "Write alongside a live preview of the finished page.";
+"Write on the left, see the live page on the right." = "Write on the left, see the live page on the right.";
+"Write the idea, show the code, explain the result." = "Write the idea, show the code, explain the result.";
+"Write your first heading with =" = "Write your first heading with =";
+"Writing" = "Writing";
+"Writing Preferences" = "Writing Preferences";
+"Writing Views and Export" = "Writing Views and Export";
+"Your Document Has Not Been Saved Safely" = "Your Document Has Not Been Saved Safely";
+"Your Writing" = "Your Writing";
+"Your previous document is preserved. Reopen it from Documents → Recover Draft Copy." = "Your previous document is preserved. Reopen it from Documents → Recover Draft Copy.";
+"Your words are becoming pages" = "Your words are becoming pages";
+"Your writing" = "Your writing";
+"Your writing saves automatically." = "Your writing saves automatically.";
+"Your writing…" = "Your writing…";
+"Zoom" = "Zoom";
+"Zoom In" = "Zoom In";
+"Zoom Out" = "Zoom Out";
+"iCloud Drive manages uploads and downloads." = "iCloud Drive manages uploads and downloads.";
+"iCloud Library" = "iCloud Library";
+"iCloud account changed. Check sync in Settings." = "iCloud account changed. Check sync in Settings.";
+"iCloud has conflicting versions of this document. Your changes are preserved; resolve the versions before overwriting it." = "iCloud has conflicting versions of this document. Your changes are preserved; resolve the versions before overwriting it.";
+"⌘J · Discover Commands" = "⌘J · Discover Commands";
+"⌘K · Discover Commands" = "⌘K · Discover Commands";
+
+"Click to rename. Double-click to open your writing." = "Click to rename. Double-click to open your writing.";
+"Click to rename. Double-click to open." = "Click to rename. Double-click to open.";
+
+// Trash management
+"Empty Trash?" = "Empty Trash?";
+"Empty Trash" = "Empty Trash";
+"Empty Trash…" = "Empty Trash…";
+"Permanently delete all documents in Trash" = "Permanently delete all documents in Trash";
+"Permanently delete %d documents and their attachments? This cannot be undone." = "Permanently delete %d documents and their attachments? This cannot be undone.";
+"%d documents deleted. Some items could not be removed: %@" = "%d documents deleted. Some items could not be removed: %@";
+"The library location changed. Open Trash and try again." = "The library location changed. Open Trash and try again.";
+
+"Up to date" = "Up to date";
+
+"%@ errors" = "%@ errors";
+
+"%@ warnings" = "%@ warnings";
+
+"%@ suggestions" = "%@ suggestions";
+
+"1 error" = "1 error";
+
+"1 warning" = "1 warning";
+
+"Checking…" = "Checking…";
+
+"Everything looks good" = "Everything looks good";
+
+"Your latest changes are in the preview." = "Your latest changes are in the preview.";
+
+"You can keep writing while checks run." = "You can keep writing while checks run.";
+
+"Preview pending" = "Preview pending";
+
+"Explain at Cursor" = "Explain at Cursor";
+
+"Actions at Cursor" = "Actions at Cursor";
+
+"Go to Definition" = "Go to Definition";
+
+"Read documentation and function parameters at the cursor." = "Read documentation and function parameters at the cursor.";
+
+"Discover changes available for this heading, equation or selection." = "Discover changes available for this heading, equation or selection.";
+
+"Find the source of a variable, function, reference or imported module." = "Find the source of a variable, function, reference or imported module.";
+"⌘-click source to go to definition" = "⌘-click source to go to definition";
+"Help for %@" = "Help for %@";
+"View Typst documentation" = "View Typst documentation";
+"Explanation" = "Explanation";
+"Example" = "Example";
+"Rendered example" = "Rendered example";
+"Rendering example…" = "Rendering example…";
+"This example cannot be previewed on its own. See its documentation." = "This example cannot be previewed on its own. See its documentation.";
+
+"Return to your previous writing position." = "Return to your previous writing position.";
+
+"No explanation here yet. Try a function, variable or parameter." = "No explanation here yet. Try a function, variable or parameter.";
+
+"No changes available here. Try a heading or an equation." = "No changes available here. Try a heading or an equation.";
+
+"Parameter: %@" = "Parameter: %@";
+
+"Increase depth of heading" = "Increase depth of heading";
+
+"Decrease depth of heading" = "Decrease depth of heading";
+
+"Convert to block equation" = "Convert to block equation";
+
+"Convert to multiple-line block equation" = "Convert to multiple-line block equation";
+
+"Convert to inline equation" = "Convert to inline equation";
+
+/* Template and package discovery */
+"A starting point for your ideas" = "A starting point for your ideas";
+"More ways to express an idea" = "More ways to express an idea";
+"Start with a complete document, then make it yours." = "Start with a complete document, then make it yours.";
+"Find a tool by what you want to make." = "Find a tool by what you want to make.";
+"Close discovery" = "Close discovery";
+"Templates" = "Templates";
+"Packages" = "Packages";
+"Find a resume, paper, presentation…" = "Find a resume, paper, presentation…";
+"Try diagrams, plots, code blocks…" = "Try diagrams, plots, code blocks…";
+"Clear search" = "Clear search";
+"Finding possibilities…" = "Finding possibilities…";
+"No matches yet" = "No matches yet";
+"Try a shorter phrase or another collection." = "Try a shorter phrase or another collection.";
+"Back to results" = "Back to results";
+"Includes the document and its assets. First use may download packages. Your copy is independent." = "Includes the document and its assets. First use may download packages. Your copy is independent.";
+"Preparing your document…" = "Preparing your document…";
+"Create document" = "Create document";
+"Insert import" = "Insert import";
+"Documentation" = "Documentation";
+"Choose something to explore" = "Choose something to explore";
+"Connecting to the catalog…" = "Connecting to the catalog…";
+"Offline · Browsing the saved catalog" = "Offline · Browsing the saved catalog";
+"%d results · Search by name or what you want to make" = "%d results · Search by name or what you want to make";
+"Preview unavailable" = "Preview unavailable";
+"Browse templates" = "Browse templates";
+"Start a document from a template" = "Start a document from a template";
+"Another library operation is in progress. Try again in a moment." = "Another library operation is in progress. Try again in a moment.";
+"All templates" = "All templates";
+"All packages" = "All packages";
+"Research & study" = "Research & study";
+"Work & reports" = "Work & reports";
+"CVs & applications" = "CVs & applications";
+"Slides & posters" = "Slides & posters";
+"Books & writing" = "Books & writing";
+"Diagrams & charts" = "Diagrams & charts";
+"Math & science" = "Math & science";
+"Code & algorithms" = "Code & algorithms";
+"Layout & typography" = "Layout & typography";
+"Tables & data" = "Tables & data";
+"Writing tools" = "Writing tools";
+"This package does not contain a usable document template." = "This package does not contain a usable document template.";
+"This template needs a newer typesetting engine." = "This template needs a newer typesetting engine.";
+"The template contains an invalid file or entry point." = "The template contains an invalid file or entry point.";
+"This template is too large to import." = "This template is too large to import.";
+
+"Adds a pinned import to your document. Open the documentation for examples and setup." = "Adds a pinned import to your document. Open the documentation for examples and setup.";
+"Open a document to add packages." = "Open a document to add packages.";
+
+// Downloadable examples
+"Explore a complete book" = "Explore a complete book";
+"Read, edit and make it yours. Code, equations and illustrations included." = "Read, edit and make it yours. Code, equations and illustrations included.";
+"Adding book…" = "Adding book…";
+"Add to my writing" = "Add to my writing";
+"1.9 MB · downloads once" = "1.9 MB · downloads once";
+"The example could not be downloaded or verified. Please try again." = "The example could not be downloaded or verified. Please try again.";
+
+// Template-first creation
+"Choose a blank page or a template for your next idea." = "Choose a blank page or a template for your next idea.";
+"Start here" = "Start here";
+"A small guide to Prose, with equations, a diagram and code. Make it your own." = "A small guide to Prose, with equations, a diagram and code. Make it your own.";
+"Just a page and your next thought." = "Just a page and your next thought.";
+"Included · works offline" = "Included · works offline";
+"Create your own copy of the Prose guide" = "Create your own copy of the Prose guide";
+"Start with a blank page" = "Start with a blank page";
+"Expand All Headings" = "Expand All Headings";
+"Collapse All Headings" = "Collapse All Headings";
+"Expand section" = "Expand section";
+"Collapse section" = "Collapse section";
+"Show every section in the outline." = "Show every section in the outline.";
+"Show only top-level sections in the outline." = "Show only top-level sections in the outline.";
+"Preview" = "Preview";
+"Expanded" = "Expanded";
+"Collapsed" = "Collapsed";
+"Preview stopped unexpectedly. Reconnect typesetting to try again." = "Preview stopped unexpectedly. Reconnect typesetting to try again.";
+
+"This snapshot is no longer available." = "This snapshot is no longer available.";
+"This snapshot could not be verified. Your current writing is unchanged." = "This snapshot could not be verified. Your current writing is unchanged.";
+"The document changed while history was loading. Please try again." = "The document changed while history was loading. Please try again.";
+"Could not save a history snapshot. Your document remains open." = "Could not save a history snapshot. Your document remains open.";
+"Restore Snapshot" = "Restore Snapshot";
+"Snapshot restored. Your previous writing is saved in history, and you can undo this change." = "Snapshot restored. Your previous writing is saved in history, and you can undo this change.";
+"Document History" = "Document History";
+"Document History…" = "Document History…";
+"Latest 7 snapshots · This Mac · Current source only" = "Latest 7 snapshots · This Mac · Current source only";
+"Restore this snapshot?" = "Restore this snapshot?";
+"Your current writing will be saved in history before restoring. You can also undo the change." = "Your current writing will be saved in history before restoring. You can also undo the change.";
+"Before restore" = "Before restore";
+"Automatic snapshot" = "Automatic snapshot";
+"This snapshot matches your current writing." = "This snapshot matches your current writing.";
+"Changes near line %d" = "Changes near line %d";
+"Showing the changed area with nearby context. Long changes are abbreviated; restoring uses the complete snapshot." = "Showing the changed area with nearby context. Long changes are abbreviated; restoring uses the complete snapshot.";
+"Snapshot" = "Snapshot";
+"Current writing" = "Current writing";
+"Room to change your mind" = "Room to change your mind";
+"A snapshot is kept before your first edit, then hourly or daily when you make changes. Unchanged documents create no snapshots." = "A snapshot is kept before your first edit, then hourly or daily when you make changes. Unchanged documents create no snapshots.";
+"Keep edited versions" = "Keep edited versions";
+"Every hour" = "Every hour";
+"Every day" = "Every day";
+"Keep the latest 7 source snapshots on this Mac. No snapshots are created while a document is unchanged." = "Keep the latest 7 source snapshots on this Mac. No snapshots are created while a document is unchanged.";
+"Compare and restore recent versions of this source document." = "Compare and restore recent versions of this source document.";
+"Light" = "Light";
+"From Prose" = "From Prose";
+"From the community" = "From the community";
+"Browsing the included catalog · Checking for updates…" = "Browsing the included catalog · Checking for updates…";
+"Offline · Browsing the included catalog" = "Offline · Browsing the included catalog";
+"Removed" = "Removed";
+"Added" = "Added";
+
+/* Brand names and taglines follow the interface language. */
+"Prose" = "Prose";
+"Write in Typst" = "Write in Typst";
+
+"General" = "General";
+"Appearance" = "Appearance";
+
+// Preview distribution and updates.
+"Prose Preview" = "Prose Preview";
+"About %@" = "About %@";
+"Hide %@" = "Hide %@";
+"Quit %@" = "Quit %@";
+"Check for Updates…" = "Check for Updates…";
+"Automatically Check for Updates" = "Automatically Check for Updates";
+
+"Print…" = "Print…";
+"Services" = "Services";
+"Hide Others" = "Hide Others";
+"Show All" = "Show All";
+"Toggle Full Screen" = "Toggle Full Screen";
+
+"Back" = "Back";
+
+"Choose a document to begin writing." = "Choose a document to begin writing.";
+
+"Format Document" = "Format Document";
+
+"Import Project…" = "Import Project…";
+
+"No history yet" = "No history yet";
+
+"OK" = "OK";
+
+"Recovered Draft" = "Recovered Draft";
+
+"Restore this version?" = "Restore this version?";
+
+"Search" = "Search";
+
+"Search Packages" = "Search Packages";
+
+"Templates & Packages" = "Templates & Packages";
+
+"Text size: %@" = "Text size: %@";
+
+"Toggle Comment" = "Toggle Comment";
+
+"Trash" = "Trash";
+
+"Use Template" = "Use Template";
+
+"Your current writing will be preserved before restoring this version." = "Your current writing will be preserved before restoring this version.";
+
+"iCloud Sync" = "iCloud Sync";
+
+"Authors" = "Authors";
+"License" = "License";
+"This location is in an included file. Included-file editing is not available on iPad yet." = "This location is in an included file. Included-file editing is not available on iPad yet.";
+
+"Choose or import an image. Its copy stays with your document." = "Choose or import an image. Its copy stays with your document.";
+"Paste text or import an image at the caret." = "Paste text or import an image at the caret.";
+"Choose an image, a bibliography file, or a Typst document. Audio and video cannot be embedded in a typeset page." = "Choose an image, a bibliography file, or a Typst document. Audio and video cannot be embedded in a typeset page.";
+"This document's resources are unavailable. Reopen the document and try again." = "This document's resources are unavailable. Reopen the document and try again.";
+"This image could not be read. Choose another image." = "This image could not be read. Choose another image.";
+"Pasted image" = "Pasted image";
+"Import into Document" = "Import into Document";
+"Choose" = "Choose";
+"Import File…" = "Import File…";
+"Document Resources" = "Document Resources";
+"Library Documents" = "Library Documents";
+"Changes to the original document appear here." = "Changes to the original document appear here.";
+"Choose a file to insert." = "Choose a file to insert.";
+"Imported files are saved with this document." = "Imported files are saved with this document.";
+"You can also drop images here or paste a screenshot with ⌘V." = "You can also drop images here or paste a screenshot with ⌘V.";
+"Module" = "Module";
+"Document" = "Document";
+
+"Choose Main File" = "Choose Main File";
+
+"Choose the file that compiles the complete project." = "Choose the file that compiles the complete project.";
+
+"Complete at Cursor" = "Complete at Cursor";
+
+"Export Source…" = "Export Source…";
+
+"Latest 7 snapshots · This iPad · Current source only" = "Latest 7 snapshots · This iPad · Current source only";
+
+"New Window" = "New Window";
+
+"Preview entry" = "Preview entry";
+
+"Project Files" = "Project Files";
+
+"Selected" = "Selected";
+
+"The document could not be prepared for printing." = "The document could not be prepared for printing.";
+
+"Writing Assistance" = "Writing Assistance";
+
+"The iCloud account changed. Your writing is preserved. Check iCloud settings before continuing sync." = "The iCloud account changed. Your writing is preserved. Check iCloud settings before continuing sync.";
+
+"Close other windows before changing iCloud Sync." = "Close other windows before changing iCloud Sync.";
+
+"Edit Table or Image…" = "Edit Table or Image…";
+
+"Change the table or image at the cursor." = "Change the table or image at the cursor.";
+
+"Follow Writing" = "Follow Writing";
+
+"Return to Reading" = "Return to Reading";
+
+"Pause automatically when you scroll the preview." = "Pause automatically when you scroll the preview.";
+
+"Edit Table" = "Edit Table";
+
+"Edit Image" = "Edit Image";
+
+"Alignment" = "Alignment";
+
+"Default" = "Default";
+
+"Left" = "Left";
+
+"Center" = "Center";
+
+"Right" = "Right";
+
+"Complex objects stay in source editing. Apply creates one undo step." = "Complex objects stay in source editing. Apply creates one undo step.";
+
+"Image path" = "Image path";
+
+"Width" = "Width";
+
+"Caption" = "Caption";
+
+"Include Caption" = "Include Caption";
+
+"First row is a header" = "First row is a header";
+
+"Column %d" = "Column %d";
+
+"Cell %d, %d" = "Cell %d, %d";
+
+"Delete Row" = "Delete Row";
+
+"Add Row" = "Add Row";
+
+"Add Column" = "Add Column";
+
+"Cells contain Typst content. Paste TSV below to replace all rows." = "Cells contain Typst content. Paste TSV below to replace all rows.";
+
+"Tab-separated data" = "Tab-separated data";
+
+"Use Pasted Data" = "Use Pasted Data";
+
+"Edit Object" = "Edit Object";
+
+"Place the cursor in a literal table or image. Complex objects use source editing." = "Place the cursor in a literal table or image. Complex objects use source editing.";
+
+"The document changed. Open the object editor again." = "The document changed. Open the object editor again.";
+
+"Use a rectangular table, balanced cell content, and a numeric image width such as 80%." = "Use a rectangular table, balanced cell content, and a numeric image width such as 80%.";
+
+"Agent Edit" = "Agent Edit";
+
+"Before agent edit" = "Before agent edit";
+
+
+
+"Copy Agent Setup Prompt" = "Copy Agent Setup Prompt";
+
+"Disconnect Coding Agent" = "Disconnect Coding Agent";
+
+"Enable a local coding agent to read and edit all documents in your library while Prose is running. You can disconnect at any time." = "Enable a local coding agent to read and edit all documents in your library while Prose is running. You can disconnect at any time.";
+
+"Read Only" = "Read Only";
+
+"Allow Editing" = "Allow Editing";
+
+"All documents, including new documents" = "All documents, including new documents";
+
+
+
+
+"The coding agent connection stopped. Your writing remains open." = "The coding agent connection stopped. Your writing remains open.";
+"Coding Agent" = "Coding Agent";
+"Connection enabled" = "Connection enabled";
+"Connection disabled" = "Connection disabled";
+"Enable Connection" = "Enable Connection";
+"Selected document" = "Selected document";
+"Prompt copied. Paste it into your coding agent on this Mac." = "Prompt copied. Paste it into your coding agent on this Mac.";
+"Could not start the coding agent connection. Enable it again in Settings." = "Could not start the coding agent connection. Enable it again in Settings.";
+"Port %@ is used by another app. Quit that app, or use a new port and give your coding agent the setup prompt again." = "Port %@ is used by another app. Quit that app, or use a new port and give your coding agent the setup prompt again.";
+"Use a New Port" = "Use a New Port";
+"The connection now uses a new port. Copy the setup prompt into your coding agent again." = "The connection now uses a new port. Copy the setup prompt into your coding agent again.";
+"The connection stopped, but its saved permission could not be removed. Try disconnecting again." = "The connection stopped, but its saved permission could not be removed. Try disconnecting again.";
+"Read-only Package" = "Read-only Package";
+"Close Document" = "Close Document";
+"Package source is read-only. Save a copy outside the package folder to edit it." = "Package source is read-only. Save a copy outside the package folder to edit it.";
+"Read-only" = "Read-only";
+"You can view and copy package source. Save a copy to edit it." = "You can view and copy package source. Save a copy to edit it.";
+"Updates" = "Updates";
+"Support" = "Support";
+"Editor" = "Editor";
+"Review Checks" = "Review Checks";
+"Long documents can take a while to typeset the first time." = "Long documents can take a while to typeset the first time.";
+"Resize Writing and Preview" = "Resize Writing and Preview";
+"Drag to resize. Double-click to split evenly." = "Drag to resize. Double-click to split evenly.";
+"Drag to resize. Double-tap to split evenly." = "Drag to resize. Double-tap to split evenly.";
+"Apply" = "Apply";
+"Update Channel" = "Update Channel";
+"Nightly (more stable)" = "Nightly (more stable)";
+"Every merge (Alpha)" = "Every merge (Alpha)";
+"Alpha builds arrive after every merge to main. After switching back to Nightly, the next nightly build newer than this one installs." = "Alpha builds arrive after every merge to main. After switching back to Nightly, the next nightly build newer than this one installs.";

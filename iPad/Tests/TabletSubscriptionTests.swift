@@ -1,7 +1,7 @@
 import Foundation
-import LeftBlankCore
-@testable import LeftBlankTablet
-import LeftBlankTestSupport
+import ProseCore
+@testable import ProseTablet
+import ProseTestSupport
 import Nimble
 import StoreKit
 import StoreKitTest
@@ -355,7 +355,7 @@ struct StoreKitSubscriptionTests {
     }
 
     @Test func realStoreKitTrialPurchaseRestoreExpiryAndRefund() async throws {
-        let session = try SKTestSession(configurationFileNamed: "LeftBlank")
+        let session = try SKTestSession(configurationFileNamed: "Prose")
         session.resetToDefaultState()
         session.disableDialogs = true
         session.clearTransactions()

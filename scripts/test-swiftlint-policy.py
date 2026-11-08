@@ -16,7 +16,7 @@ SWIFTLINT = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else (
 
 
 class SwiftLintPolicyTests(unittest.TestCase):
-    def lint(self, source, directory='Sources/LeftBlank', filename='PolicyProbe.swift'):
+    def lint(self, source, directory='Sources/Prose', filename='PolicyProbe.swift'):
         scratch = ROOT / 'build/lint-policy'
         scratch.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=scratch) as temporary:
@@ -41,7 +41,7 @@ class SwiftLintPolicyTests(unittest.TestCase):
             'let image = NSImage(systemSymbolName: "lock", accessibilityDescription: nil)',
             'let image: UIImage? = .init(systemName: symbolName)',
         ]
-        for directory in ['Sources/LeftBlank', 'iPad/Sources']:
+        for directory in ['Sources/Prose', 'iPad/Sources']:
             for source in sources:
                 with self.subTest(directory=directory, source=source):
                     status, violations = self.lint(source, directory)
@@ -75,7 +75,7 @@ class SwiftLintPolicyTests(unittest.TestCase):
             'let bundle = Foundation\n    .Bundle\n    .module',
             'let url = Bundle.module.url(forResource: "catalog", withExtension: "json")',
         ]
-        for directory in ('Sources/LeftBlankCore', 'Sources/LeftBlank', 'iPad/Sources', 'Tests/LeftBlankCoreTests'):
+        for directory in ('Sources/ProseCore', 'Sources/Prose', 'iPad/Sources', 'Tests/ProseCoreTests'):
             for source in sources:
                 with self.subTest(directory=directory, source=source):
                     status, violations = self.lint(source, directory)
@@ -86,10 +86,10 @@ class SwiftLintPolicyTests(unittest.TestCase):
 
     def test_only_the_core_resolver_can_use_the_module_fallback(self):
         source = 'let fallback = Bundle.module'
-        status, violations = self.lint(source, 'Sources/LeftBlankCore', 'CoreResources.swift')
+        status, violations = self.lint(source, 'Sources/ProseCore', 'CoreResources.swift')
         self.assertEqual(status, 0, violations)
         self.assertEqual(violations, [])
-        for directory in ('Sources/LeftBlank', 'iPad/Sources', 'iPad/Sources/LeftBlankCore'):
+        for directory in ('Sources/Prose', 'iPad/Sources', 'iPad/Sources/ProseCore'):
             with self.subTest(directory=directory):
                 status, violations = self.lint(source, directory, 'CoreResources.swift')
                 self.assertNotEqual(status, 0)
@@ -107,7 +107,7 @@ class SwiftLintPolicyTests(unittest.TestCase):
         ]
         for source in sources:
             with self.subTest(source=source):
-                status, violations = self.lint(source, 'Sources/LeftBlankCore')
+                status, violations = self.lint(source, 'Sources/ProseCore')
                 self.assertEqual(status, 0, violations)
                 self.assertEqual(violations, [])
 

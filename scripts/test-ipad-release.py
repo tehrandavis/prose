@@ -121,7 +121,7 @@ class ProfileTests(unittest.TestCase):
             ipad.validate_profile(self.profile, 'NOT_THE_CERTIFICATE')
 
 
-CORE = '@rpath/LeftBlankCore.framework/LeftBlankCore'
+CORE = '@rpath/ProseCore.framework/ProseCore'
 
 
 class ArchiveTests(unittest.TestCase):
@@ -129,14 +129,14 @@ class ArchiveTests(unittest.TestCase):
     def test_versions_device_family_crypto_and_desktop_components(self, _):
         with tempfile.TemporaryDirectory(dir=os.environ['TMPDIR']) as directory:
             archive = Path(directory)
-            app = archive / 'Products/Applications/LeftBlank.app'
+            app = archive / 'Products/Applications/Prose.app'
             app.mkdir(parents=True)
-            (app / 'LeftBlank').write_bytes(b'executable')
-            core = app / 'Frameworks/LeftBlankCore.framework/LeftBlankCore'
+            (app / 'Prose').write_bytes(b'executable')
+            core = app / 'Frameworks/ProseCore.framework/ProseCore'
             core.parent.mkdir(parents=True)
             core.write_bytes(b'framework')
             info = {'CFBundleIdentifier': ipad.BUNDLE, 'CFBundleShortVersionString': '1.0.0',
-                    'CFBundleVersion': '1', 'UIDeviceFamily': [2], 'CFBundleExecutable': 'LeftBlank',
+                    'CFBundleVersion': '1', 'UIDeviceFamily': [2], 'CFBundleExecutable': 'Prose',
                     'ITSAppUsesNonExemptEncryption': False, 'CFBundleSupportedPlatforms': ['iPhoneOS']}
             path = app / 'Info.plist'
             path.write_bytes(plistlib.dumps(info))
@@ -151,7 +151,7 @@ class ArchiveTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, key):
                         ipad.validate_archive(archive, expected)
             path.write_bytes(plistlib.dumps(info))
-            for name in ['LeftBlankMCP', 'Sparkle.framework', 'LeftBlankAutomation.framework']:
+            for name in ['ProseMCP', 'Sparkle.framework', 'ProseAutomation.framework']:
                 unexpected = app / name
                 if name.endswith('.framework'):
                     unexpected.mkdir()
@@ -163,7 +163,7 @@ class ArchiveTests(unittest.TestCase):
                     unexpected.rmdir()
                 else:
                     unexpected.unlink()
-            for name in ['LeftBlank.storekit', 'LeftBlankTests.xctest']:
+            for name in ['Prose.storekit', 'ProseTests.xctest']:
                 unexpected = app / name
                 unexpected.touch()
                 with self.assertRaisesRegex(ValueError, 'test-only'):
@@ -174,15 +174,15 @@ class ArchiveTests(unittest.TestCase):
                 ipad.validate_archive(archive, expected)
 
     def test_linked_frameworks_must_resolve_inside_the_installed_app(self):
-        # The simulator finds LeftBlankCore in the build products, so only a
+        # The simulator finds ProseCore in the build products, so only a
         # device launch fails when the app lacks @executable_path/Frameworks.
         with tempfile.TemporaryDirectory(dir=os.environ['TMPDIR']) as directory:
-            app = Path(directory) / 'LeftBlank.app'
-            core = app / 'Frameworks/LeftBlankCore.framework/LeftBlankCore'
+            app = Path(directory) / 'Prose.app'
+            core = app / 'Frameworks/ProseCore.framework/ProseCore'
             core.parent.mkdir(parents=True)
             core.touch()
-            (app / 'LeftBlank').touch()
-            (app / 'LeftBlank.debug.dylib').touch()
+            (app / 'Prose').touch()
+            (app / 'Prose.debug.dylib').touch()
             for rpaths in [['/usr/lib/swift'], ['@loader_path'], ['/Volumes/build/PackageFrameworks']]:
                 with self.subTest(rpaths=rpaths), patch('ipad_frameworks.load_commands', return_value=(rpaths, [CORE])):
                     with self.assertRaisesRegex(ValueError, 'without a runpath'):

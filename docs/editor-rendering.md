@@ -1,6 +1,6 @@
 # Editor styling and faithful previews
 
-LeftBlank keeps the original Typst source in NSTextView. Display attributes never change saved text, clipboard contents or undo records. The page preview runs the real Typst engine through Tinymist.
+Prose keeps the original Typst source in NSTextView. Display attributes never change saved text, clipboard contents or undo records. The page preview runs the real Typst engine through Tinymist.
 
 ## Shipped in 0.4.0 (8)
 
@@ -24,7 +24,7 @@ Sources: [Tinymist semantic tokens](https://github.com/Myriad-Dreamin/tinymist/b
 
 ## Pointer geometry and native selection
 
-Reading attributes can change glyph widths and line heights. LeftBlank resolves the visible TextKit layout after a metric change and before mouse-down, so hit testing and displayed glyphs use the same geometry. Syntax colors use temporary layout attributes and never trigger a forced layout pass. It postpones reading/source restyling until native mouse tracking ends, preserving word selection and dragging. Cursor rectangles are invalidated after layout changes and editable text uses the native I-beam. This does not replace AppKit selection or IME handling.
+Reading attributes can change glyph widths and line heights. Prose resolves the visible TextKit layout after a metric change and before mouse-down, so hit testing and displayed glyphs use the same geometry. Syntax colors use temporary layout attributes and never trigger a forced layout pass. It postpones reading/source restyling until native mouse tracking ends, preserving word selection and dragging. Cursor rectangles are invalidated after layout changes and editable text uses the native I-beam. This does not replace AppKit selection or IME handling.
 
 The pointer regression scenarios cover source/reading transitions, single/split layouts, three window widths, wrapped paragraphs, Chinese and emoji. Character rectangles must round-trip to their original insertion offsets, and the real window hit-test must route those points to the editor.
 

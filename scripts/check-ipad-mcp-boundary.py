@@ -5,14 +5,14 @@ import subprocess
 import sys
 
 products = Path(sys.argv[1])
-apps = list(products.glob('*/LeftBlank.app'))
+apps = list(products.glob('*/Prose.app'))
 if not apps:
     raise SystemExit('No built iPad application found for the MCP boundary check')
 for app in apps:
     for path in app.rglob('*'):
-        if path.name.lower() in {'leftblank-mcp', 'connection.json', 'access.json', 'mcp-licenses.txt'}:
+        if path.name.lower() in {'prose-mcp', 'connection.json', 'access.json', 'mcp-licenses.txt'}:
             raise SystemExit('Unexpected MCP resource in iOS app: ' + str(path))
-    executable = app / 'LeftBlank'
+    executable = app / 'Prose'
     # -a includes statically linked Rust symbols in debug builds; don't prohibit
     # Rust/Tokio generally, because the embedded typesetting engine needs them.
     symbols = subprocess.check_output(['nm', '-a', str(executable)], text=True)

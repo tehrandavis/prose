@@ -1,6 +1,6 @@
 # Developer ID signing and automated releases
 
-LeftBlank distributes a macOS arm64 app ZIP directly, outside the Mac App Store, using a **Developer ID Application** identity. The app and bundled helpers use hardened runtime and secure timestamps. Apple notarization, ticket stapling and Gatekeeper validation must succeed before the public release ZIP is produced.
+Prose distributes a macOS arm64 app ZIP directly, outside the Mac App Store, using a **Developer ID Application** identity. The app and bundled helpers use hardened runtime and secure timestamps. Apple notarization, ticket stapling and Gatekeeper validation must succeed before the public release ZIP is produced.
 
 ## One-time setup
 
@@ -14,14 +14,14 @@ Signing in to Xcode locally does not give a GitHub runner signing credentials. T
 | Secret `APP_STORE_CONNECT_KEY_ID` | API key ID |
 | Secret `APP_STORE_CONNECT_ISSUER_ID` | Team API issuer ID |
 | Variable `APPLE_TEAM_ID` | The certificate's developer team ID |
-| Secret `ICLOUD_PROVISIONING_PROFILE` | Base64 Developer ID profile for `app.leftblank.writer` authorizing the shared iCloud container and KVS |
-| Secret `ICLOUD_PREVIEW_PROVISIONING_PROFILE` | Base64 Developer ID profile for `app.leftblank.writer.preview` authorizing the same container and KVS |
+| Secret `ICLOUD_PROVISIONING_PROFILE` | Base64 Developer ID profile for `com.tehrandavis.prose` authorizing the shared iCloud container and KVS |
+| Secret `ICLOUD_PREVIEW_PROVISIONING_PROFILE` | Base64 Developer ID profile for `com.tehrandavis.prose.preview` authorizing the same container and KVS |
 
 Create the certificate through Xcode → Settings → Apple Accounts → team → Manage Certificates → Developer ID Application. Create the API key under App Store Connect → Users and Access → Integrations, with the least privilege needed for notarization. The private key can be downloaded once; store it in a password manager or protected file, never an issue, PR or chat.
 
-Supply secrets to `gh secret set --repo leftblank-app/leftblank NAME` through stdin rather than expanding values in command arguments or logs. Certificates and private keys do not belong in source or build artifacts.
+Supply secrets to `gh secret set --repo tehrandavis/prose NAME` through stdin rather than expanding values in command arguments or logs. Certificates and private keys do not belong in source or build artifacts.
 
-The previous Sumi testing identity and profile were configured on 2026-10-01. On 2026-10-02, the `app.leftblank.writer` App ID and dedicated `iCloud.app.leftblank.writer` container were registered and associated, and the **LeftBlank Developer ID iCloud** profile was generated with the existing Developer ID certificate. The downloaded profile passed local validation and replaced `ICLOUD_PROVISIONING_PROFILE` in the repository on 2026-10-02. `prepare-icloud-profile.py` checks team, App ID, certificate membership, expiration, distribution scope and required capabilities, then emits only the required entitlements. The release embeds the profile and verifies the signed entitlements. Helper processes do not receive iCloud entitlements. Local development builds remain ad hoc and cannot use iCloud. LeftBlank Preview requires its own Developer ID profile for `app.leftblank.writer.preview`, with the same production container and KVS. The release never substitutes the standard App ID profile or publishes a Preview without iCloud entitlements.
+The previous Sumi testing identity and profile were configured on 2026-10-01. On 2026-10-02, the `com.tehrandavis.prose` App ID and dedicated `iCloud.com.tehrandavis.prose` container were registered and associated, and the **Prose Developer ID iCloud** profile was generated with the existing Developer ID certificate. The downloaded profile passed local validation and replaced `ICLOUD_PROVISIONING_PROFILE` in the repository on 2026-10-02. `prepare-icloud-profile.py` checks team, App ID, certificate membership, expiration, distribution scope and required capabilities, then emits only the required entitlements. The release embeds the profile and verifies the signed entitlements. Helper processes do not receive iCloud entitlements. Local development builds remain ad hoc and cannot use iCloud. Prose Preview requires its own Developer ID profile for `com.tehrandavis.prose.preview`, with the same production container and KVS. The release never substitutes the standard App ID profile or publishes a Preview without iCloud entitlements.
 
 The Preview profile and GitHub secret were configured on 2026-10-06; see
 [Preview iCloud setup](preview-updates.md#icloud-sync). A signed release run and
@@ -35,7 +35,7 @@ Stable tags now also build, upload and submit the Mac App Store release. Follow
 bilingual release message and retry a partial release. An empty-tag manual run
 continues to verify only Developer ID packaging.
 
-1. PR CI runs functional tests, coverage, large-book benchmarks and distribution-isolation checks without release credentials. After nightly main CI passes its Mac checks (or a manual `publish_preview` run, or a Mac-affecting main push for the alpha channel), a separate job creates a Developer ID signed and notarized LeftBlank Preview package, uploads it for seven days, and publishes its signed update feed. See [Preview updates](preview-updates.md).
+1. PR CI runs functional tests, coverage, large-book benchmarks and distribution-isolation checks without release credentials. After nightly main CI passes its Mac checks (or a manual `publish_preview` run, or a Mac-affecting main push for the alpha channel), a separate job creates a Developer ID signed and notarized Prose Preview package, uploads it for seven days, and publishes its signed update feed. See [Preview updates](preview-updates.md).
 2. A manual Release workflow on main verifies signing and notarization and saves an artifact without creating a public Release.
 3. Run `release_metadata.py prepare` and finish the bilingual release message, then merge the verified commit into main.
 4. Push a matching version tag, such as `v0.6.0`. The workflow checks that main contains the tagged commit, runs functional tests and the 80% coverage gate, then signs, notarizes, staples and publishes.
@@ -44,11 +44,11 @@ Missing credentials, invalid certificates, team mismatch, rejected notarization 
 
 Ticket stapling and validation each retry explicit Apple network errors up to five attempts, waiting 15, 30, 60 and 120 seconds. Every attempt is saved under `build/notarization/stapler-*.log` in the release diagnostics. Missing, invalid or revoked tickets still stop publication, as does an exhausted network retry; signature and Gatekeeper checks remain mandatory.
 
-Development builds use `scripts/build.sh release`. Set `LEFTBLANK_DISTRIBUTION=preview` to package `build/LeftBlank Preview.app`; `LEFTBLANK_BUILD_NUMBER` must be an increasing `run_number.run_attempt` for published builds. `scripts/release.sh` requires the settings above. Local temporary release material stays on the external SSD.
+Development builds use `scripts/build.sh release`. Set `PROSE_DISTRIBUTION=preview` to package `build/Prose Preview.app`; `PROSE_BUILD_NUMBER` must be an increasing `run_number.run_attempt` for published builds. `scripts/release.sh` requires the settings above. Local temporary release material stays on the external SSD.
 
 ## Completed verification
 
-On 2026-10-01, before the LeftBlank rename, all release credentials were configured for `fenjin-ai/sumi`, and [a manual release run](https://github.com/leftblank-app/leftblank/actions/runs/36824914236) passed on commit `72f7d8e`, app version **0.2.0**, build **3**. This generated an Actions artifact only, without a public tag or Release.
+On 2026-10-01, before the Prose rename, all release credentials were configured for `fenjin-ai/sumi`, and [a manual release run](https://github.com/tehrandavis/prose/actions/runs/36824914236) passed on commit `72f7d8e`, app version **0.2.0**, build **3**. This generated an Actions artifact only, without a public tag or Release.
 
 - 36 functional and integration tests passed; production coverage was 88.57%, above the 80% gate.
 - The arm64 app and Tinymist helper were signed by `Developer ID Application: Fenjin Wang (X6BK42MX95)` with hardened runtime and secure timestamps. The certificate expires on 2031-09-17.
@@ -66,9 +66,9 @@ Build and export from the repository root:
 
 ```sh
 source scripts/environment.sh
-LEFTBLANK_DISTRIBUTION=appstore scripts/build.sh release
+PROSE_DISTRIBUTION=appstore scripts/build.sh release
 python3 scripts/export-appstore.py \
-  --profile /absolute/path/LeftBlank.provisionprofile \
+  --profile /absolute/path/Prose.provisionprofile \
   --identity DISTRIBUTION_CERTIFICATE_SHA1 \
   --installer-identity INSTALLER_CERTIFICATE_SHA1 \
   --keychain /absolute/path/signing.keychain-db
@@ -82,7 +82,7 @@ sandbox. Signing materials stay outside the repository. If codesign cannot find
 the intermediate certificate in a dedicated keychain, install Apple's WWDR G3
 intermediate in the user's login keychain without changing its trust settings.
 
-The default installer is `build/LeftBlank-AppStore.pkg`. Validate and upload it
+The default installer is `build/Prose-AppStore.pkg`. Validate and upload it
 with Xcode's `altool` and an existing App Store Connect API key. Pass an explicit
 SSD `TMPDIR` or `-CDTempDir` to keep upload chunks on the external disk. Never put
 API private keys or keychain passwords in source control or command output.

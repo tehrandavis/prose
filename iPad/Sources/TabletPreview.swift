@@ -1,4 +1,4 @@
-import LeftBlankCore
+import ProseCore
 import SwiftUI
 import WebKit
 
@@ -16,9 +16,9 @@ struct TabletPreview: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
-        config.userContentController.add(context.coordinator, name: "leftblankPreviewReady")
-        config.userContentController.add(context.coordinator, name: "leftblankPreviewReading")
-        config.userContentController.add(context.coordinator, name: "leftblankPreviewError")
+        config.userContentController.add(context.coordinator, name: "prosePreviewReady")
+        config.userContentController.add(context.coordinator, name: "prosePreviewReading")
+        config.userContentController.add(context.coordinator, name: "prosePreviewError")
         config.userContentController.addUserScript(WKUserScript(
             source: PreviewScripts.setup(
                 canvas: scheme == .dark ? "#171a1d" : "#fafafa",
@@ -28,7 +28,7 @@ struct TabletPreview: UIViewRepresentable {
         ))
         config.userContentController.addUserScript(WKUserScript(
             source: """
-            const report = error => window.webkit.messageHandlers.leftblankPreviewError.postMessage(String(error).slice(0, 400));
+            const report = error => window.webkit.messageHandlers.prosePreviewError.postMessage(String(error).slice(0, 400));
             window.addEventListener('error', event => report(event.message));
             window.addEventListener('unhandledrejection', event => report(event.reason));
             """,
@@ -62,7 +62,7 @@ struct TabletPreview: UIViewRepresentable {
         if !view.isLoading {
             let dark = scheme == .dark
             view.evaluateJavaScript(
-                "window.leftblankSetChrome?.('\(dark ? "#171a1d" : "#fafafa")', '\(dark ? "dark" : "light")'); window.leftblankSetDark?.(\(previewDark ? "true" : "false"));",
+                "window.proseSetChrome?.('\(dark ? "#171a1d" : "#fafafa")', '\(dark ? "dark" : "light")'); window.proseSetDark?.(\(previewDark ? "true" : "false"));",
                 completionHandler: nil,
             )
         }
@@ -73,9 +73,9 @@ struct TabletPreview: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ view: WKWebView, coordinator: Coordinator) {
-        view.configuration.userContentController.removeScriptMessageHandler(forName: "leftblankPreviewReady")
-        view.configuration.userContentController.removeScriptMessageHandler(forName: "leftblankPreviewReading")
-        view.configuration.userContentController.removeScriptMessageHandler(forName: "leftblankPreviewError")
+        view.configuration.userContentController.removeScriptMessageHandler(forName: "prosePreviewReady")
+        view.configuration.userContentController.removeScriptMessageHandler(forName: "prosePreviewReading")
+        view.configuration.userContentController.removeScriptMessageHandler(forName: "prosePreviewError")
         view.navigationDelegate = nil
     }
 
@@ -94,7 +94,7 @@ struct TabletPreview: UIViewRepresentable {
             guard message.frameInfo.isMainFrame, message.frameInfo.request.url == url else {
                 return
             }
-            if message.name == "leftblankPreviewReady" {
+            if message.name == "prosePreviewReady" {
                 workspace.previewReady = true
                 workspace.previewIssue = nil
                 workspace.sendPendingPreviewNavigation()
@@ -106,7 +106,7 @@ struct TabletPreview: UIViewRepresentable {
                     )
                     restoreReading(in: view)
                 }
-            } else if message.name == "leftblankPreviewReading", let body = message.body as? [String: Any] {
+            } else if message.name == "prosePreviewReading", let body = message.body as? [String: Any] {
                 receiveReading(body)
             } else if let error = message.body as? String {
                 workspace.previewIssue = error
@@ -125,9 +125,9 @@ struct TabletPreview: UIViewRepresentable {
             (() => {
                 const container = document.getElementById('typst-container');
                 if (!container) return false;
-                if (container.style.width !== '\(zoom * 100)%') window.leftblankPrepareResize?.();
+                if (container.style.width !== '\(zoom * 100)%') window.prosePrepareResize?.();
                 container.style.width = '\(zoom * 100)%';
-                window.leftblankSetDark?.(\(dark ? "true" : "false"));
+                window.proseSetDark?.(\(dark ? "true" : "false"));
                 window.dispatchEvent(new Event('resize'));
                 return true;
             })()
@@ -147,7 +147,7 @@ struct TabletPreview: UIViewRepresentable {
             }
             restoringID = request.id
             view
-                .evaluateJavaScript("window.leftblankRestoreReading?.(\(request.anchor.javaScript)) ?? false") { [
+                .evaluateJavaScript("window.proseRestoreReading?.(\(request.anchor.javaScript)) ?? false") { [
                     weak self,
                 ] result, _ in
                     guard let self, restoringID == request.id else {

@@ -10,11 +10,11 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PROJECT = ROOT / 'iPad/LeftBlank.xcodeproj/project.pbxproj'
+PROJECT = ROOT / 'iPad/Prose.xcodeproj/project.pbxproj'
 MAC_TARGETS = {
-    'LeftBlankCore', 'LeftBlankSyntaxFFI', 'LeftBlankSyntaxLibrary',
-    'LeftBlankApp', 'LeftBlankLauncher', 'LeftBlankTestSupport', 'LeftBlankCoreTests',
-    'LeftBlankAppTests',
+    'ProseCore', 'ProseSyntaxFFI', 'ProseSyntaxLibrary',
+    'ProseApp', 'ProseLauncher', 'ProseTestSupport', 'ProseCoreTests',
+    'ProseAppTests',
 }
 DESKTOP_DEPENDENCIES = {
     'swift-sdk', 'sparkle', 'eventsource', 'swift-atomics', 'swift-collections',
@@ -23,7 +23,7 @@ DESKTOP_DEPENDENCIES = {
 
 
 def manifest(path, distribution):
-    env = {**os.environ, 'LEFTBLANK_DISTRIBUTION': distribution}
+    env = {**os.environ, 'PROSE_DISTRIBUTION': distribution}
     # dump-package evaluates the manifest without resolving, fetching or building
     # any dependency. Separate scratch paths avoid a shared manifest cache.
     scratch = ROOT / 'build/package-contracts' / f'{path.name}-{distribution}'
@@ -53,20 +53,20 @@ class PackageGraphs(unittest.TestCase):
     def test_ipad_graph_has_only_core_and_zip(self):
         for mode, graph in self.ipad.items():
             with self.subTest(distribution=mode):
-                self.assertEqual(set(targets(graph)), {'LeftBlankCore', 'LeftBlankSyntaxFFI'})
+                self.assertEqual(set(targets(graph)), {'ProseCore', 'ProseSyntaxFFI'})
                 # Declarations only: the app's engine library provides the parser.
-                parser = targets(graph)['LeftBlankSyntaxFFI']
+                parser = targets(graph)['ProseSyntaxFFI']
                 self.assertEqual((parser['dependencies'], parser['settings']), ([], []))
                 self.assertEqual(dependencies(graph), {'zipfoundation'})
                 self.assertEqual([(p['name'], p['targets']) for p in graph['products']],
-                                 [('LeftBlankCore', ['LeftBlankCore'])])
+                                 [('ProseCore', ['ProseCore'])])
                 self.assertEqual(graph['products'][0]['type'], {'library': ['dynamic']})
-                self.assertEqual(targets(graph)['LeftBlankCore']['settings'], [])
+                self.assertEqual(targets(graph)['ProseCore']['settings'], [])
                 self.assertEqual([(p['platformName'], p['version']) for p in graph['platforms']],
                                  [('ios', '17.0')])
 
     def test_mcp_stays_outside_shared_core_and_ipad_build(self):
-        for source in (ROOT / 'Sources/LeftBlankCore').glob('*.swift'):
+        for source in (ROOT / 'Sources/ProseCore').glob('*.swift'):
             text = source.read_text()
             self.assertNotRegex(text, r'(?m)^import (?:MCP|RMCP|AppKit)$', str(source))
         for name in ('build-ipad.sh', 'prepare-ipad-engine.sh'):
@@ -79,18 +79,18 @@ class PackageGraphs(unittest.TestCase):
     def test_mac_links_the_parser_library_the_ipad_engine_reexports(self):
         for mode, graph in self.mac.items():
             with self.subTest(distribution=mode):
-                library = targets(graph)['LeftBlankSyntaxLibrary']
+                library = targets(graph)['ProseSyntaxLibrary']
                 self.assertEqual(library['type'], 'binary')
-                self.assertEqual(library['path'], 'Engine/SyntaxBridge/target/LeftBlankSyntax.xcframework')
-                self.assertEqual(targets(graph)['LeftBlankSyntaxFFI']['dependencies'],
-                                 [{'byName': ['LeftBlankSyntaxLibrary', None]}])
-        mac_ffi = ROOT / (targets(self.mac['appstore'])['LeftBlankSyntaxFFI'].get('path')
-                          or 'Sources/LeftBlankSyntaxFFI')
-        ipad_ffi = ROOT / 'Sources' / targets(self.ipad['appstore'])['LeftBlankSyntaxFFI']['path']
+                self.assertEqual(library['path'], 'Engine/SyntaxBridge/target/ProseSyntax.xcframework')
+                self.assertEqual(targets(graph)['ProseSyntaxFFI']['dependencies'],
+                                 [{'byName': ['ProseSyntaxLibrary', None]}])
+        mac_ffi = ROOT / (targets(self.mac['appstore'])['ProseSyntaxFFI'].get('path')
+                          or 'Sources/ProseSyntaxFFI')
+        ipad_ffi = ROOT / 'Sources' / targets(self.ipad['appstore'])['ProseSyntaxFFI']['path']
         self.assertEqual(mac_ffi.resolve(), ipad_ffi.resolve())
         engine = (ROOT / 'Engine/TinymistBridge/Cargo.toml').read_text()
-        self.assertIn('leftblank-syntax = { path = "../SyntaxBridge" }', engine)
-        self.assertIn('leftblank_tinymist_syntax_api', (ROOT / 'Engine/TinymistBridge/src/lib.rs').read_text())
+        self.assertIn('prose-syntax = { path = "../SyntaxBridge" }', engine)
+        self.assertIn('prose_tinymist_syntax_api', (ROOT / 'Engine/TinymistBridge/src/lib.rs').read_text())
 
         def pins(lock):
             packages = tomllib.loads((ROOT / lock).read_text())['package']
@@ -107,8 +107,8 @@ class PackageGraphs(unittest.TestCase):
 
     def test_ipad_and_mac_compile_the_same_core_sources_and_resources(self):
         mac, ipad = self.mac['appstore'], self.ipad['appstore']
-        mac_core, ipad_core = targets(mac)['LeftBlankCore'], targets(ipad)['LeftBlankCore']
-        mac_path = ROOT / mac_core.get('path', 'Sources/LeftBlankCore')
+        mac_core, ipad_core = targets(mac)['ProseCore'], targets(ipad)['ProseCore']
+        mac_path = ROOT / mac_core.get('path', 'Sources/ProseCore')
         ipad_path = ROOT / 'Sources' / ipad_core['path']
         self.assertEqual(mac_path.resolve(), ipad_path.resolve())
         self.assertEqual(mac['name'], ipad['name'], 'SwiftPM resource bundle identity must remain stable')
@@ -122,10 +122,10 @@ class PackageGraphs(unittest.TestCase):
             with self.subTest(distribution=mode):
                 self.assertEqual(set(targets(graph)), MAC_TARGETS)
                 self.assertEqual({p['name'] for p in graph['products']},
-                                 {'LeftBlankCore', 'LeftBlank'})
+                                 {'ProseCore', 'Prose'})
                 expected = {'zipfoundation'} | ({'sparkle'} if mode == 'preview' else set())
                 self.assertEqual(dependencies(graph), expected)
-                for name in ('LeftBlankApp', 'LeftBlankAppTests'):
+                for name in ('ProseApp', 'ProseAppTests'):
                     has_updater = any(row.get('product', [])[:2] == ['Sparkle', 'Sparkle']
                                       for row in targets(graph)[name]['dependencies'])
                     self.assertEqual(has_updater, mode == 'preview')

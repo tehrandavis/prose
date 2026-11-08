@@ -1,12 +1,12 @@
-# LeftBlank MCP 设计
+# Prose MCP 设计
 
 状态：已开始实现，尚未发布。设计与实现记录日期：2026-10-05。
 
-本文定义 LeftBlank 可复用的 agent 文档工具、macOS MCP 接入方式、Rust 与 Swift 的边界，以及用户复制给 agent 的连接配置提示词。macOS 应用自带本机 MCP 服务，Codex、Claude Code 等外部 agent 负责理解请求和生成修改；应用负责可靠地读取、编辑、保存和编译文档。未来 macOS 与 iOS/iPadOS 内置 agent 直接复用同一套 Swift 工具，不依赖 MCP server。
+本文定义 Prose 可复用的 agent 文档工具、macOS MCP 接入方式、Rust 与 Swift 的边界，以及用户复制给 agent 的连接配置提示词。macOS 应用自带本机 MCP 服务，Codex、Claude Code 等外部 agent 负责理解请求和生成修改；应用负责可靠地读取、编辑、保存和编译文档。未来 macOS 与 iOS/iPadOS 内置 agent 直接复用同一套 Swift 工具，不依赖 MCP server。
 
 ## 目标与范围
 
-LeftBlank 的技术内核是面向 Typst 的代码编辑器，用户体验仍围绕文章、书籍和排版组织。MCP 是已有编辑器能力的适配层。
+Prose 的技术内核是面向 Typst 的代码编辑器，用户体验仍围绕文章、书籍和排版组织。MCP 是已有编辑器能力的适配层。
 
 首要工作流是：读取文档及错误 → 修改源码 → 编译指定版本 → 根据结果继续修复。支持文档管理，但不以扩充工具数量为目标。
 
@@ -116,12 +116,12 @@ files、remaining_paths 与 unconfirmed_paths 帮助 agent 核实每个文件后
 
 | 组件 | 可复用能力 | 接入时需要补齐 |
 | --- | --- | --- |
-| [DocumentLibrary](../Sources/LeftBlankCore/DocumentLibrary.swift) | UUID 文档身份、创建、读取、重命名、回收站和恢复 | 授权范围、对外版本、分页 |
-| [Workspace](../Sources/LeftBlank/Workspace.swift) | 当前编辑 buffer、版本、编辑链路、诊断、PDF 编译 | 无需模拟 UI 操作的服务入口；明确异步结果版本 |
-| [DocumentStorage](../Sources/LeftBlankCore/DocumentStorage.swift) | 文件协调、baseline 比较、原子单文件保存、iCloud 冲突保护 | 对外报告已应用与已保存的区别 |
-| [TextEditing](../Sources/LeftBlankCore/TextEditing.swift) | 文本范围修改 | patch 与精确替换转换、统一校验 |
-| [DocumentHistory](../Sources/LeftBlankCore/DocumentHistory.swift) | 单个源文件的有限历史快照 | agent 修改前的明确保存策略；删除文件的恢复路径 |
-| [ProjectSources](../Sources/LeftBlankCore/ProjectSources.swift) | 项目内源文件发现与路径检查 | 对外文件清单、资源范围检查 |
+| [DocumentLibrary](../Sources/ProseCore/DocumentLibrary.swift) | UUID 文档身份、创建、读取、重命名、回收站和恢复 | 授权范围、对外版本、分页 |
+| [Workspace](../Sources/Prose/Workspace.swift) | 当前编辑 buffer、版本、编辑链路、诊断、PDF 编译 | 无需模拟 UI 操作的服务入口；明确异步结果版本 |
+| [DocumentStorage](../Sources/ProseCore/DocumentStorage.swift) | 文件协调、baseline 比较、原子单文件保存、iCloud 冲突保护 | 对外报告已应用与已保存的区别 |
+| [TextEditing](../Sources/ProseCore/TextEditing.swift) | 文本范围修改 | patch 与精确替换转换、统一校验 |
+| [DocumentHistory](../Sources/ProseCore/DocumentHistory.swift) | 单个源文件的有限历史快照 | agent 修改前的明确保存策略；删除文件的恢复路径 |
+| [ProjectSources](../Sources/ProseCore/ProjectSources.swift) | 项目内源文件发现与路径检查 | 对外文件清单、资源范围检查 |
 
 当前只有一个活跃编辑 buffer；导航到章节文件时保留主编译入口。历史按源文件保存，不是完整项目备份。某些 Tinymist 诊断通知缺少版本，当前空诊断列表不能证明刚提交的版本编译成功。详见 [架构](architecture.md)与[文档历史](document-history.md)。
 
@@ -141,7 +141,7 @@ MCP、ACP 和 LSP 解决不同层面的问题。本次外部接入实现 MCP；�
 
 ## 平台边界与未来内置 agent
 
-iOS/iPadOS 不按桌面模式安装、启动或管理供其他应用长期连接的本机 MCP server。这里不作“iOS 技术上无法使用 MCP”或“完全没有相关生态”的绝对判断；MCP 协议本身与是否部署桌面 helper 是两回事。Apple 的后台执行受系统调度和时限约束，不能据此承诺常驻服务。LeftBlank 因此将本机 MCP 接入限定在 macOS。[后台执行限制](https://developer.apple.com/documentation/uikit/extending-your-app-s-background-execution-time)、[后台策略](https://developer.apple.com/documentation/backgroundtasks/choosing-background-strategies-for-your-app)
+iOS/iPadOS 不按桌面模式安装、启动或管理供其他应用长期连接的本机 MCP server。这里不作“iOS 技术上无法使用 MCP”或“完全没有相关生态”的绝对判断；MCP 协议本身与是否部署桌面 helper 是两回事。Apple 的后台执行受系统调度和时限约束，不能据此承诺常驻服务。Prose 因此将本机 MCP 接入限定在 macOS。[后台执行限制](https://developer.apple.com/documentation/uikit/extending-your-app-s-background-execution-time)、[后台策略](https://developer.apple.com/documentation/backgroundtasks/choosing-background-strategies-for-your-app)
 
 | 能力 | macOS | iOS/iPadOS |
 | --- | --- | --- |
@@ -159,7 +159,7 @@ iOS/iPadOS 不按桌面模式安装、启动或管理供其他应用长期连接
 
 首版 16 个工具作为共享业务契约设计；未来内置 agent 按宿主实际能力和用户授权获得可用子集，未实现的能力不得注册为可用。get_app_state 的公共结果包含 platform、应用身份、引擎状态、可用工具与已授权的打开文档；MCP 连接信息放在可选的 mcp 字段，iOS 省略该字段，不伪造 server 状态。安装和启停 MCP 属于 macOS 宿主功能，不增加为通用文档工具。
 
-共享代码优先放在现有 LeftBlankCore，保持依赖方向为“macOS MCP 适配层 / 未来 agent 适配层 → 共享工具 → 文档服务”。共享层通过平台接口访问实时 buffer、原生撤销及引擎；不要直接依赖 AppKit 的 Workspace，也不要在 iOS 绕开 TabletWorkspace 直接覆盖磁盘文件。首版先实现 macOS 适配，iOS 适配随内置 agent 工作推进，不宣称当前已有同等工具能力。
+共享代码优先放在现有 ProseCore，保持依赖方向为“macOS MCP 适配层 / 未来 agent 适配层 → 共享工具 → 文档服务”。共享层通过平台接口访问实时 buffer、原生撤销及引擎；不要直接依赖 AppKit 的 Workspace，也不要在 iOS 绕开 TabletWorkspace 直接覆盖磁盘文件。首版先实现 macOS 适配，iOS 适配随内置 agent 工作推进，不宣称当前已有同等工具能力。
 
 ### 构建与运行约束
 
@@ -189,7 +189,7 @@ flowchart LR
     Host <--> Native[原生编辑与 Tinymist]
 ```
 
-上述 Rust helper、Swift MCP 适配层和 IPC 仅在 macOS 构建。macOS 应用启动和停止 helper，并与同版本 helper 一起发布。首版要求 LeftBlank 正在运行且用户已启用连接。helper 退出不影响写作；应用退出时关闭监听、结束待处理请求并清理子进程。
+上述 Rust helper、Swift MCP 适配层和 IPC 仅在 macOS 构建。macOS 应用启动和停止 helper，并与同版本 helper 一起发布。首版要求 Prose 正在运行且用户已启用连接。helper 退出不影响写作；应用退出时关闭监听、结束待处理请求并清理子进程。
 
 对 agent 暴露本机 Streamable HTTP。stdin/stdout 是应用与 helper 的私有 IPC，不是第二个外部 MCP stdio 服务。首版不增加客户端启动的代理进程，也不通过 C ABI 将 Tokio 嵌入 Swift。
 
@@ -226,18 +226,18 @@ IPC 使用 UTF-8、换行分帧 JSON；正文中的换行由 JSON 转义。日�
 
 ### 名称与参数的设计依据
 
-工具名没有跨编辑器强制统一的标准。下表区分实际参考接口与 LeftBlank 的调整；沿用名称不表示完全兼容原工具，也不保证某个模型一定优先使用它。文档库、应用状态和历史版本属于 LeftBlank 自定义领域能力，不伪称为 IDE 标准接口。
+工具名没有跨编辑器强制统一的标准。下表区分实际参考接口与 Prose 的调整；沿用名称不表示完全兼容原工具，也不保证某个模型一定优先使用它。文档库、应用状态和历史版本属于 Prose 自定义领域能力，不伪称为 IDE 标准接口。
 
-| LeftBlank 接口 | 原始参考及参数 | 保留与调整 |
+| Prose 接口 | 原始参考及参数 | 保留与调整 |
 | --- | --- | --- |
 | read_file | [JetBrains read_file](https://www.jetbrains.com/help/idea/mcp-server.html#read_file)：file_path、mode、start_line、max_lines；[Zed read_file](https://zed.dev/docs/ai/tools#read_file) | 保留工具名与行切片参数；统一路径字段为 path，省去多个相似定位模式；增加 document_id 与历史 version_id |
 | list_files | [JetBrains search_file](https://www.jetbrains.com/help/idea/mcp-server.html#search_file)：q 为 glob，另有 paths、limit；[Zed find_path 与 list_directory](https://zed.dev/docs/ai/tools) | 合并列出与按文件名寻找；采用自定义的 list_files(path, glob, recursive, limit, cursor)，不另设 search_files |
 | search_text | [JetBrains search_text / search_regex](https://www.jetbrains.com/help/idea/mcp-server.html#search_text)：q、paths、limit；[Zed grep](https://zed.dev/docs/ai/tools#grep) | 沿用 search_text 名称与 paths、limit；q 改成 query，literal/regex 用一个枚举；增加行上下文和分页 |
 | str_replace | [Claude 编辑工具](https://platform.claude.com/docs/en/agents-and-tools/tool-use/text-editor-tool)：command=str_replace，path、old_str、new_str | 将该命令拆成独立 MCP 工具，保留这三个业务参数，移除冗余 command；增加文档身份、版本和请求 ID。不是复制其外层 str_replace_based_edit_tool |
 | apply_patch | [JetBrains apply_patch](https://www.jetbrains.com/help/idea/mcp-server.html#apply_patch)：input、patch 别名、projectPath | 保留名称与主参数 input；不引入未发布接口的兼容别名；项目路径换为 document_id，补充文件前置版本 |
-| get_diagnostics | [Zed diagnostics](https://zed.dev/docs/ai/tools#diagnostics)、[JetBrains get_file_problems](https://www.jetbrains.com/help/idea/mcp-server.html#get_file_problems) | 使用明确的读取动词；path 可选以支持文件或项目范围。LeftBlank 返回已有诊断与新鲜度，不宣称触发 IntelliJ 式实时检查 |
+| get_diagnostics | [Zed diagnostics](https://zed.dev/docs/ai/tools#diagnostics)、[JetBrains get_file_problems](https://www.jetbrains.com/help/idea/mcp-server.html#get_file_problems) | 使用明确的读取动词；path 可选以支持文件或项目范围。Prose 返回已有诊断与新鲜度，不宣称触发 IntelliJ 式实时检查 |
 | compile_document | [JetBrains build_project](https://www.jetbrains.com/help/idea/mcp-server.html#build_project)：filesToRebuild、rebuild、timeout | 借鉴执行并等待验证的语义；Typst 总是围绕入口编译，采用 document_id 与 expected_project_revision，不照搬不适用的增量构建参数 |
-| 文档库与历史工具 | LeftBlank DocumentLibrary 与 DocumentHistory | 按现有领域行为设计，明确与通用文件操作的区别 |
+| 文档库与历史工具 | Prose DocumentLibrary 与 DocumentHistory | 按现有领域行为设计，明确与通用文件操作的区别 |
 
 除沿用的 str_replace 外，名称采用动词在前的 snake_case。读取用 get/read/list/search，写操作用 create/rename/trash/restore。参数优先保持参考接口中适用的拼写，全局统一 path、document_id、limit、cursor 和版本字段，不为了逐字复制不同产品而混用 filePath、file_path、pathInProject。
 
@@ -270,7 +270,7 @@ read_file 的历史读取只返回 version_id 和不可变快照信息，不伪�
 
 ### 通用参数与输出约定
 
-这些默认值与上限是 LeftBlank 的设计选择，不是引用产品的默认值：
+这些默认值与上限是 Prose 的设计选择，不是引用产品的默认值：
 
 - list_files 默认 path 为项目根、glob 为 `**/*`、recursive 为 true。recursive=false 只返回直接子项；glob 在项目相对路径上匹配。稳定按 path 排序；不会暴露应用内部文件或跟随逃逸链接。
 - search_text 默认 mode=literal、case_sensitive=true、context_lines=2；mode=regex 显式启用受限正则。paths 为可选项目相对 glob 数组，首版只支持包含模式，不支持混合 ! 排除语法。query 非空，正则有时间与输出预算，不提供正则替换。
@@ -334,7 +334,7 @@ old_str 非空且必须唯一、精确匹配，包含空白。需要插入时替
 
 每个目标文件都必须声明前置条件；null 表示要求不存在。只处理授权项目内的 UTF-8 文本源文件与文本依赖，拒绝路径穿越、符号链接逃逸、应用元数据及历史目录。首版拒绝删除编译入口；项目内部文件 Delete 必须先持久化可恢复副本，并返回 before_version_id 供 restore_file_version 恢复，否则不执行删除。现有 DocumentHistory 主要存储源文件，扩展到 .bib、JSON 等文本依赖及已删除路径的身份校验属于实现工作，不能假设已有能力。
 
-两个入口归一化为内部 EditBatch，再交给同一编辑服务。采用这个格式并不会自动重定向 agent 的内置文件工具；工具说明必须明确要求通过 LeftBlank MCP 修改其托管文档。
+两个入口归一化为内部 EditBatch，再交给同一编辑服务。采用这个格式并不会自动重定向 agent 的内置文件工具；工具说明必须明确要求通过 Prose MCP 修改其托管文档。
 
 ### 应用 保存与重试
 
@@ -406,7 +406,7 @@ compile_document 校验项目版本后捕获源码、未保存内容、项目内
 - 2026-07-28 客户端：没有会话，tools/list 返回 ttlMs=0。服务端声明 `tools.listChanged`，支持 `subscriptions/listen`，每条新的 listen 流先发送一次 `notifications/tools/list_changed`：新 helper 无法得知客户端缓存了前一个进程的哪些工具，宁可让客户端多读一次列表。
 - 应用退出到新 helper 就绪之间端口无人监听，期间的调用会失败。客户端是否自动重连、重连后是否刷新工具列表由客户端决定；不支持时仍需在客户端手动重连。
 
-Standard 与 Preview 使用独立连接名称、监听端口、凭证和实例标识，例如 leftblank 与 leftblank-preview。两者可能访问同一 iCloud 文档库，发行版隔离不能被当成内容并发隔离；仍须协调文件访问和检查版本。
+Standard 与 Preview 使用独立连接名称、监听端口、凭证和实例标识，例如 prose 与 prose-preview。两者可能访问同一 iCloud 文档库，发行版隔离不能被当成内容并发隔离；仍须协调文件访问和检查版本。
 
 helper 随 app 打包、签名和发布，锁定依赖并纳入第三方许可。用户无需安装 Rust、Cargo、Node 或 Python。App Sandbox 下的子进程继承、管道、网络权限和签名必须在真实打包产物上验证。
 
@@ -416,7 +416,7 @@ helper 随 app 打包、签名和发布，锁定依赖并纳入第三方许可�
 
 仅在 macOS 设置页的“编程智能体”区块提供连接入口：选择文档范围及读写权限 → 启用服务 → 复制配置提示词 → 粘贴到本机 Codex 或 Claude Code。无需在 Documents 菜单设置独立入口。
 
-这里的“安装”是向客户端注册应用已自带的 MCP 服务。首版要求 agent 与 LeftBlank 位于同一台 Mac；远程主机或云端 agent 的 127.0.0.1 不指向用户的 Mac，不能宣称可以直接接入。
+这里的“安装”是向客户端注册应用已自带的 MCP 服务。首版要求 agent 与 Prose 位于同一台 Mac；远程主机或云端 agent 的 127.0.0.1 不指向用户的 Mac，不能宣称可以直接接入。
 
 服务就绪时，应用在本机私有状态目录原子写入一个连接描述文件；复制提示词时填入该文件的真实绝对路径。描述文件与父目录限制为当前用户可读写；其中包含凭证，不能同步到 iCloud、写进项目仓库或直接复制到聊天正文。停用会撤销服务端凭证并删除描述文件；客户端的旧配置由用户或 agent 清理，应用不直接改写其他客户端配置。
 
@@ -425,8 +425,8 @@ helper 随 app 打包、签名和发布，锁定依赖并纳入第三方许可�
 ```json
 {
   "format_version": 1,
-  "server_name": "leftblank",
-  "app_bundle_id": "app.leftblank.writer",
+  "server_name": "prose",
+  "app_bundle_id": "com.tehrandavis.prose",
   "app_version": "<installed-version>",
   "instance_id": "<running-instance-id>",
   "transport": "streamable-http",

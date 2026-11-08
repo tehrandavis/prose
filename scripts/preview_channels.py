@@ -1,4 +1,4 @@
-"""LeftBlank Preview update channels in one signed Sparkle feed.
+"""Prose Preview update channels in one signed Sparkle feed.
 
 Nightly is Sparkle's default channel: its items carry no <sparkle:channel>.
 Alpha items carry <sparkle:channel>alpha</sparkle:channel> and are offered

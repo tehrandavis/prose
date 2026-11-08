@@ -56,9 +56,9 @@ def condition_passes(block, context, *, cancelled=False):
 class PathClassificationTests(unittest.TestCase):
     TABLE = {
         # Mac app, MCP helper and Mac-only packaging.
-        'Sources/LeftBlank/Workspace.swift': {'mac'},
-        'Sources/LeftBlankLauncher/main.swift': {'mac'},
-        'Tests/LeftBlankAppTests/WritingFlowTests.swift': {'mac'},
+        'Sources/Prose/Workspace.swift': {'mac'},
+        'Sources/ProseLauncher/main.swift': {'mac'},
+        'Tests/ProseAppTests/WritingFlowTests.swift': {'mac'},
         'Tests/MCP/editing.hurl': {'mac'},
         'Tools/MCPServer/src/main.rs': {'mac'},
         'Tools/MCPServer/Cargo.lock': {'mac'},
@@ -81,7 +81,7 @@ class PathClassificationTests(unittest.TestCase):
         '.github/workflows/release.yml': {'mac'},
         # iPad app, embedded engine and iPad-only scripts.
         'iPad/Sources/TabletRoot.swift': {'ipad'},
-        'iPad/LeftBlank.xcodeproj/project.pbxproj': {'ipad'},
+        'iPad/Prose.xcodeproj/project.pbxproj': {'ipad'},
         'iPad/UITests/WritingTests.swift': {'ipad'},
         'Engine/TinymistBridge/src/lib.rs': {'ipad'},
         'Engine/TinymistBridge/Cargo.lock': {'ipad'},
@@ -94,17 +94,17 @@ class PathClassificationTests(unittest.TestCase):
         'scripts/fixtures/apple-storefront-schema.json': {'ipad'},
         '.github/workflows/ipad-release.yml': {'ipad'},
         # Shared code, resources and CI infrastructure run both.
-        'Sources/LeftBlankCore/TinymistClient.swift': {'mac', 'ipad'},
-        'Sources/LeftBlankCore/Resources/en.lproj/Localizable.strings': {'mac', 'ipad'},
+        'Sources/ProseCore/TinymistClient.swift': {'mac', 'ipad'},
+        'Sources/ProseCore/Resources/en.lproj/Localizable.strings': {'mac', 'ipad'},
         'Sources/Package.swift': {'mac', 'ipad'},
-        'Sources/LeftBlankSyntaxFFI/include/LeftBlankSyntax.h': {'mac', 'ipad'},
+        'Sources/ProseSyntaxFFI/include/ProseSyntax.h': {'mac', 'ipad'},
         'Engine/SyntaxBridge/src/lib.rs': {'mac', 'ipad'},
         'Engine/SyntaxBridge/Cargo.lock': {'mac', 'ipad'},
         'Engine/NewBridge/Cargo.toml': {'mac', 'ipad'},
         'scripts/rust-licenses.py': {'mac', 'ipad'},
         'Package.swift': {'mac', 'ipad'},
         'Package.resolved': {'mac', 'ipad'},
-        'Tests/LeftBlankCoreTests/CoreTests.swift': {'mac', 'ipad'},
+        'Tests/ProseCoreTests/CoreTests.swift': {'mac', 'ipad'},
         'Tests/Support/TestPaths.swift': {'mac', 'ipad'},
         'Resources/Icons/pen.svg': {'mac', 'ipad'},
         'Resources/Packages/preview/cetz/0.5.2/src/lib.typ': {'mac', 'ipad'},
@@ -139,7 +139,7 @@ class PathClassificationTests(unittest.TestCase):
 
     def test_prefixes_match_whole_names_or_directories(self):
         # A sibling sharing a name prefix must not inherit a narrower platform.
-        self.assertEqual(ci.classify('Sources/LeftBlankCore/X.swift'), {'mac', 'ipad'})
+        self.assertEqual(ci.classify('Sources/ProseCore/X.swift'), {'mac', 'ipad'})
         self.assertEqual(ci.classify('scripts/test.sh.orig'), {'mac', 'ipad'})
         self.assertEqual(ci.classify('docsite/index.md'), {'mac', 'ipad'})
         self.assertEqual(ci.classify('Examples/Books/SICP/README.md'), {'mac', 'ipad'})
@@ -162,16 +162,16 @@ class PathClassificationTests(unittest.TestCase):
         self.assertEqual(ci.select(['Tools/MCPServer/src/main.rs', 'docs/mcp-design.md']),
                          {'mac': True, 'ipad': False})
         self.assertEqual(ci.select(['iPad/Sources/TabletRoot.swift']), {'mac': False, 'ipad': True})
-        self.assertEqual(ci.select(['iPad/Sources/TabletRoot.swift', 'Sources/LeftBlank/Workspace.swift']),
+        self.assertEqual(ci.select(['iPad/Sources/TabletRoot.swift', 'Sources/Prose/Workspace.swift']),
                          {'mac': True, 'ipad': True})
-        self.assertEqual(ci.select(['Sources/LeftBlankCore/Library.swift']), {'mac': True, 'ipad': True})
+        self.assertEqual(ci.select(['Sources/ProseCore/Library.swift']), {'mac': True, 'ipad': True})
 
 
 class PlanTests(unittest.TestCase):
     """Event handling against a real scratch repository."""
 
     def setUp(self):
-        scratch = tempfile.TemporaryDirectory(prefix='leftblank-ci-', dir=os.environ.get('TMPDIR'))
+        scratch = tempfile.TemporaryDirectory(prefix='prose-ci-', dir=os.environ.get('TMPDIR'))
         self.addCleanup(scratch.cleanup)
         self.root = Path(scratch.name)
         patcher = mock.patch.object(ci, 'ROOT', self.root)
@@ -194,10 +194,10 @@ class PlanTests(unittest.TestCase):
         return self.git('rev-parse', 'HEAD')
 
     def plan(self, event, head, runs=lambda repository, event: [], **kwargs):
-        return ci.plan(event, head, 'smoke', 'leftblank-app/leftblank', runs=runs, **kwargs)[0]
+        return ci.plan(event, head, 'smoke', 'tehrandavis/prose', runs=runs, **kwargs)[0]
 
     def test_push_diffs_against_the_last_successful_main_run(self):
-        self.commit('Sources/LeftBlank/Workspace.swift')   # its run was cancelled
+        self.commit('Sources/Prose/Workspace.swift')   # its run was cancelled
         head = self.commit('iPad/Sources/TabletRoot.swift')
         self.assertEqual(self.plan('push', head, runs=lambda repository, event: [self.base]),
                          {'mac': True, 'ipad': True})
@@ -251,7 +251,7 @@ class PlanTests(unittest.TestCase):
     def test_a_failed_nightly_is_retried_so_preview_still_publishes(self):
         # The successful-runs query never returns a failed nightly, whether its
         # tests or its Preview publication failed, so the same commit runs again.
-        head = self.commit('Sources/LeftBlank/Workspace.swift')
+        head = self.commit('Sources/Prose/Workspace.swift')
         last_success = lambda repository, event: [self.base]  # noqa: E731  (the run for head failed)
         selection = self.plan('schedule', head, runs=last_success)
         self.assertEqual(selection, {'mac': True, 'ipad': True})
@@ -444,7 +444,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertLess(release.index('if result.get("status") != "Accepted"'), release.index(ticket))
         self.assertLess(release.index(ticket), release.index('codesign --verify --deep --strict'))
         self.assertLess(release.index(ticket), release.index('spctl --assess'))
-        self.assertLess(release.index(ticket), release.index('archive="LeftBlank-${version}'))
+        self.assertLess(release.index(ticket), release.index('archive="Prose-${version}'))
 
     def test_packaged_mcp_contract_gates_prs_and_preview_publication(self):
         integration, preview = self.jobs['integration'], self.jobs['preview']
@@ -481,7 +481,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertEqual(needs(publish), {'changes', 'preview'})
         # Override implicit success(): alpha intentionally skips App Store checks.
         self.assertEqual(field(publish, 'if'), "${{ !cancelled() && needs.preview.result == 'success' }}")
-        self.assertIn('LEFTBLANK_PREVIEW_CHANNEL: ${{ needs.changes.outputs.channel }}', preview)
+        self.assertIn('PROSE_PREVIEW_CHANNEL: ${{ needs.changes.outputs.channel }}', preview)
         self.assertIn('PREVIEW_CHANNEL: ${{ needs.changes.outputs.channel }}', publish)
         self.assertIn('channel: ${{ steps.select.outputs.channel }}', self.jobs['changes'])
 

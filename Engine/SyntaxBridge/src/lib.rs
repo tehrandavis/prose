@@ -1,4 +1,4 @@
-//! typst-syntax behind a small, stable C ABI for LeftBlank's visual editor.
+//! typst-syntax behind a small, stable C ABI for Prose's visual editor.
 //!
 //! Swift owns the text (`NSTextStorage`). This library owns one parsed
 //! `typst_syntax::Source` per editor and mirrors the same edits the native text
@@ -6,9 +6,9 @@
 //! matching `NSString`/`NSRange`; typst-syntax works in UTF-8 bytes and the
 //! conversion happens here.
 //!
-//! Node kinds are mapped to LeftBlank's own stable codes (`kinds!`), so Swift
+//! Node kinds are mapped to Prose's own stable codes (`kinds!`), so Swift
 //! never depends on typst-syntax's enum order. The C declarations live in
-//! `Sources/LeftBlankSyntaxFFI/include/LeftBlankSyntax.h`; the only exported
+//! `Sources/ProseSyntaxFFI/include/ProseSyntax.h`; the only exported
 //! symbol is `lb_syntax_api`, a table of the entry points below.
 
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -26,7 +26,7 @@ pub const NO_PARENT: u32 = u32::MAX;
 /// `LB_SYNTAX_NODE_ERRONEOUS`.
 pub const ERRONEOUS: u8 = 1;
 
-/// One flattened syntax node; see `LeftBlankSyntax.h`.
+/// One flattened syntax node; see `ProseSyntax.h`.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LBSyntaxNode {
@@ -62,7 +62,7 @@ pub struct LBSyntaxAPI {
 
 macro_rules! kinds {
     ($($code:literal => $kind:ident),* $(,)?) => {
-        /// The stable LeftBlank code of a typst-syntax kind. The match is
+        /// The stable Prose code of a typst-syntax kind. The match is
         /// exhaustive, so a parser upgrade that adds a kind fails to compile
         /// until it is given a new code.
         pub fn code(kind: SyntaxKind) -> u16 {
@@ -76,8 +76,8 @@ macro_rules! kinds {
     };
 }
 
-// Stable LeftBlank codes. Append only; never renumber or reuse a code.
-// LeftBlankCore's `SyntaxKind` mirrors this table; its tests compare the two.
+// Stable Prose codes. Append only; never renumber or reuse a code.
+// ProseCore's `SyntaxKind` mirrors this table; its tests compare the two.
 kinds! {
     1 => Markup, 2 => Text, 3 => Space, 4 => Linebreak, 5 => Parbreak, 6 => Escape,
     7 => Shorthand, 8 => SmartQuote, 9 => Strong, 10 => Emph, 11 => Raw, 12 => RawLang,
@@ -107,7 +107,7 @@ kinds! {
     140 => LoopContinue, 141 => FuncReturn, 142 => DestructAssignment,
 }
 
-/// The typst-syntax name of a LeftBlank kind code.
+/// The typst-syntax name of a Prose kind code.
 pub fn kind_name(code: u16) -> Option<&'static str> {
     KIND_NAMES
         .iter()
@@ -314,7 +314,7 @@ unsafe fn text<'a>(utf8: *const u8, length: usize) -> Option<&'a str> {
 }
 
 /// # Safety
-/// See `LeftBlankSyntax.h`. `utf8` must be null or valid for `length` bytes.
+/// See `ProseSyntax.h`. `utf8` must be null or valid for `length` bytes.
 unsafe extern "C" fn parse(utf8: *const u8, length: usize) -> *mut LBSyntaxTree {
     guarded(std::ptr::null_mut(), || {
         // SAFETY: forwarded caller contract.

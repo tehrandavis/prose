@@ -21,7 +21,7 @@ use tinymist::{world::CompileFontArgs, RegularInit, ServerState};
 /// The caller transfers both descriptors and keeps font_directory readable
 /// for the duration of this call. Neither descriptor may be used after calling.
 #[no_mangle]
-pub unsafe extern "C" fn leftblank_tinymist_run(
+pub unsafe extern "C" fn prose_tinymist_run(
     input_fd: i32,
     output_fd: i32,
     font_directory: *const c_char,
@@ -87,12 +87,12 @@ fn run(input: File, output: File, fonts: Option<PathBuf>) -> Result<(), ()> {
     writes.map_err(|_| ())
 }
 
-/// LeftBlank's typst-syntax bridge (`Engine/SyntaxBridge`), linked into this
+/// Prose's typst-syntax bridge (`Engine/SyntaxBridge`), linked into this
 /// library so the iPad app carries one Rust runtime: two Rust static libraries
-/// in one binary duplicate the standard library's symbols. LeftBlankCore
-/// declares the table (`LeftBlankSyntax.h`); the app passes it to
+/// in one binary duplicate the standard library's symbols. ProseCore
+/// declares the table (`ProseSyntax.h`); the app passes it to
 /// `SyntaxTree.install`.
 #[no_mangle]
-pub extern "C" fn leftblank_tinymist_syntax_api() -> *const std::ffi::c_void {
-    leftblank_syntax::lb_syntax_api().cast()
+pub extern "C" fn prose_tinymist_syntax_api() -> *const std::ffi::c_void {
+    prose_syntax::lb_syntax_api().cast()
 }

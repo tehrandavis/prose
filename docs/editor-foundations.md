@@ -4,7 +4,7 @@ Reviewed October 1, 2026. This work keeps version 0.5.0 (9). Bug fixes do not au
 
 ## Decision
 
-Keep AppKit's native text system as the default editor while separating input, presentation, document indexing and service transport. The observed flicker came from LeftBlank's whole-document styling and palette switching, not evidence that NSTextView itself must be replaced. A replacement must pass the same behavioral tests and show a measured benefit before migration.
+Keep AppKit's native text system as the default editor while separating input, presentation, document indexing and service transport. The observed flicker came from Prose's whole-document styling and palette switching, not evidence that NSTextView itself must be replaced. A replacement must pass the same behavioral tests and show a measured benefit before migration.
 
 The current implementation is not a rope editor and does not claim constant-time editing of arbitrarily large files. Native NSTextStorage owns the editable attributed buffer and undo operations. Workspace holds a plain value snapshot for services and persistence; syntax and presentation retain revision-specific snapshots too. These can occupy multiple document-sized allocations. Adding a rope beside them would add another owner unless these consumers are redesigned together.
 
@@ -23,7 +23,7 @@ CotEditor demonstrates the separation of syntax colors into drawing-only layout 
 
 ## Reusable components evaluated
 
-| Candidate | Fit for LeftBlank |
+| Candidate | Fit for Prose |
 | --- | --- |
 | [xi-editor](https://github.com/xi-editor/xi-editor) | Persistent ropes, cheap snapshots, deltas and asynchronous expensive work are relevant design references. The project explicitly declares development discontinued. Do not adopt its core as a newly maintained dependency. |
 | [VimR](https://github.com/qvacua/vimr) | A credible route to an optional Neovim backend, with a reusable Cocoa view and Swift API. Detailed evaluation below. |
@@ -36,7 +36,7 @@ CotEditor demonstrates the separation of syntax colors into drawing-only layout 
 
 Source review uses VimR revision `ad069d307c57656f4225a8f4e0090e95679b0e66`. This is a source/API evaluation, not a completed integration benchmark.
 
-VimR's MIT-licensed `NvimView` wraps an NSView, input-method integration, grid drawing and Neovim startup. `NvimApi` exposes synchronous/asynchronous RPC. This removes substantial work compared with building a macOS Neovim frontend ourselves. Its current implementation launches a bundled child process with `--embed --listen`; it does not link Neovim into LeftBlank's process. References: [package](https://github.com/qvacua/vimr/blob/ad069d307c57656f4225a8f4e0090e95679b0e66/NvimView/Package.swift), [process startup](https://github.com/qvacua/vimr/blob/ad069d307c57656f4225a8f4e0090e95679b0e66/NvimView/Sources/NvimView/NvimProcess.swift).
+VimR's MIT-licensed `NvimView` wraps an NSView, input-method integration, grid drawing and Neovim startup. `NvimApi` exposes synchronous/asynchronous RPC. This removes substantial work compared with building a macOS Neovim frontend ourselves. Its current implementation launches a bundled child process with `--embed --listen`; it does not link Neovim into Prose's process. References: [package](https://github.com/qvacua/vimr/blob/ad069d307c57656f4225a8f4e0090e95679b0e66/NvimView/Package.swift), [process startup](https://github.com/qvacua/vimr/blob/ad069d307c57656f4225a8f4e0090e95679b0e66/NvimView/Sources/NvimView/NvimProcess.swift).
 
 The package uses sibling local packages (`Commons`, `Tabs`, `NvimApi`) and generated/copied Neovim executable/runtime resources. Reuse requires a pinned source/build integration; a single remote SwiftPM dependency is not sufficient as the tree stands. The component README is still a placeholder, so source-level maintenance is part of the cost.
 
@@ -44,7 +44,7 @@ Its renderer consumes Neovim's line grid and draws dirty cell regions. Different
 
 "Neovim takes over" means ownership, not a requirement to expose modal keys to everyone. An insert/select-oriented configuration is possible. However, buffers, undo, text selections, edits and service attachment still need one authoritative owner. Using NvimApi headlessly behind an independently editable NSTextView would require a reliable bidirectional edit/selection/undo bridge; two independently authoritative buffers are not a shortcut.
 
-If prototyped, use NvimView as an isolated, optional source editor. LeftBlank would continue to own the library, coordinated saving, iCloud, preview and agent permissions; Neovim would own the editing buffer and undo. Configure isolated runtime/init paths rather than loading arbitrary user configuration by default. Route edits through the buffer API, consume revisioned change events, choose one Tinymist/LSP owner and explicitly mediate `:write` with LeftBlank's persistence. Neovim's official [API documentation](https://github.com/neovim/neovim/blob/master/runtime/doc/api.txt) documents subprocess embedding and libnvim as separate integration choices.
+If prototyped, use NvimView as an isolated, optional source editor. Prose would continue to own the library, coordinated saving, iCloud, preview and agent permissions; Neovim would own the editing buffer and undo. Configure isolated runtime/init paths rather than loading arbitrary user configuration by default. Route edits through the buffer API, consume revisioned change events, choose one Tinymist/LSP owner and explicitly mediate `:write` with Prose's persistence. Neovim's official [API documentation](https://github.com/neovim/neovim/blob/master/runtime/doc/api.txt) documents subprocess embedding and libnvim as separate integration choices.
 
 Acceptance gates before enabling an alternate backend: Chinese/Japanese/Korean composition; combining marks, emoji and bidirectional text; pointer/drag selection across wrapped lines; clipboard and native shortcuts; VoiceOver; undo across snippets, formatting and agent edits; clean restart/recovery; 100 KB/1 MB/10 MB typing and paste measurements; memory after repeated document switches; preview, library and cloud conflict preservation. Grid-based source editing may be a good optional mode even if mixed reading typography remains native.
 

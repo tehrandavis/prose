@@ -1,0 +1,3 @@
+import ProseApp
+
+ProseApplication.main()

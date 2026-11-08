@@ -5,7 +5,7 @@
 writes the `mac`, `ipad`, `suite`, `release`, `publish` and `channel` outputs
 that every macOS job's `if:` consumes. `release` adds the Mac App Store and
 memory checks; it runs only from main's nightly schedule or a manual main
-dispatch. `publish` signs LeftBlank Preview: the nightly channel from those
+dispatch. `publish` signs Prose Preview: the nightly channel from those
 runs, the opt-in alpha channel from each Mac-affecting main push.
 `gate` runs in the required `build and test` job and fails unless each job
 either passed (selected) or was skipped (not selected).
@@ -29,15 +29,15 @@ DOCS = (
     'docs/', 'releases/', 'README.md', 'BRAND_POLICY.md', 'LICENSE', 'codecov.yml', 'Brand/README.md',
 )
 MAC = (
-    'Sources/LeftBlank/', 'Sources/LeftBlankLauncher/',
-    'Tests/LeftBlankAppTests/', 'Tests/MCP/',
+    'Sources/Prose/', 'Sources/ProseLauncher/',
+    'Tests/ProseAppTests/', 'Tests/MCP/',
     'Tools/MCPServer/',
     # Only scripts/lint.sh reads these; Mac regression runs it.
     'Benchmarks/', 'design/', '.swiftlint.yml', '.swiftformat',
     # Mac bundle metadata and icons. The iPad project references only
     # Resources/Icons, Licenses, Packages and the license texts.
-    'Resources/Info.plist', 'Resources/Preview-Info.plist', 'Resources/LeftBlank.AppStore.entitlements',
-    'Resources/LeftBlank.Helper.entitlements', 'Resources/LeftBlank.iCloud.entitlements.example',
+    'Resources/Info.plist', 'Resources/Preview-Info.plist', 'Resources/Prose.AppStore.entitlements',
+    'Resources/Prose.Helper.entitlements', 'Resources/Prose.iCloud.entitlements.example',
     'Resources/AppIcon.icns', 'Resources/AppIcon.svg', 'Resources/AppIconLight.icns', 'Resources/AppIconLight.svg',
     'Resources/en.lproj/', 'Resources/zh-Hans.lproj/',
     'scripts/benchmark-books.sh', 'scripts/bootstrap.sh', 'scripts/build.sh', 'scripts/build-mcp.sh',
@@ -68,8 +68,8 @@ IPAD = (
 )
 # Shared, listed for readers; unlisted paths behave the same way.
 SHARED = (
-    'Sources/LeftBlankCore/', 'Sources/LeftBlankSyntaxFFI/', 'Engine/SyntaxBridge/', 'Sources/Package.swift', 'Package.swift', 'Package.resolved',
-    'Tests/LeftBlankCoreTests/', 'Tests/Support/', 'Resources/', 'Examples/', 'Brand/', 'scripts/', '.github/',
+    'Sources/ProseCore/', 'Sources/ProseSyntaxFFI/', 'Engine/SyntaxBridge/', 'Sources/Package.swift', 'Package.swift', 'Package.resolved',
+    'Tests/ProseCoreTests/', 'Tests/Support/', 'Resources/', 'Examples/', 'Brand/', 'scripts/', '.github/',
 )
 
 

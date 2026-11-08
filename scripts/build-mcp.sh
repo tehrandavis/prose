@@ -9,5 +9,5 @@ if [ "${GITHUB_ACTIONS:-}" = true ]; then
 fi
 cargo +1.92.0 build --locked --release --manifest-path Tools/MCPServer/Cargo.toml
 mkdir -p .tools
-cp Tools/MCPServer/target/release/leftblank-mcp .tools/leftblank-mcp
+cp Tools/MCPServer/target/release/prose-mcp .tools/prose-mcp
 python3 scripts/rust-licenses.py mcp

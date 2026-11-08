@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Every Mac channel bundles the pinned Tinymist source build with LeftBlank's patches."""
+"""Every Mac channel bundles the pinned Tinymist source build with Prose's patches."""
 import hashlib
 import os
 from pathlib import Path
@@ -34,7 +34,7 @@ class TinymistBuildTests(unittest.TestCase):
         self.assertIn('v0.15.8', subprocess.check_output([str(binary), '--version'], text=True))
 
     def test_check_rejects_release_or_stale_binaries(self):
-        with tempfile.TemporaryDirectory(prefix='leftblank-tinymist-', dir=os.environ.get('TMPDIR')) as temporary:
+        with tempfile.TemporaryDirectory(prefix='prose-tinymist-', dir=os.environ.get('TMPDIR')) as temporary:
             root = Path(temporary)
             (root / 'scripts').mkdir()
             for name in ('build-tinymist.sh', *(Path(patch).name for patch in PATCHES)):

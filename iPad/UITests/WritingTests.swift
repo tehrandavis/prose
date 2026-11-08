@@ -29,12 +29,12 @@ final class WritingTests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
-        let session = try SKTestSession(configurationFileNamed: "LeftBlank")
+        let session = try SKTestSession(configurationFileNamed: "Prose")
         session.resetToDefaultState()
         session.disableDialogs = true
         session.clearTransactions()
         if !name.contains("testSubscriptionPurchaseAndRestore") {
-            _ = try await session.buyProduct(identifier: "app.leftblank.writer.ipad.monthly")
+            _ = try await session.buyProduct(identifier: "com.tehrandavis.prose.ipad.monthly")
         }
         storeSession = session
     }
@@ -450,7 +450,7 @@ final class WritingTests: XCTestCase {
             timeout: 30,
         )
         let manuscript = app.textViews["manuscript"].firstMatch.value as? String
-        try session.expireSubscription(productIdentifier: "app.leftblank.writer.ipad.monthly")
+        try session.expireSubscription(productIdentifier: "com.tehrandavis.prose.ipad.monthly")
         app.terminate()
         // Relaunch the existing library instead of seeding another document.
         if let seed = app.launchArguments.firstIndex(of: "-iPadOpenTemplate") {
@@ -499,7 +499,7 @@ final class WritingTests: XCTestCase {
     func testWelcomePreviewAndPDFExport() {
         let app = startWriting(template: "welcome")
         capture("English writing")
-        expect((app.textViews["manuscript"].firstMatch.value as? String)?.contains("leftblank-mark.svg")) == true
+        expect((app.textViews["manuscript"].firstMatch.value as? String)?.contains("prose-mark.svg")) == true
         app.buttons["layout-preview"].firstMatch.tap()
         waitForState(
             NSPredicate(format: "value == %@", "Preview Updated"),
@@ -743,7 +743,7 @@ final class WritingTests: XCTestCase {
         let resources = app.buttons["resource-existing"].firstMatch
         expect(appears(resources, timeout: 30)) == true
         resources.tap()
-        tapSettled(app.buttons["leftblank-mark.svg"].firstMatch, in: app, name: "Project image")
+        tapSettled(app.buttons["prose-mark.svg"].firstMatch, in: app, name: "Project image")
         // Selecting the image enables Insert in a later SwiftUI update.
         let insert = app.buttons["Insert"].firstMatch
         waitForState(NSPredicate { _, _ in
@@ -753,7 +753,7 @@ final class WritingTests: XCTestCase {
         waitForState(NSPredicate { _, _ in
             editor.exists && editor.value as? String != original
         }, in: app, name: "Project image inserted")
-        expect((editor.value as? String)?.components(separatedBy: "leftblank-mark.svg").count) == 3
+        expect((editor.value as? String)?.components(separatedBy: "prose-mark.svg").count) == 3
         capture("Reused project image")
         tapSettled(app.buttons["commands"].firstMatch, in: app, name: "Commands button")
         tapSettled(app.buttons["Undo"].firstMatch, in: app, name: "Undo command")
@@ -842,7 +842,7 @@ final class WritingTests: XCTestCase {
         let app = startWriting(template: "welcome")
         let editor = app.textViews["manuscript"].firstMatch
         let source = editor.value as? String ?? ""
-        let heading = "Ink for your thoughts"
+        let heading = "Write in Typst"
         let sourceLine = source.components(separatedBy: "\n").firstIndex(of: "= " + heading)
         expect(sourceLine != nil) == true
         app.buttons["layout-preview"].firstMatch.tap()

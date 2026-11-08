@@ -3,7 +3,7 @@
 ## Shared core, native presentation
 
 The goal is the same document behavior and design language on both platforms.
-Keep business rules in `LeftBlankCore`; keep AppKit/UIKit views, native editor
+Keep business rules in `ProseCore`; keep AppKit/UIKit views, native editor
 integration, lifecycle and engine startup in their platform targets. Native
 layout adapts to window size and input methods. Templates and packages do not
 need separate discovery, installation or caching implementations for iPad.
@@ -19,7 +19,7 @@ need separate discovery, installation or caching implementations for iPad.
 
 ```mermaid
 flowchart TB
-    Mac[Mac AppKit and SwiftUI] --> Core[LeftBlankCore]
+    Mac[Mac AppKit and SwiftUI] --> Core[ProseCore]
     iPad[iPad UIKit and SwiftUI] --> Core
     Core --> Client[TinymistClient and framed LSP]
     Client --> Process[Mac process transport]
@@ -35,14 +35,14 @@ should extend shared services rather than copy business rules into both workspac
 
 The Mac Swift package uses the repository's `Package.swift`. The iPad Xcode
 project points to the fixed core-only manifest in `Sources/Package.swift`, which
-compiles the same `Sources/LeftBlankCore` files and resources. Its only package
+compiles the same `Sources/ProseCore` files and resources. Its only package
 dependency is ZIPFoundation; the UI test target separately uses Nimble. iPad
 does not resolve or compile the Mac app or Sparkle updater. The shared engine
 process transport is also guarded with `os(macOS)`.
 
 The manifests use the same package and target names to preserve the generated
 resource bundle identity. iPad's graph stays fixed even when
-`LEFTBLANK_DISTRIBUTION=preview` is present in the host environment. Checking the
+`PROSE_DISTRIBUTION=preview` is present in the host environment. Checking the
 host operating system in one manifest would not distinguish an iPad destination:
 Xcode evaluates both manifests on a Mac. `scripts/test-package-graphs.py`
 evaluates both real manifests in standard and preview modes without dependency
@@ -52,7 +52,7 @@ downloads, and verifies the iPad project and dependency lock against this bounda
 
 The [MCP design and implementation status](mcp-design.md) separates shared Swift
 business tools from macOS transport. Tool schemas, document operations, revision
-checks, patches and history live in `LeftBlankCore` without any MCP SDK import.
+checks, patches and history live in `ProseCore` without any MCP SDK import.
 The iPad test target also runs their shared core tests. A future embedded agent
 can call this dispatcher directly through a UIKit workspace adapter; neither app
 currently contains model inference or an agent loop.

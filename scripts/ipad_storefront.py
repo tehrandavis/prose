@@ -66,7 +66,7 @@ class Storefront:
         bundles = self.client.list('/v1/bundleIds', **{'filter[identifier]': BUNDLE, 'limit': 200})
         bundle = unique([row for row in bundles if row['attributes']['platform'] in ('IOS', 'UNIVERSAL')], 'iOS bundle ID')
         if not bundle:
-            raise RuntimeError('Register the existing LeftBlank bundle ID for iOS and iCloud first')
+            raise RuntimeError('Register the existing Prose bundle ID for iOS and iCloud first')
         profiles = self.client.list(f"/v1/bundleIds/{bundle['id']}/profiles", limit=200)
         import plistlib
         import subprocess
@@ -82,7 +82,7 @@ class Storefront:
                 continue
             destination.write_bytes(content)
             return
-        row = self.create('profiles', {'name': 'LeftBlank iPad App Store ' + identity[:12],
+        row = self.create('profiles', {'name': 'Prose iPad App Store ' + identity[:12],
                           'profileType': 'IOS_APP_STORE'}, {
                           'bundleId': relationship('bundleIds', bundle['id']),
                           'certificates': {'data': [{'type': 'certificates', 'id': cert['id']}]}})
@@ -169,13 +169,13 @@ class Storefront:
         config = self.store['subscription']
         groups = self.client.list(f'/v1/apps/{self.release.app}/subscriptionGroups', limit=200)
         group = unique([g for g in groups if g['attributes']['referenceName'] == config['group_reference_name']],
-                       'LeftBlank iPad subscription group')
+                       'Prose iPad subscription group')
         # Discover product IDs across ALL groups before creating anything.
         found = []
         for candidate in groups:
             products = self.client.list(f"/v1/subscriptionGroups/{candidate['id']}/subscriptions", limit=200)
             found.extend((candidate, p) for p in products if p['attributes']['productId'] == config['product_id'])
-        product_match = unique(found, 'LeftBlank iPad product ID')
+        product_match = unique(found, 'Prose iPad product ID')
         if product_match and (not group or product_match[0]['id'] != group['id']):
             raise RuntimeError('The iPad product ID belongs to a different subscription group')
         if not group:
@@ -285,7 +285,7 @@ class Storefront:
         for locale, fields in self.release.metadata['localizations'].items():
             attrs = {'description': fields['description'], 'keywords': fields['keywords'],
                      'promotionalText': fields['promotional_text'], 'supportUrl': self.store['support_url'],
-                     'marketingUrl': 'https://leftblank.app'}
+                     'marketingUrl': 'https://github.com/tehrandavis/prose'}
             if not first:
                 attrs['whatsNew'] = fields['whats_new']
             row = by_locale.get(locale)
@@ -384,7 +384,7 @@ class Storefront:
             raise RuntimeError('Apple did not return the USA app price point; cannot verify the free download price')
         point = self.client.request('GET', f'/v3/appPricePoints/{point_id}')['data']
         if Decimal(point['attributes']['customerPrice']) != 0:
-            raise RuntimeError('LeftBlank must remain a free download on both platforms')
+            raise RuntimeError('Prose must remain a free download on both platforms')
 
     def submit(self, build):
         prepared = self.prepare(build)

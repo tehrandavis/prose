@@ -22,7 +22,7 @@ differs from the source, on either platform.
 ## The editor now
 
 Both editors are TextKit 2 views (`NSTextView`, `UITextView`) styled by one
-`SourceStyler` from `LeftBlankCore`, so the Mac and the iPad look the same:
+`SourceStyler` from `ProseCore`, so the Mac and the iPad look the same:
 
 - headings are larger and semibold by level (+6, +4, then +2 pt), in the system
   font;
@@ -48,7 +48,7 @@ flowchart LR
 |---|---|
 | `SourceStyling` | Heading, strong, emphasis and raw runs from `SyntaxTree` nodes; erroneous constructs stay plain. |
 | `SourceStyleEngine` | Actor owning a copy of the source and its `SyntaxTree`. Each batch of native edits is reparsed incrementally; the reply carries the styles of the paragraphs typst-syntax reparsed. |
-| `SourceStyler` | Sets fonts on the text storage. Opening a file or changing the font styles the whole text synchronously, before the first layout. After an edit, the text keeps the fonts the storage moved with it until the reply, which is rebased across later edits and written only where a run's style differs (a `LeftBlankSourceStyle` attribute records it, so fallback fonts for CJK and emoji are left alone). Attribute edits create no undo record and keep the selection; they wait while text is marked, and keep the top line in place when text above the viewport changes height. It also counts the paragraphs TextKit builds for the book benchmark. |
+| `SourceStyler` | Sets fonts on the text storage. Opening a file or changing the font styles the whole text synchronously, before the first layout. After an edit, the text keeps the fonts the storage moved with it until the reply, which is rebased across later edits and written only where a run's style differs (a `ProseSourceStyle` attribute records it, so fallback fonts for CJK and emoji are left alone). Attribute edits create no undo record and keep the selection; they wait while text is marked, and keep the top line in place when text above the viewport changes height. It also counts the paragraphs TextKit builds for the book benchmark. |
 | `RenderingAttributes` | Tinymist semantic colours as rendering attributes, so a reply never re-lays out text. A mirror answers reads; changed spans are pushed, and many changes become one ordered rebuild (single removals cost O(runs) in TextKit 2: 3 s for 100,000 in War and Peace). |
 | `TextKit2Geometry` | Caret, segments, hit tests and reveal without `layoutManager`. Mac jumps lay out the target and the text above it, and repeat until it stops moving; iPad jumps anchor the viewport on the target (`revealByRelocating`). Hit tests that matter after a jump use the laid-out viewport fragments (`viewportInsertionOffset`). |
 
@@ -88,13 +88,13 @@ macOS 27.0, iPad Pro 11-inch (M5) simulator):
 [`Engine/SyntaxBridge`](../Engine/SyntaxBridge) wraps typst-syntax 0.15.1 from
 the same Myriad-Dreamin tag the iPad engine pins; `scripts/test-package-graphs.py`
 checks that both lockfiles resolve one revision. The C declarations are in
-[`LeftBlankSyntax.h`](../Sources/LeftBlankSyntaxFFI/include/LeftBlankSyntax.h).
+[`ProseSyntax.h`](../Sources/ProseSyntaxFFI/include/ProseSyntax.h).
 The library exports one symbol, `lb_syntax_api`, a versioned table of entry
 points:
 
 - `parse` and `free`;
 - `edit`, which wraps `Source::edit` and returns the reparsed UTF-16 range;
-- `nodes`, a pre-order flat list with stable LeftBlank kind codes, UTF-16
+- `nodes`, a pre-order flat list with stable Prose kind codes, UTF-16
   ranges, a parent index, depth and an error flag, optionally limited to a
   window (each node is listed with its parent);
 - `utf16_length`, `kind_name` and `nodes_free`.
@@ -107,7 +107,7 @@ kind-code match is exhaustive, so a typst-syntax upgrade that adds a kind fails
 to compile until it is given a new, appended code. The flattener is iterative;
 a 400-level nesting test runs on a 512 KiB secondary-thread stack.
 
-`SyntaxTree` (`LeftBlankCore`) owns one tree, mirrors each native replacement
+`SyntaxTree` (`ProseCore`) owns one tree, mirrors each native replacement
 and converts nodes to `SyntaxNode` values with a `SyntaxKind` enum. A rejected
 edit invalidates the mirror, and the owner parses again.
 
@@ -116,18 +116,18 @@ edit invalidates the mirror, and the owner parses again.
 - **Mac.** `scripts/build-syntax.sh` (run by `scripts/bootstrap.sh`, so by
   `scripts/build.sh` and `scripts/test.sh`) builds the release static library
   for `aarch64-apple-darwin` with Rust 1.92.0 and wraps it as
-  `Engine/SyntaxBridge/target/LeftBlankSyntax.xcframework`. The root manifest
-  consumes it as the `LeftBlankSyntaxLibrary` binary target behind the
-  `LeftBlankSyntaxFFI` header module. Run the script once before a plain
+  `Engine/SyntaxBridge/target/ProseSyntax.xcframework`. The root manifest
+  consumes it as the `ProseSyntaxLibrary` binary target behind the
+  `ProseSyntaxFFI` header module. Run the script once before a plain
   `swift build`; SwiftPM reports a missing binary artifact otherwise. This is
   the first Rust code in the app process; Tinymist and the MCP helper remain
   helpers. A static library needs no entitlement or helper signing, so
   Developer ID, notarization and the App Store build are unaffected. The
   dependency notices go into the app as `TypstSyntax-LICENSES.txt`.
 - **iPad.** `Engine/TinymistBridge` depends on the crate and exports
-  `leftblank_tinymist_syntax_api`, so the app still links one Rust static
+  `prose_tinymist_syntax_api`, so the app still links one Rust static
   library (two would duplicate the Rust runtime: 2,166 duplicate symbols with
-  `-all_load` in the spike). LeftBlankCore is a dynamic framework on iPad and
+  `-all_load` in the spike). ProseCore is a dynamic framework on iPad and
   does not link the engine; `Sources/Package.swift` builds the header module
   only, and the app passes the table to `SyntaxTree.install` at launch.
   The shared Core tests, which also run in the iPad simulator, check that the
@@ -251,8 +251,8 @@ traps found and fixed on the way:
 The delivered editor's numbers come from `scripts/benchmark-books.sh` (Mac)
 and, on a device, from `TabletLargeDocumentTests`: copy books into the app's
 container (`xcrun devicectl device copy to --domain-type appDataContainer
---domain-identifier app.leftblank.writer --source Examples/Books/SICP/main.typ
+--domain-identifier com.tehrandavis.prose --source Examples/Books/SICP/main.typ
 --destination Documents/Books/sicp.typ`), then run that suite with
-`xcodebuild test-without-building … -only-testing:LeftBlankTabletTests/TabletLargeDocumentTests`;
-`TEST_RUNNER_LEFTBLANK_IPAD_BOOK=sicp` selects one book. Reports land in the
+`xcodebuild test-without-building … -only-testing:ProseTabletTests/TabletLargeDocumentTests`;
+`TEST_RUNNER_PROSE_IPAD_BOOK=sicp` selects one book. Reports land in the
 app's `Documents/Benchmarks`.

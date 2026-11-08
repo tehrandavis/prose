@@ -49,7 +49,7 @@ MCP-Protocol-Version: 2025-11-25
     "protocolVersion": "2025-11-25",
     "capabilities": {},
     "clientInfo": {
-      "name": "leftblank-hurl",
+      "name": "prose-hurl",
       "version": "1"
     }
   }
@@ -481,7 +481,7 @@ Mcp-Method: server/discover
     "_meta": {
       "io.modelcontextprotocol/protocolVersion": "2026-07-28",
       "io.modelcontextprotocol/clientInfo": {
-        "name": "leftblank-hurl",
+        "name": "prose-hurl",
         "version": "1"
       },
       "io.modelcontextprotocol/clientCapabilities": {}
@@ -509,7 +509,7 @@ Mcp-Method: tools/list
     "_meta": {
       "io.modelcontextprotocol/protocolVersion": "2026-07-28",
       "io.modelcontextprotocol/clientInfo": {
-        "name": "leftblank-hurl",
+        "name": "prose-hurl",
         "version": "1"
       },
       "io.modelcontextprotocol/clientCapabilities": {}
@@ -538,7 +538,7 @@ Mcp-Method: prompts/list
     "_meta": {
       "io.modelcontextprotocol/protocolVersion": "2026-07-28",
       "io.modelcontextprotocol/clientInfo": {
-        "name": "leftblank-hurl",
+        "name": "prose-hurl",
         "version": "1"
       },
       "io.modelcontextprotocol/clientCapabilities": {}
@@ -565,7 +565,7 @@ Mcp-Method: resources/list
     "_meta": {
       "io.modelcontextprotocol/protocolVersion": "2026-07-28",
       "io.modelcontextprotocol/clientInfo": {
-        "name": "leftblank-hurl",
+        "name": "prose-hurl",
         "version": "1"
       },
       "io.modelcontextprotocol/clientCapabilities": {}
@@ -592,7 +592,7 @@ Mcp-Method: resources/templates/list
     "_meta": {
       "io.modelcontextprotocol/protocolVersion": "2026-07-28",
       "io.modelcontextprotocol/clientInfo": {
-        "name": "leftblank-hurl",
+        "name": "prose-hurl",
         "version": "1"
       },
       "io.modelcontextprotocol/clientCapabilities": {}
@@ -611,17 +611,17 @@ Content-Type: application/json
 Accept: application/json, text/event-stream
 MCP-Protocol-Version: 2026-07-28
 Mcp-Method: resources/read
-Mcp-Name: leftblank://guides/general-authoring/guide.md
+Mcp-Name: prose://guides/general-authoring/guide.md
 {
   "jsonrpc": "2.0",
   "id": 613,
   "method": "resources/read",
   "params": {
-    "uri": "leftblank://guides/general-authoring/guide.md",
+    "uri": "prose://guides/general-authoring/guide.md",
     "_meta": {
       "io.modelcontextprotocol/protocolVersion": "2026-07-28",
       "io.modelcontextprotocol/clientInfo": {
-        "name": "leftblank-hurl",
+        "name": "prose-hurl",
         "version": "1"
       },
       "io.modelcontextprotocol/clientCapabilities": {}
@@ -654,7 +654,7 @@ Mcp-Name: dimensional-drawing
     "_meta": {
       "io.modelcontextprotocol/protocolVersion": "2026-07-28",
       "io.modelcontextprotocol/clientInfo": {
-        "name": "leftblank-hurl",
+        "name": "prose-hurl",
         "version": "1"
       },
       "io.modelcontextprotocol/clientCapabilities": {}
@@ -663,5 +663,5 @@ Mcp-Name: dimensional-drawing
 }
 HTTP 200
 [Asserts]
-jsonpath "$.result.messages[1].content.resource.uri" == "leftblank://guides/dimensional-drawing/guide.md"
+jsonpath "$.result.messages[1].content.resource.uri" == "prose://guides/dimensional-drawing/guide.md"
 jsonpath "$.result.resultType" == "complete"

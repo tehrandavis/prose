@@ -1,4 +1,4 @@
-import LeftBlankCore
+import ProseCore
 
 extension TabletWorkspace {
     /// Delete only the exact trash generation that the user confirmed.

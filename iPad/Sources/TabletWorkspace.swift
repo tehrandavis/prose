@@ -1,6 +1,6 @@
 import Combine
 import Foundation
-import LeftBlankCore
+import ProseCore
 import UIKit
 
 @MainActor
@@ -320,7 +320,7 @@ final class TabletWorkspace: ObservableObject {
             let result = try await library.read(item.id)
             // Repair starter documents created before iPad copied their mark.
             // Keep user edits and any existing asset intact.
-            if result.text.hasPrefix("// A LeftBlank original."),
+            if result.text.hasPrefix("// A Prose original."),
                result.text.contains("image(\"" + WelcomeDocument.markFilename + "\"")
             {
                 try WelcomeDocument.prepareAssets(in: result.document.folderURL)
@@ -704,7 +704,7 @@ final class TabletWorkspace: ObservableObject {
             let project = directory.appendingPathComponent("Project")
             try await library.exportProject(document.id, to: project)
             defer { try? FileManager.default.removeItem(at: project) }
-            let destination = directory.appendingPathComponent("LeftBlank-project.zip")
+            let destination = directory.appendingPathComponent("Prose-project.zip")
             var coordinationError: NSError?
             var copyError: Error?
             NSFileCoordinator()

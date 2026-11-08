@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the Mac Tinymist helper from the pinned upstream revision with LeftBlank's
+# Build the Mac Tinymist helper from the pinned upstream revision with Prose's
 # engine fixes. Every Mac distribution bundles this one binary:
 # - tinymist-native-tls.patch: reqwest uses macOS Security Framework, not Rust TLS
 #   (App Store export compliance; system trust settings for every channel).

@@ -1,5 +1,5 @@
 import Foundation
-import LeftBlankCore
+import ProseCore
 import UIKit
 
 @MainActor

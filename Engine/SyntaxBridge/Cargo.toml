@@ -1,12 +1,12 @@
 [package]
-name = "leftblank-syntax"
+name = "prose-syntax"
 version = "0.1.0"
 edition = "2021"
 publish = false
-description = "typst-syntax behind a small C ABI for LeftBlank's shared visual editor."
+description = "typst-syntax behind a small C ABI for Prose's shared visual editor."
 
 [lib]
-# staticlib: linked into the macOS app through LeftBlankCore.
+# staticlib: linked into the macOS app through ProseCore.
 # rlib: Engine/TinymistBridge re-exports it, so the iPad app links one Rust
 # library (and one Rust runtime) rather than two.
 crate-type = ["staticlib", "rlib"]

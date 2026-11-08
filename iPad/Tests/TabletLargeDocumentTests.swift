@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
-import LeftBlankCore
-@testable import LeftBlankTablet
+import ProseCore
+@testable import ProseTablet
 import SwiftUI
 import Testing
 import UIKit
@@ -111,7 +111,7 @@ struct TabletLargeDocumentTests {
             .appendingPathComponent("Benchmarks")
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
         try json.write(to: output.appendingPathComponent(name + ".json"))
-        print("LEFTBLANK IPAD REPORT\n" + String(decoding: json, as: UTF8.self))
+        print("PROSE IPAD REPORT\n" + String(decoding: json, as: UTF8.self))
         #expect(onTarget == 6)
         #expect(maximumHitError == 0)
         // The plan's gate is the 1.4 MB book (docs/visual-editing.md); larger
@@ -156,9 +156,9 @@ private let benchmarkBooks: [URL] = {
         .appendingPathComponent("Books")
     return ((try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [])
         .filter { $0.pathExtension == "typ" }.sorted { $0.path < $1.path }
-        // LEFTBLANK_IPAD_BOOK (TEST_RUNNER_LEFTBLANK_IPAD_BOOK for xcodebuild) picks one.
+        // PROSE_IPAD_BOOK (TEST_RUNNER_PROSE_IPAD_BOOK for xcodebuild) picks one.
         .filter { book in
-            ProcessInfo.processInfo.environment["LEFTBLANK_IPAD_BOOK"]
+            ProcessInfo.processInfo.environment["PROSE_IPAD_BOOK"]
                 .map { book.deletingPathExtension().lastPathComponent == $0 } ?? true
         }
 }()

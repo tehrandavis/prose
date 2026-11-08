@@ -23,10 +23,10 @@ def response(code=0, output='The action worked!\n'):
 
 class StaplerTests(unittest.TestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory(prefix='leftblank-stapler-', dir=os.environ['TMPDIR'])
+        temporary = tempfile.TemporaryDirectory(prefix='prose-stapler-', dir=os.environ['TMPDIR'])
         self.addCleanup(temporary.cleanup)
         self.logs = Path(temporary.name) / 'notarization'
-        self.app = Path(temporary.name) / 'LeftBlank Preview.app'
+        self.app = Path(temporary.name) / 'Prose Preview.app'
         self.output = io.StringIO()
 
     def run_stapler(self, responses):

@@ -1,4 +1,4 @@
-import LeftBlankCore
+import ProseCore
 import SwiftUI
 import UIKit
 
@@ -12,7 +12,7 @@ struct TabletSubscriptionView: View {
     var body: some View {
         Form {
             Section {
-                Text(subscriptionText("Write with LeftBlank on iPad", "在 iPad 上用 LeftBlank 写作"))
+                Text(subscriptionText("Write with Prose on iPad", "在 iPad 上用 Prose 写作"))
                     .font(.title2)
                 Text(subscriptionText(
                     "A subscription includes editing, templates, and live typesetting on iPad.",

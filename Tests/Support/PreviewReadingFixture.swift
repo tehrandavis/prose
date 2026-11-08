@@ -76,7 +76,7 @@ public final class PreviewReadingFixture {
                 throw error
             }
             if navigation.finished {
-                guard try await web.evaluateJavaScript("typeof window.leftblankRestoreReading === 'function'")
+                guard try await web.evaluateJavaScript("typeof window.proseRestoreReading === 'function'")
                     as? Bool == true
                 else {
                     throw NSError(domain: "PreviewReadingFixture", code: 3, userInfo: [
@@ -138,8 +138,8 @@ public extension PreviewReadingFixture {
     /// element is not the run under the pointer.
     func pressHeadingRun() async throws -> [String: Any] {
         let recorder = PreviewMessageRecorder()
-        web.configuration.userContentController.add(recorder, name: "leftblankPreviewReading")
-        defer { web.configuration.userContentController.removeScriptMessageHandler(forName: "leftblankPreviewReading") }
+        web.configuration.userContentController.add(recorder, name: "prosePreviewReading")
+        defer { web.configuration.userContentController.removeScriptMessageHandler(forName: "prosePreviewReading") }
         let layer = #"<foreignObject width="200" height="20" style="overflow: visible">"#
         _ = try await web.evaluateJavaScript("""
         (() => {

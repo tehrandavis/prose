@@ -37,7 +37,7 @@ tag that exact main commit:
 
 ```sh
 git fetch origin
-git tag -a v0.6.0 origin/main -m 'LeftBlank 0.6.0'
+git tag -a v0.6.0 origin/main -m 'Prose 0.6.0'
 git push origin v0.6.0
 ```
 
@@ -123,7 +123,7 @@ explicitly authorized for this repository's release automation.
 
 On 2026-10-02, the store signing certificates and provisioning profile were
 configured in repository secrets, along with App Manager key `43J8872G3A`
-(`LeftBlank App Store CI`). The certificates expire in October 2027; renew their CI
+(`Prose App Store CI`). The certificates expire in October 2027; renew their CI
 exports and the profile before that date. The initial `0.5.0 (10)` release was
 uploaded locally from `604972b` and submitted manually, then confirmed through
 the same API client without mutation. The new CI submission path is covered by

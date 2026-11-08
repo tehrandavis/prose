@@ -54,7 +54,7 @@ class FakeApple:
     def request(self, method, path, payload=None):
         if method == 'GET':
             if path == '/v1/apps/app':
-                return {'data': resource('apps', 'app', bundleId='app.leftblank.writer')}
+                return {'data': resource('apps', 'app', bundleId='com.tehrandavis.prose')}
             if path.endswith('/relationships/build'):
                 return {'data': self.attached}
             if path.startswith('/v1/reviewSubmissions/'):
@@ -141,7 +141,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(len(self.apple.writes), writes)
 
     def test_review_notes_say_the_ipad_subscription_is_not_in_the_mac_app(self):
-        for phrase in ('no in-app purchases', 'app.leftblank.writer.ipad.monthly', 'only in the iPad app'):
+        for phrase in ('no in-app purchases', 'com.tehrandavis.prose.ipad.monthly', 'only in the iPad app'):
             self.assertIn(phrase, asc.MAC_REVIEW_NOTES)
         self.assertLessEqual(len(asc.MAC_REVIEW_NOTES), 4000)
 

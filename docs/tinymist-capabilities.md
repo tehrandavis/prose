@@ -1,10 +1,10 @@
 # Tinymist capabilities for writing
 
-This audit targets the bundled **Tinymist v0.15.8**, not an assumed latest server or the combined behavior of its VS Code extension. The server's [initialization response](https://github.com/Myriad-Dreamin/tinymist/blob/v0.15.8/crates/tinymist/src/lsp/init.rs) is the capability inventory. Editor UI, text storage, accessibility and undo remain LeftBlank responsibilities.
+This audit targets the bundled **Tinymist v0.15.8**, not an assumed latest server or the combined behavior of its VS Code extension. The server's [initialization response](https://github.com/Myriad-Dreamin/tinymist/blob/v0.15.8/crates/tinymist/src/lsp/init.rs) is the capability inventory. Editor UI, text storage, accessibility and undo remain Prose responsibilities.
 
 ## Existing integration
 
-| Capability | How LeftBlank uses it |
+| Capability | How Prose uses it |
 | --- | --- |
 | Document synchronization | Unsaved buffers are sent through `didOpen` and `didChange`; saving sends `didSave`. The preview sees the current buffer without overwriting the source file. |
 | Diagnostics and compilation status | Compiler errors and warnings retain source locations; failed compilation keeps the last successful preview. Document checks expose these results. |
@@ -16,7 +16,7 @@ This audit targets the bundled **Tinymist v0.15.8**, not an assumed latest serve
 | Preview and source navigation | `tinymist.doStartPreview`, `tinymist.scrollPreview` and source-jump notifications connect the page and editor. Preview starts with partial rendering enabled; short documents are painted completely so scrolling never reveals blank pages. |
 | PDF export | `tinymist.exportPdf` renders the current compilation entry and unsaved content. |
 
-Semantic tokens do not replace embedded-language grammars. A real v0.15.8 probe classified a Rust raw block body as `text`, while the Typst `#let` outside it received keyword and number tokens. Typst itself still highlights language-tagged code in the rendered document. LeftBlank uses a local Highlight.js grammar bundle for foreign-language code in its editable source view. See [editor rendering](editor-rendering.md).
+Semantic tokens do not replace embedded-language grammars. A real v0.15.8 probe classified a Rust raw block body as `text`, while the Typst `#let` outside it received keyword and number tokens. Typst itself still highlights language-tagged code in the rendered document. Prose uses a local Highlight.js grammar bundle for foreign-language code in its editable source view. See [editor rendering](editor-rendering.md).
 
 ## Selected additions
 
@@ -35,7 +35,7 @@ These requests are demand-driven. Do not issue hover, signature and action reque
 
 `LanguageAssistance.codeActions` accepts only plain, local edits to the exact requested document. It validates LF, CRLF and CR line boundaries, UTF-16 scalar boundaries, declared versions, all ranges, ordering and overlap before returning an action. It rejects the entire action if any constituent edit is unsupported. It never silently applies just the local portion of a larger workspace edit.
 
-Commands, file creation/rename/deletion, other documents, change annotations and snippet edits are not enabled. The pinned server marks heading and equation rewrites as plain text (`insertTextFormat: 1`), but some quick fixes use snippet format (`2`) even when the inserted string looks simple. Those are intentionally filtered until LeftBlank has a complete snippet transaction implementation. In particular, “Create missing file” requires resource operations and is outside this first integration. The app must not advertise support for resource operations or snippet actions it cannot faithfully execute.
+Commands, file creation/rename/deletion, other documents, change annotations and snippet edits are not enabled. The pinned server marks heading and equation rewrites as plain text (`insertTextFormat: 1`), but some quick fixes use snippet format (`2`) even when the inserted string looks simple. Those are intentionally filtered until Prose has a complete snippet transaction implementation. In particular, “Create missing file” requires resource operations and is outside this first integration. The app must not advertise support for resource operations or snippet actions it cannot faithfully execute.
 
 Hover and signature decoding accepts LSP MarkupContent, MarkedString values/arrays and UTF-16 parameter-label offsets. Text stays inert and bounded in size. This does not claim a full Markdown renderer or inline equation widgets.
 
@@ -45,7 +45,7 @@ Hover and signature decoding accepts LSP MarkupContent, MarkedString values/arra
 | --- | --- |
 | Selection ranges | A good next enhancement: expand selection from a token to its expression/block. Keep native selection and IME behavior intact. |
 | Document highlights and references | Useful for labels and user-defined symbols. Add subtle occurrence highlighting and an explicit references list after definition navigation is established. |
-| Prepare rename / rename | Valuable for variables and labels. Defer until LeftBlank can preview and atomically apply workspace edits across files, preserving unsaved buffers and undo. |
+| Prepare rename / rename | Valuable for variables and labels. Defer until Prose can preview and atomically apply workspace edits across files, preserving unsaved buffers and undo. |
 | Document colors / color presentations | Useful when choosing fills and text colors. Defer to a small contextual color control, not permanent visual clutter in prose. |
 | Folding ranges | Potentially useful for lengthy setup blocks. Defer until hidden-text selection, source offsets, copy, accessibility and undo are reliable. The outline already handles navigation. |
 | Inlay hints | Keep off by default; constant type/value annotations are distracting in a writing app. Consider an explicit assistance mode. |
@@ -65,7 +65,7 @@ Run only these scenarios during development with:
 
 ```sh
 source scripts/environment.sh
-LEFTBLANK_INTEGRATION=1 swift test --filter 'languageAssistance|realTinymistLanguageAssistance'
+PROSE_INTEGRATION=1 swift test --filter 'languageAssistance|realTinymistLanguageAssistance'
 ```
 
 The focused run passed six tests against the pinned binary. Application-level acceptance still verifies UI placement, late-response handling, native undo and navigation.

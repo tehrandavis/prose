@@ -132,6 +132,6 @@ screen space. [Bear](https://bear.app/faq/typography-options/) and
 offer line-width preferences;
 [Obsidian](https://obsidian.md/help/settings) offers a readable-line-length
 toggle; [Typora](https://support.typora.io/Width-of-Writing-Area/) supports custom
-writing and source-mode widths. LeftBlank's 70% proportion and 1080 pt cap are
+writing and source-mode widths. Prose's 70% proportion and 1080 pt cap are
 its own design choices, not measured defaults from those editors. This change
 improves the default layout without introducing another preference.

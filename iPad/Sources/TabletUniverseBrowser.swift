@@ -1,5 +1,5 @@
 import ImageIO
-import LeftBlankCore
+import ProseCore
 import SwiftUI
 
 /// The platform supplies layout and image decoding; discovery and caching are shared with Mac.
@@ -118,7 +118,7 @@ struct TabletUniverseBrowser: View {
                 let builtIn = model.group.isEmpty ? BuiltInTemplate.allCases.filter { $0.matches(model.query) } : []
                 let showSample = model.group.isEmpty && SampleBook.sicp.matches(model.query)
                 if model.mode == .templates, !builtIn.isEmpty || showSample {
-                    Text(L10n.text("From LeftBlank")).font(.system(size: 12, weight: .medium))
+                    Text(L10n.text("From Prose")).font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), spacing: 12)], spacing: 12) {
                         ForEach(builtIn) { template in

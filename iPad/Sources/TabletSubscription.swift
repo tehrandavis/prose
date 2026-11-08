@@ -5,8 +5,8 @@ import UIKit
 
 /// App Store Connect owns pricing, trial availability, and introductory-offer eligibility.
 enum TabletSubscriptionConfiguration {
-    static let productID = "app.leftblank.writer.ipad.monthly"
-    static let privacyURL = URL(string: "https://leftblank.app/privacy.html")
+    static let productID = "com.tehrandavis.prose.ipad.monthly"
+    static let privacyURL = URL(string: "https://github.com/tehrandavis/prose/privacy.html")
     static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
 }
 

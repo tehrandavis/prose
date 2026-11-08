@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the typst-syntax bridge that LeftBlankCore links on macOS. SwiftPM
+# Build the typst-syntax bridge that ProseCore links on macOS. SwiftPM
 # consumes it as a binary target, so run this (or scripts/bootstrap.sh) before
 # the first `swift build`. The iPad links the same crate through
 # Engine/TinymistBridge instead (scripts/build-ipad.sh).
@@ -13,8 +13,8 @@ fi
 export MACOSX_DEPLOYMENT_TARGET=14.0
 target=aarch64-apple-darwin
 cargo +1.92.0 build --locked --release --lib --manifest-path Engine/SyntaxBridge/Cargo.toml --target "$target"
-library="Engine/SyntaxBridge/target/$target/release/libleftblank_syntax.a"
-framework=Engine/SyntaxBridge/target/LeftBlankSyntax.xcframework
+library="Engine/SyntaxBridge/target/$target/release/libprose_syntax.a"
+framework=Engine/SyntaxBridge/target/ProseSyntax.xcframework
 # Recreate only after the library changes, so SwiftPM does not relink needlessly.
 if [ ! -f "$framework/Info.plist" ] || [ "$library" -nt "$framework/Info.plist" ]; then
   rm -rf "$framework"
