@@ -4,7 +4,7 @@ A native macOS Typst writing app with three views of one source file: Code, Writ
 
 ## Repository
 
-- `leftbank` remote: `tehrandavis/leftbank`, the fork this started from. `upstream` remote: `leftblank-app/leftblank`. There is no `origin` yet; create a `tehrandavis/prose` repository before the first push.
+- `origin` is `tehrandavis/prose` (public, a GitHub fork of `leftblank-app/leftblank`; renamed from `tehrandavis/leftbank` on 2026-11-08). `upstream` is `leftblank-app/leftblank`. `main` and `prose` both carry Prose. GitHub Actions is disabled on the repository: the inherited workflows publish signed Preview builds and run nightly, and need secrets Prose does not have yet.
 - Everything under `docs/` other than `prose-spec.md` describes LeftBlank as inherited. Treat those docs as accurate for the inherited code until Prose changes it, then update them.
 - LeftBlank's brand policy (`BRAND_POLICY.md`) excludes its names, logo and icons from the MIT licence. Phase 0 removed them. Keep the "based on LeftBlank" attribution in `README.md` and `Resources/ThirdParty.txt`.
 - Bundle id `com.tehrandavis.prose`. Icons come from `Brand/Prose/icon-1024.png` through `scripts/make-app-icon.py`.
