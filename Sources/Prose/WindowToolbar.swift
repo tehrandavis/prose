@@ -8,6 +8,7 @@ final class WindowToolbar: NSObject, NSToolbarDelegate {
     private let workspace: Workspace
     private let documentID = NSToolbarItem.Identifier("ProseDocument")
     private let actionsID = NSToolbarItem.Identifier("ProseActions")
+    private let locationID = NSToolbarItem.Identifier("ProseLocation")
 
     private let titleSize = ToolbarTitleSize()
     private var subscriptions: Set<AnyCancellable> = []
@@ -50,7 +51,7 @@ final class WindowToolbar: NSObject, NSToolbarDelegate {
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [documentID, .flexibleSpace, actionsID]
+        [documentID, .flexibleSpace, locationID, .flexibleSpace, actionsID]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -66,6 +67,9 @@ final class WindowToolbar: NSObject, NSToolbarDelegate {
         if identifier == documentID {
             item.label = L10n.text("Current Document")
             item.view = NSHostingView(rootView: AdaptiveDocumentTitle(workspace: workspace, size: titleSize))
+        } else if identifier == locationID {
+            item.label = L10n.text("Location and Status")
+            item.view = NSHostingView(rootView: TitleLocation(workspace: workspace).frame(height: 30))
         } else if identifier == actionsID {
             item.label = L10n.text("Writing Views and Export")
             item.view = NSHostingView(rootView: WritingActions(workspace: workspace).frame(height: 30))
@@ -97,9 +101,26 @@ private struct DocumentTitle: View {
     @ObservedObject private var localization = AppLocalization.shared
     var body: some View {
         HStack(spacing: 8) {
+            QuietButton(
+                icon: "sidebar-simple",
+                help: L10n.text("Sidebar"),
+                shortcut: "⌘0",
+                active: workspace.sidebarVisible,
+            ) { workspace.sidebarVisible.toggle() }
+                .accessibilityIdentifier("toolbar.sidebar")
             QuietButton(icon: "files", help: L10n.text("Your writing"), shortcut: "⌘O") { workspace.openLibrary() }
                 .accessibilityIdentifier("toolbar.library")
-            if workspace.isPackageSource {
+            if let project = workspace.project, case .folder = project.kind, !workspace.isPackageSource {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(workspace.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                        .truncationMode(.middle)
+                    Text(project.name).font(.system(size: 10)).foregroundStyle(Theme.secondary).lineLimit(1)
+                        .truncationMode(.middle)
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                    .help(workspace.fileURL?.path ?? workspace.title)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("toolbar.title")
+            } else if workspace.isPackageSource {
                 Text(workspace.title)
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1).truncationMode(.middle)
@@ -156,27 +177,7 @@ private struct WritingActions: View {
     @ObservedObject private var localization = AppLocalization.shared
     var body: some View {
         HStack(spacing: 6) {
-            QuietButton(
-                icon: "pencil-simple",
-                help: L10n.text("Focus on Writing"),
-                shortcut: WritingCommand.all.first { $0.id == "writing" }?.shortcuts.first?.label,
-                detail: L10n.text("A quiet space for your words."),
-                active: workspace.layout == .writing,
-            ) { workspace.layout = .writing }
-            QuietButton(
-                icon: "columns",
-                help: L10n.text("Side-by-side Preview"),
-                shortcut: WritingCommand.all.first { $0.id == "split" }?.shortcuts.first?.label,
-                detail: L10n.text("Write on the left, see the live page on the right."),
-                active: workspace.layout == .split,
-            ) { workspace.layout = .split }
-            QuietButton(
-                icon: "eye",
-                help: L10n.text("Read the Preview"),
-                shortcut: WritingCommand.all.first { $0.id == "preview" }?.shortcuts.first?.label,
-                detail: L10n.text("Fill the workspace with your finished pages."),
-                active: workspace.layout == .preview,
-            ) { workspace.layout = .preview }
+            ModeControl(workspace: workspace)
             Rectangle().fill(Theme.border.opacity(0.65)).frame(width: 1, height: 12).padding(.horizontal, 5)
             QuietButton(
                 icon: "arrow-square-out",
@@ -184,6 +185,96 @@ private struct WritingActions: View {
                 shortcut: WritingCommand.all.first { $0.id == "export" }?.shortcuts.first?.label,
                 detail: L10n.text("Export the current document in its original colors."),
             ) { workspace.exportPDF() }.disabled(workspace.exporting)
+            QuietButton(
+                icon: "square-split-horizontal",
+                help: L10n.text("Show or Hide Preview"),
+                shortcut: WritingCommand.all.first { $0.id == "togglePreview" }?.shortcuts.first?.label,
+                detail: L10n.text("Show the finished pages beside your text, or hide them."),
+                active: workspace.previewShown,
+            ) { workspace.togglePreview() }.accessibilityIdentifier("toolbar.preview")
         }.fixedSize().disabled(workspace.isLibraryHome)
+    }
+}
+
+/// Code, Writing and Focus. Writing and Focus arrive in later phases.
+struct ModeControl: View {
+    @ObservedObject var workspace: Workspace
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(EditorMode.allCases, id: \.self) { mode in
+                let selected = workspace.editorMode == mode
+                Button { workspace.setMode(mode) } label: {
+                    Text(L10n.text(mode.title)).font(.system(size: 11, weight: selected ? .semibold : .regular))
+                        .foregroundStyle(selected ? Theme.text : Theme.secondary.opacity(mode == .code ? 1 : 0.55))
+                        .padding(.horizontal, 10).frame(minWidth: 26).frame(height: 26)
+                        .background(selected ? Theme.editor : .clear, in: RoundedRectangle(cornerRadius: 6))
+                        .contentShape(Rectangle())
+                }.buttonStyle(.plain)
+                    .accessibilityLabel(L10n.text(mode.title))
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                    .accessibilityIdentifier("mode." + mode.rawValue)
+                    .learningHelp(
+                        L10n.text(mode.title),
+                        shortcut: "⌘\(EditorMode.allCases.firstIndex(of: mode)! + 1)",
+                        detail: mode == .code ? nil : L10n.text("Arrives in a later version"),
+                    )
+            }
+        }.padding(2).background(Theme.border.opacity(0.45), in: RoundedRectangle(cornerRadius: 8)).frame(height: 30)
+    }
+}
+
+extension EditorMode {
+    var title: String {
+        switch self {
+        case .code: "Code"
+        case .writing: "Writing"
+        case .focus: "Focus"
+        }
+    }
+}
+
+/// The breadcrumb of headings around the caret, then the compile status dot.
+private struct TitleLocation: View {
+    @ObservedObject var workspace: Workspace
+    @ObservedObject private var localization = AppLocalization.shared
+    var body: some View {
+        HStack(spacing: 6) {
+            let trail = workspace.breadcrumb
+            // The innermost three headings; a long path is cut from the left.
+            if trail.count > 3 {
+                Text("…").font(.system(size: 11)).foregroundStyle(Theme.muted)
+            }
+            ForEach(Array(trail.suffix(3).enumerated()), id: \.element.offset) { position, item in
+                if position > 0 || trail.count > 3 {
+                    Text("›").font(.system(size: 11)).foregroundStyle(Theme.muted)
+                }
+                Button { workspace.jump(to: item.offset) } label: {
+                    Text(item.title).font(.system(size: 11, weight: item == trail.last ? .medium : .regular))
+                        .foregroundStyle(item == trail.last ? Theme.text : Theme.secondary)
+                        .lineLimit(1).truncationMode(.tail).frame(maxWidth: 180)
+                }.buttonStyle(.plain).accessibilityIdentifier("breadcrumb.\(item.offset)")
+            }
+            StatusDot(workspace: workspace)
+        }.fixedSize().disabled(workspace.isLibraryHome).opacity(workspace.isLibraryHome ? 0 : 1)
+    }
+}
+
+struct StatusDot: View {
+    @ObservedObject var workspace: Workspace
+    var body: some View {
+        let status = workspace.compileStatus
+        Button { workspace.checksOpen.toggle() } label: {
+            ZStack {
+                switch status {
+                case .succeeded: Circle().fill(Theme.green)
+                case .compiling: Circle().fill(Theme.amber)
+                case .failed: Circle().fill(Theme.red)
+                case .offline: Circle().strokeBorder(Theme.muted, lineWidth: 1.5)
+                }
+            }.frame(width: 8, height: 8).frame(width: 26, height: 26).contentShape(Rectangle())
+        }.buttonStyle(.plain)
+            .accessibilityLabel(L10n.text("Document Checks") + ": " + status.label)
+            .accessibilityIdentifier("toolbar.status." + status.rawValue)
+            .learningHelp(status.label, shortcut: "⌘5")
     }
 }

@@ -77,7 +77,7 @@ struct DocumentHistoryView: View {
 
     @ViewBuilder private var comparison: some View {
         if let error = history.error {
-            Text(error).font(.system(size: 13)).foregroundStyle(Theme.red).padding(32)
+            Text(error).font(.system(size: 13)).foregroundStyle(Theme.redText).padding(32)
         } else if history.busy {
             ProgressView().controlSize(.small)
         } else if let comparison = history.comparison {
@@ -148,7 +148,7 @@ struct DocumentHistoryView: View {
                 Text(title).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.secondary)
                 Spacer()
                 Text(L10n.text(removed ? "Removed" : "Added"))
-                    .font(.system(size: 10)).foregroundStyle(removed ? Theme.red : Theme.green)
+                    .font(.system(size: 10)).foregroundStyle(removed ? Theme.redText : Theme.greenText)
             }
             ScrollView {
                 Text(highlighted(source, ranges: ranges, removed: removed)).font(.system(size: 12, design: .monospaced))

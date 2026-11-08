@@ -54,7 +54,7 @@ struct MCPSettingsSection: View {
                 Text(message).font(.footnote).foregroundStyle(Theme.secondary)
             }
             if let failure = connection.failureMessage {
-                Text(failure).font(.footnote).foregroundStyle(Theme.red)
+                Text(failure).font(.footnote).foregroundStyle(Theme.redText)
             }
         } header: { Text(L10n.text("Coding Agent")) }
             .disabled(working)

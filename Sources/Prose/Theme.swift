@@ -25,7 +25,12 @@ enum Theme {
     static let nativeMuted = adaptive("muted", light: 0x716B65, dark: 0x948E85)
     static let nativeAccent = adaptive("accent", light: 0x7C2494, dark: 0xB784E0)
     static let nativeGreen = adaptive("green", light: 0x5CB85C, dark: 0x5CB85C)
+    static let nativeAmber = adaptive("amber", light: 0xE8A838, dark: 0xE8A838)
     static let nativeRed = adaptive("red", light: 0xE25555, dark: 0xE25555)
+    // The spec's green and red are for dots and icons. Text uses these darker
+    // (light) and lighter (dark) versions, 4.5:1 or better on the page.
+    static let nativeGreenText = adaptive("greenText", light: 0x2E7D32, dark: 0x6CC86C)
+    static let nativeRedText = adaptive("redText", light: 0xC62828, dark: 0xEF7A7A)
     // Accent at 10 percent on the light page and 22 percent on the dark page.
     static let selection = adaptive("selection", light: 0xF2E9F4, dark: 0x463B4F)
     static let selectedText = adaptive("selectedText", light: 0x1A1918, dark: 0xE8E4DE)
@@ -53,7 +58,10 @@ enum Theme {
     static let muted = Color(nsColor: nativeMuted)
     static let accent = Color(nsColor: nativeAccent)
     static let green = Color(nsColor: nativeGreen)
+    static let amber = Color(nsColor: nativeAmber)
     static let red = Color(nsColor: nativeRed)
+    static let greenText = Color(nsColor: nativeGreenText)
+    static let redText = Color(nsColor: nativeRedText)
     static let sidebarSelection = Color(nsColor: nativeSidebarSelection)
 
     @MainActor static func apply(_ preference: AppAppearance) {

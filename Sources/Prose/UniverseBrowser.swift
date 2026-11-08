@@ -81,7 +81,7 @@ struct UniverseBrowser: View {
                 }
             }
             if let actionError {
-                Text(actionError).font(.system(size: 11)).foregroundStyle(Theme.red)
+                Text(actionError).font(.system(size: 11)).foregroundStyle(Theme.redText)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 24).padding(.vertical, 8)
             }
             footer
@@ -441,7 +441,7 @@ struct UniverseBrowser: View {
                     ProgressView().controlSize(.small).scaleEffect(0.7).frame(width: 12, height: 12)
                 }
                 Text(model.statusText).font(.system(size: 10))
-                    .foregroundStyle(model.error == nil || model.snapshot != nil ? Theme.muted : Theme.red)
+                    .foregroundStyle(model.error == nil || model.snapshot != nil ? Theme.muted : Theme.redText)
                     .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
                 if isApplying {
                     Button(L10n.text("Cancel")) { actionTask?.cancel() }

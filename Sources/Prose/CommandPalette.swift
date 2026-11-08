@@ -309,7 +309,7 @@ struct CommandPalette: View {
         HStack(spacing: 8) {
             if let error = workspace.commandError {
                 PhosphorIcon(name: "warning-circle", size: 13).foregroundStyle(Theme.red)
-                Text(error).font(.system(size: 10)).foregroundStyle(Theme.red).lineLimit(2)
+                Text(error).font(.system(size: 10)).foregroundStyle(Theme.redText).lineLimit(2)
             } else {
                 Text(workspace.activeCommand == nil ? L10n
                     .text("Letters to explore · ↑ ↓ to select · ↵ to confirm") : L10n

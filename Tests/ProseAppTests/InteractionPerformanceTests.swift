@@ -173,8 +173,9 @@ extension WritingFlowTests {
         await app.layout()
         let toolbar = try #require(app.window.toolbar)
         let anchors = toolbar.items.flatMap { descendants($0.view) }.compactMap { $0 as? HelpAnchor }
-        #expect(anchors.count == 6)
-        #expect(anchors.filter { $0.shortcut != nil }.count == 5)
+        // Sidebar, library, title, Code, Writing, Focus, export, preview, status.
+        #expect(anchors.count == 9)
+        #expect(anchors.filter { $0.shortcut != nil }.count == 8)
         for anchor in anchors {
             #expect(anchor.bounds.width >= 25)
             #expect(anchor.bounds.height >= 25)
@@ -207,10 +208,11 @@ extension WritingFlowTests {
         // area beside the icon. Exercise the production responder path.
         for appearance in [NSAppearance.Name.aqua, .darkAqua] {
             app.window.appearance = NSAppearance(named: appearance)
+            app.workspace.layout = .writing
             for (title, layout) in [
-                ("Read the Preview", EditorLayout.preview),
-                ("Focus on Writing", .writing),
-                ("Side-by-side Preview", .split),
+                ("Show or Hide Preview", EditorLayout.split),
+                ("Show or Hide Preview", .writing),
+                ("Code", .writing),
             ] {
                 await app.layout()
                 let anchor = try #require(anchors.first { $0.title == L10n.text(title) })

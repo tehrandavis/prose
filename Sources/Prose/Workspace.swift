@@ -14,6 +14,9 @@ struct DiagnosticItem: Identifiable {
 
 enum EditorLayout: String { case writing, split, preview }
 
+/// The three views of one source file (spec Section 3.2). Phase 1 ships Code only.
+enum EditorMode: String, CaseIterable { case code, writing, focus }
+
 @MainActor
 final class Workspace: ObservableObject {
     @Published var text = "" {
@@ -94,6 +97,9 @@ final class Workspace: ObservableObject {
             }
         }
     }
+
+    /// Code, Writing or Focus. Only Code is available until Writing mode ships.
+    @Published var editorMode: EditorMode = .code
 
     /// The left column with the project's files and the outline.
     @Published var sidebarVisible = false {
@@ -375,6 +381,8 @@ final class Workspace: ObservableObject {
                     savedText = disk.0
                     baseline = disk.1
                 }
+                // A file in a remembered folder reopens with its sidebar.
+                updateProject(for: fileURL)
             }
         } else {
             text = Self.welcome
@@ -1172,6 +1180,10 @@ final class Workspace: ObservableObject {
             exportPDF()
         case "writing": layout = .writing
             closePalette()
+        case "togglePreview": togglePreview()
+            closePalette()
+        case "modeCode", "modeWriting", "modeFocus": closePalette()
+            setMode(command.id == "modeCode" ? .code : command.id == "modeWriting" ? .writing : .focus)
         case "split": layout = .split
             closePalette()
         case "preview": layout = .preview
@@ -1844,6 +1856,8 @@ final class Workspace: ObservableObject {
 
     func shutdown() {
         agentConnection.stop()
+        projectWatcher?.stop()
+        projectWatcher = nil
         dismissAssistance()
         previewFollowTask?.cancel()
         recordOperation("session.end")

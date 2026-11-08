@@ -122,7 +122,8 @@ extension Workspace {
             let root = url.path.hasPrefix(projectFolder.path + "/") ? projectFolder : folder
             project = OpenProject(root: root.standardizedFileURL, main: url.standardizedFileURL, kind: .library(id))
         } else if let record = projectStore.recent().first(where: {
-            url.standardizedFileURL.path.hasPrefix($0.path + "/")
+            // Both sides resolve symbolic links, such as /tmp and /private/tmp.
+            (try? ProjectTree.relativePath(of: url, in: URL(fileURLWithPath: $0.path, isDirectory: true))) != nil
         }) {
             // A file reopened after relaunch belongs to its remembered folder.
             let root = URL(fileURLWithPath: record.path, isDirectory: true).standardizedFileURL
@@ -135,6 +136,7 @@ extension Workspace {
             if let main = project?.main, main != url.standardizedFileURL {
                 mainFileURL = main
             }
+            sidebarVisible = true
         } else {
             project = nil
         }

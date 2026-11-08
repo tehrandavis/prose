@@ -54,7 +54,7 @@ struct WritingFlowTests {
         #expect(outline.id == "outline")
         #expect(outline.keyPath == "v o")
         #expect(outline.shortcuts.first?.label == "⌘0")
-        #expect(WritingCommand.all.filter { !$0.shortcuts.isEmpty }.count == 31)
+        #expect(WritingCommand.all.filter { !$0.shortcuts.isEmpty }.count == 33)
     }
 
     @Test func discoverInsertUndoRedoAndExport() async throws {
@@ -373,12 +373,21 @@ struct WritingFlowTests {
             let action = try #require(item.action)
             #expect(NSApp.sendAction(action, to: item.target, from: item))
         }
-        try choose("Side-by-side Preview")
+        app.workspace.layout = .writing
+        try choose("Show or Hide Preview")
         #expect(app.workspace.layout == .split)
         try choose("Read the Preview")
         #expect(app.workspace.layout == .preview)
-        try choose("Focus on Writing")
+        try choose("Show or Hide Preview")
         #expect(app.workspace.layout == .writing)
+        try choose("Code")
+        #expect(app.workspace.editorMode == .code)
+        app.workspace.message = nil
+        try choose("Writing")
+        #expect(app.workspace.editorMode == .code, "Writing mode is not available yet")
+        #expect(app.workspace.message != nil)
+        try choose("Focus")
+        #expect(app.workspace.editorMode == .code)
         let originalFont = app.workspace.fontSize
         try choose("Increase Text Size")
         #expect(app.workspace.fontSize == originalFont + 1)

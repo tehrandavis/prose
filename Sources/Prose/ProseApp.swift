@@ -274,9 +274,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         let view = section(L10n.text("View"))
         item(L10n.text("Discover Commands"), #selector(palette), workspace.commandKey, view, target: self)
-        item(L10n.text("Focus on Writing"), #selector(writing), "1", view, target: self)
-        item(L10n.text("Side-by-side Preview"), #selector(split), "2", view, target: self)
-        item(L10n.text("Read the Preview"), #selector(preview), "3", view, target: self)
+        item(L10n.text("Code"), #selector(modeCode), "1", view, target: self)
+        item(L10n.text("Writing"), #selector(modeWriting), "2", view, target: self)
+        item(L10n.text("Focus"), #selector(modeFocus), "3", view, target: self)
+        view.addItem(.separator())
+        item(
+            L10n.text("Show or Hide Preview"),
+            #selector(togglePreview),
+            "p",
+            view,
+            modifiers: [.command, .shift],
+            target: self,
+        )
+        item(L10n.text("Read the Preview"), #selector(preview), "p", view, modifiers: [.command, .option], target: self)
         for id in ["outline", "diagnostics", "universe"] {
             commandItem(id, in: view)
         }
@@ -404,12 +414,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         workspace.togglePalette()
     }
 
-    @objc private func writing() {
-        workspace.layout = .writing
+    @objc private func modeCode() {
+        workspace.setMode(.code)
     }
 
-    @objc private func split() {
-        workspace.layout = .split
+    @objc private func modeWriting() {
+        workspace.setMode(.writing)
+    }
+
+    @objc private func modeFocus() {
+        workspace.setMode(.focus)
+    }
+
+    @objc private func togglePreview() {
+        workspace.togglePreview()
     }
 
     @objc private func preview() {

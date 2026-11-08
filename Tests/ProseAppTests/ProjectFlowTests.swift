@@ -94,6 +94,15 @@ struct ProjectFlowTests {
         #expect(app.workspace.open(method))
         #expect(app.workspace.project?.root.path == folder.path)
         #expect(app.workspace.mainFileURL == main)
+
+        // After relaunch, recovery restores the folder, its main entry and the sidebar.
+        app.workspace.saveRecovery()
+        let relaunched = Workspace(stateDirectory: app.workspace.stateDirectory)
+        #expect(relaunched.fileURL == method)
+        #expect(relaunched.project?.root.path == folder.path)
+        #expect(relaunched.mainFileURL == main)
+        #expect(relaunched.sidebarVisible)
+        relaunched.projectWatcher?.stop()
     }
 
     @Test func sidebarCreatesRenamesAndTrashesFilesInTheFolder() async throws {
@@ -219,5 +228,48 @@ struct ProjectFlowTests {
         #expect(open.keyPath == "f f")
         #expect(menu.performKeyEquivalent(with: app.key("0", code: 29, modifiers: .command)))
         #expect(!app.workspace.sidebarVisible)
+    }
+
+    @Test func titleRowFollowsTheCaretAndTheCompile() async throws {
+        let text = "= Method\n\n== Procedure\n\n=== Adaptive staircase\n\nText.\n\n= Results\n"
+        let app = try WritingFixture(text: text)
+        defer { app.close() }
+        #expect(app.workspace.compileStatus == .offline || app.workspace.compileStatus == .compiling)
+        try await app.ready()
+        try await app.wait { app.workspace.outline.count == 4 && app.workspace.compileStatus == .succeeded }
+        let editor = try #require(app.workspace.editor)
+
+        let staircase = (text as NSString).range(of: "Text.").location
+        editor.setSelectedRange(NSRange(location: staircase, length: 0))
+        try await app.wait { app.workspace.breadcrumb.count == 3 }
+        #expect(app.workspace.breadcrumb.map(\.title) == ["Method", "Procedure", "Adaptive staircase"])
+        let results = (text as NSString).range(of: "= Results").location + 2
+        editor.setSelectedRange(NSRange(location: results, length: 0))
+        try await app.wait { app.workspace.breadcrumb.map(\.title) == ["Results"] }
+        await app.layout()
+
+        // A broken edit turns the dot red; fixing it returns to green.
+        editor.setSelectedRange(NSRange(location: (editor.string as NSString).length, length: 0))
+        editor.insertText("#let broken = (", replacementRange: editor.selectedRange())
+        try await app.wait { app.workspace.compileStatus == .failed }
+        editor.undoManager?.undo()
+        try await app.wait { app.workspace.compileStatus == .succeeded }
+
+        // Modes: only Code is available; the preview toggles beside the text.
+        app.workspace.layout = .writing
+        try app.workspace.execute(#require(WritingCommand.all.first { $0.id == "togglePreview" }))
+        #expect(app.workspace.layout == .split)
+        #expect(app.workspace.previewShown)
+        try app.workspace.execute(#require(WritingCommand.all.first { $0.id == "modeFocus" }))
+        #expect(app.workspace.editorMode == .code)
+        #expect(app.workspace.message != nil)
+        try app.workspace.execute(#require(WritingCommand.all.first { $0.id == "modeCode" }))
+        #expect(app.workspace.editorMode == .code)
+        #expect(WritingCommand.all.first { $0.id == "togglePreview" }?.shortcuts.first?.label == "⇧⌘P")
+        #expect(WritingCommand.all.first { $0.id == "preview" }?.shortcuts.first?.label == "⌥⌘P")
+        #expect(WritingCommand.all.first { $0.id == "modeCode" }?.shortcuts.first?.label == "⌘1")
+        for mode in EditorMode.allCases {
+            #expect(!mode.title.isEmpty)
+        }
     }
 }

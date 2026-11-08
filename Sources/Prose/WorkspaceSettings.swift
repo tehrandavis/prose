@@ -192,7 +192,7 @@ struct WritingSettingsView: View {
                     Text(library.syncMessage).font(.footnote).foregroundStyle(Theme.secondary)
                 }
                 if let error = library.error {
-                    Text(error).font(.footnote).foregroundStyle(Theme.red)
+                    Text(error).font(.footnote).foregroundStyle(Theme.redText)
                 }
             } header: { Text("iCloud") }
             Section {

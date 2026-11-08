@@ -25,7 +25,6 @@ extension Workspace {
             return outlineNavigation.visibleIndices.map { .heading($0, depth: 0) }
         }
         var rows: [SidebarRow] = []
-        let open = fileURL?.standardizedFileURL
         func walk(_ directory: URL, depth: Int) {
             guard var nodes = try? ProjectTree.children(of: directory) else {
                 return
@@ -41,13 +40,22 @@ extension Workspace {
                 rows.append(.item(node, depth: depth))
                 if node.isDirectory, project.expanded.contains(relative(node.url, in: project.root)) {
                     walk(node.url, depth: depth + 1)
-                } else if node.url == open {
+                } else if sameFile(node.url, fileURL) {
                     rows += outlineNavigation.visibleIndices.map { .heading($0, depth: depth + 1) }
                 }
             }
         }
         walk(project.root, depth: 0)
         return rows
+    }
+
+    /// Paths can differ only by a symbolic link, such as /tmp and /private/tmp.
+    func sameFile(_ url: URL, _ other: URL?) -> Bool {
+        guard let other else {
+            return false
+        }
+        return url.standardizedFileURL.resolvingSymlinksInPath().path
+            == other.standardizedFileURL.resolvingSymlinksInPath().path
     }
 
     func relative(_ url: URL, in root: URL) -> String {
@@ -164,7 +172,7 @@ struct ProjectSidebar: View {
     }
 
     private func isOpen(_ node: ProjectNode) -> Bool {
-        node.url == workspace.fileURL?.standardizedFileURL
+        workspace.sameFile(node.url, workspace.fileURL)
     }
 
     private func fileRow(_ node: ProjectNode, depth: Int, detail: String? = nil) -> some View {
@@ -173,7 +181,7 @@ struct ProjectSidebar: View {
             node.url,
             in: $0.root,
         )) } ?? false
-        let isMain = project?.main?.standardizedFileURL == node.url
+        let isMain = workspace.sameFile(node.url, project?.main)
         return HStack(spacing: 5) {
             if node.isDirectory {
                 PhosphorIcon(name: "caret-right", size: 9)

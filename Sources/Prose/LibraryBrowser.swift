@@ -117,7 +117,7 @@ struct LibraryBrowser: View {
                 .padding(.horizontal, 30).padding(.bottom, 16)
 
             if let error = searchError ?? library.error {
-                Text(error).font(.system(size: 11)).foregroundStyle(Theme.red).padding(.horizontal, 30).padding(
+                Text(error).font(.system(size: 11)).foregroundStyle(Theme.redText).padding(.horizontal, 30).padding(
                     .bottom,
                     10,
                 )
