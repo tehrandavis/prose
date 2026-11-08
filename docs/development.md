@@ -9,6 +9,8 @@ scripts/build.sh release
 scripts/test.sh
 ```
 
+Run the tests as CI does, with `PROSE_DISTRIBUTION=preview scripts/test.sh`. The coverage gate counts `Sources/Prose/PreviewUpdateChannel.swift`, which compiles only in the Preview distribution, so a plain `scripts/test.sh` passes every test but stops at the coverage report.
+
 The build compiles Tinymist **0.15.8** (Typst 0.15.1) from its pinned commit with `scripts/tinymist-native-tls.patch` and `scripts/tinymist-vfs.patch` (`scripts/build-tinymist.sh`), and produces `build/Prose.app` with an ad hoc development signature. The first build takes about 15 minutes; `.tools/tinymist.stamp` records the revision, toolchain and patch hashes, so later builds reuse the binary until a patch changes. CI caches the binary under the same inputs, and `scripts/test-tinymist-build.py` checks that the binary in use matches them. Functional tests exercise the real native editor, workspace, windows, WebKit preview and Tinymist process: discovery, insertion, undo/redo, Unicode, recovery, multiple files, compilation errors and PDF output. Small boundary tests cover text ranges and index validation.
 
 `scripts/test.sh` writes HTML, raw coverage data and `build/coverage/summary.md`. It requires **80% coverage of unique executable lines across production Swift sources**, including the interface. LCOV records are deduplicated by source file and line to avoid counting SwiftUI generic instantiations repeatedly. Plain `swift test` omits explicitly enabled integration scenarios and does not enforce coverage.

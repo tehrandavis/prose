@@ -1,7 +1,7 @@
 # Phase 0: rename LeftBlank to Prose, replace the brand, swap the palette
 
 Date: 2026-11-08
-Status: in progress
+Status: done 2026-11-08
 Spec: `docs/prose-spec.md`, Sections 3.1, 4 and 9.1
 
 ## Goal
