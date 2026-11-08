@@ -68,7 +68,9 @@ import WebKit
             let available = try #require(await web.evaluateJavaScript(
                 "document.getElementById('typst-container-main').clientWidth",
             ) as? Double)
-            let expected = min(available, limit.map(Double.init) ?? available) * Double(coordinator.zoom)
+            // Beside the text (no limit), pages leave a gutter of canvas on each side.
+            let expected = limit.map { min(available, Double($0)) * Double(coordinator.zoom) }
+                ?? available * Double(coordinator.zoom) - Double(2 * PreviewScripts.sideGutter)
             #expect(abs(width - expected) < 1)
         }
         try await web

@@ -6,6 +6,10 @@ public enum PreviewScripts {
     public static let fullRenderingPageLimit = 20
     /// Shortest viewport repaint interval while a long document scrolls.
     public static let scrollRepaintIntervalMilliseconds = 100
+    /// Corner radius of a preview page, in page points (spec Section 4.3).
+    public static let cardRadius = 14
+    /// Canvas left on each side of the pages beside the text, in points.
+    public static let sideGutter = 20
 
     public static func setup(canvas: String, scheme: String) -> String {
         """
@@ -16,6 +20,13 @@ public enum PreviewScripts {
             :root { --typst-preview-background-color: var(--prose-canvas) !important; }
             html, body, #typst-container-main, #typst-app {
                 background-color: var(--prose-canvas) !important;
+            }
+            /* Pages as cards: 14 pt corners and Intent's PanelCard shadow (black at
+               4 percent, radius 8, y 2). Tinymist draws page rectangles at 1/100
+               scale, so lengths are 100 times larger in their coordinates. */
+            .typst-doc > rect.typst-page-inner {
+                rx: \(cardRadius * 100)px; ry: \(cardRadius * 100)px;
+                filter: drop-shadow(0 200px 800px rgba(0, 0, 0, 0.04));
             }
         `;
         document.head.appendChild(chromeStyle);

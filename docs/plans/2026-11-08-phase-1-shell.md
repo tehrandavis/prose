@@ -1,7 +1,7 @@
 # Phase 1: the window shell
 
 Date: 2026-11-08
-Status: accepted 2026-11-08 (option A: folders in place)
+Status: done 2026-11-08 (option A: folders in place). See "Outcome" at the end.
 Spec: `docs/prose-spec.md`, Sections 3.2 to 3.4 and 4
 
 ## Goal
@@ -137,3 +137,13 @@ Each step ends with `scripts/build.sh release` and `PROSE_DISTRIBUTION=preview s
 - **Sandboxed folder access.** A stale bookmark (folder moved or renamed) must fail with a clear message and drop the folder from the recent list, never crash.
 - **Shortcut changes** break muscle memory from LeftBlank. Prose has no users yet, so this is the time to change them.
 - **Large folders.** A thesis folder can hold thousands of files in `figures/` or `node_modules/`. Listing is lazy per folder, and folders with more than 2,000 entries show a count instead of their children until opened.
+
+## Outcome
+
+Built as planned, with these differences:
+
+- **Preview cards.** Rounded corners and the card shadow work from the stylesheet, with a 20-point canvas gutter beside the text. Tinymist places pages about 7 points apart and the gap is internal to its renderer, so per-card page numbers do not fit. The pane header shows the current page instead. The spec records this.
+- **Title size.** The file name is 14-point semibold, because 15 points with the folder name under it does not fit the compact toolbar.
+- **Storage.** Per-folder state lives in one `recent.json`, not one file per folder.
+- **Test suites.** All native UI tests must extend `WritingFlowTests`, the serialized suite. A separate suite runs in parallel with the windows and menus and made preview timing tests flaky; the baseline ran clean twice once the project tests joined the shared suite.
+- **Fixes found on the way.** `ProjectSources.list` skipped the rest of a folder after a symbolic link (inherited bug). The preview click test raced late jumps from the previous click; it now lets jumps settle.

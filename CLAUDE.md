@@ -11,6 +11,7 @@ A native macOS Typst writing app with three views of one source file: Code, Writ
 - The Preview channel has no Sparkle key yet. Generate one before publishing a Preview build.
 - Build and test with `scripts/build.sh release` and `PROSE_DISTRIBUTION=preview scripts/test.sh` (the coverage gate needs the Preview distribution). Run `scripts/build-syntax.sh` once before a plain `swift build`. Xcode 26 or later (verified on Xcode 27.0 beta, Swift 6.4), Rust 1.92.0 through rustup. The first build compiles Tinymist and takes about 15 minutes.
 - Coverage gate is 80 percent of production Swift lines. Keep it.
+- Native UI tests extend `WritingFlowTests` (the serialized suite). A new `@Suite` runs in parallel with the windows and menus and makes preview tests flaky.
 
 ## Rules inherited from LeftBlank that stay
 
@@ -28,7 +29,7 @@ Colours, type, radius and spacing come from Intent (`~/dev/Cadence/Cadence/Theme
 | Phase | Scope | State |
 |-|-|-|
 | 0 | Rename bundle and module to Prose, replace icon and brand assets, swap Nano palette for Intent tokens | Done 2026-11-08 |
-| 1 | Project model, sidebar tree with nested outline, title row with breadcrumb and status dot, mode control (Code only), preview page cards | Not started |
+| 1 | Project model, sidebar tree with nested outline, title row with breadcrumb and status dot, mode control (Code only), preview page cards | Done 2026-11-08 |
 | 2 | `Engine/RenderBridge` Rust crate: per-block render with document context, cache, SVG with glyph rectangles | Not started |
 | 3 | Writing mode in the editor, with selection, undo, IME and VoiceOver acceptance tests before it is on by default | Not started |
 | 4 | Focus mode, floating toolbar, syntax-aware spell check | Not started |

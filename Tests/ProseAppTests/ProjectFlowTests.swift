@@ -34,10 +34,12 @@ extension WritingFlowTests {
         var previewed: [URL] = []
         app.workspace.previewFile = { previewed.append($0) }
 
+        app.window.makeKeyAndOrderFront(nil)
         #expect(app.workspace.openFolder(folder))
         await app.layout()
         #expect(app.workspace.project?.root.path == folder.path)
         #expect(app.workspace.project?.name == "Thesis")
+        #expect(app.window.firstResponder === app.workspace.editor, "The sidebar's search must not take focus from the text")
         #expect(app.workspace.sidebarVisible)
         #expect(app.workspace.fileURL == main)
         #expect(app.workspace.compilationURL == main)

@@ -149,7 +149,8 @@ struct PreviewView: NSViewRepresentable {
             (() => {
                 const container = document.getElementById('typst-container');
                 if (!container) return false;
-                const width = '\(zoom * 100)%';
+                // Beside the text, leave canvas on both sides so pages read as cards.
+                const width = '\(maxPageWidth == nil ? "calc(\(zoom * 100)% - \(2 * PreviewScripts.sideGutter)px)" : "\(zoom * 100)%")';
                 const maxWidth = '\(maxPageWidth.map { "\($0 * zoom)px" } ?? "none")';
                 if (container.style.width !== width || container.style.maxWidth !== maxWidth) {
                     window.prosePrepareResize?.();

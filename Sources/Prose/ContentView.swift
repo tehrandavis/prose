@@ -217,6 +217,7 @@ struct ContentView: View {
         }.background(Theme.panel)
             .overlay(alignment: .topTrailing) {
                 FloatingPaneControls(title: L10n.text("Preview"), icon: "eye") {
+                    PreviewPageLabel(session: workspace.previewReading)
                     PreviewReadingControls(session: workspace.previewReading) {
                         workspace.layout = workspace.previewReturnLayout ?? .preview
                     }
@@ -331,5 +332,18 @@ struct ContentView: View {
             )).foregroundStyle(Theme.muted).frame(minWidth: 35, alignment: .trailing)
             DocumentCheckButton(workspace: workspace)
         }.padding(.horizontal, 24).frame(height: 34)
+    }
+}
+
+/// The page under the reading position. Tinymist leaves too little room
+/// between pages for a number under each one, so the pane header shows it.
+struct PreviewPageLabel: View {
+    @ObservedObject var session: PreviewReadingSession
+    var body: some View {
+        if let page = session.currentPage {
+            Text(L10n.format("Page %@", String(page + 1)))
+                .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.secondary)
+                .padding(.horizontal, 6).accessibilityIdentifier("preview.page")
+        }
     }
 }

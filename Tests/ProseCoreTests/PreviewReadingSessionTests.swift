@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import ProseCore
 import Testing
@@ -64,4 +65,20 @@ import Testing
         #expect(PreviewReadingAnchor(page: 0, x: 0, y: 2, viewportY: 0) == nil)
         #expect(PreviewReadingAnchor(message: ["page": "0", "x": 0, "y": 0, "viewportY": 0]) == nil)
     }
+}
+
+@MainActor @Test func readingSessionPublishesTheCurrentPageOnlyWhenItChanges() throws {
+    let session = PreviewReadingSession()
+    var changes = 0
+    let observer = session.objectWillChange.sink { changes += 1 }
+    #expect(session.currentPage == nil)
+    session.observe(try #require(PreviewReadingAnchor(page: 2, x: 0.5, y: 0.1, viewportY: 0)))
+    session.observe(try #require(PreviewReadingAnchor(page: 2, x: 0.5, y: 0.6, viewportY: 0)))
+    #expect(session.currentPage == 2)
+    #expect(changes == 1, "Scrolling within a page must not redraw the window")
+    session.observe(try #require(PreviewReadingAnchor(page: 3, x: 0.5, y: 0.1, viewportY: 0)))
+    #expect(session.currentPage == 3)
+    session.reset()
+    #expect(session.currentPage == nil)
+    observer.cancel()
 }

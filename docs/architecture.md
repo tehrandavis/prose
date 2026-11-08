@@ -50,6 +50,12 @@ Both editors are TextKit 2 views styled by one `SourceStyler` from `ProseCore` (
 
 Indentation and comments use text-range transformations. Formatting uses the real LSP response with revision, session and range validation.
 
+## Project folders and the window shell
+
+A project is a folder opened in place (`Workspace.openFolder`). `ProjectStore` remembers recent folders in `Application Support/Prose/Projects/recent.json`: path, bookmark (security-scoped when sandboxed), main entry and expanded folders. Nothing is written into the folder. `ProjectTree` lists children (folders first, Finder order, no hidden files or links), searches names and creates, renames and trashes items without leaving the root; trash uses `FileManager.trashItem`. When a project is open, `Workspace.open` sets the compilation entry to the project's main entry, so preview and export compile the whole document from any file. A file reopened after relaunch finds its folder in the recent list. `ProjectWatcher` refreshes the sidebar through FSEvents. A library document shows its own folder, with the library's `document.json` hidden and its entry fixed.
+
+The sidebar (`ProjectSidebar`) is a column left of the editor, 240 to 320 points wide, stored per device. It lists the tree and nests the open file's headings from `OutlineNavigation`; without a folder it holds only the outline. The floating margin outline is shown only while the sidebar is hidden. The toolbar holds the sidebar button, the file and folder names, a breadcrumb from `OutlineNavigation.ancestry`, a status dot from `CompileStatus`, the Code, Writing and Focus control (`EditorMode`, Code only until Writing mode ships), Export and the preview toggle. Preview pages are styled as cards from the injected stylesheet; the pane header shows the current page from `PreviewReadingSession.currentPage`.
+
 ## Command discovery
 
 One registry holds stable IDs, English source labels, translated labels, bilingual keywords, groups, group keys, help, parameters, direct shortcuts and actions. Browsing and search share this registry. Labels resolve dynamically; the normalized search index includes both languages and stays valid through interface-language changes.

@@ -48,6 +48,9 @@ public final class PreviewReadingSession: ObservableObject {
     @Published public private(set) var returnAnchor: PreviewReadingAnchor?
     @Published public private(set) var restore: Restore?
     public private(set) var anchor: PreviewReadingAnchor?
+    /// The page under the reading position, zero based. Published only when it
+    /// changes, so scrolling within a page does not redraw the window.
+    @Published public private(set) var currentPage: Int?
     /// Tinymist answers a preview click with at most one source jump, shortly after it.
     public static let clickPairing: Duration = .seconds(2)
     private var click: (text: PreviewClick?, time: ContinuousClock.Instant)?
@@ -56,6 +59,9 @@ public final class PreviewReadingSession: ObservableObject {
 
     public func observe(_ anchor: PreviewReadingAnchor) {
         self.anchor = anchor
+        if currentPage != anchor.page {
+            currentPage = anchor.page
+        }
     }
 
     /// Remember the text under the latest preview click, or that it had none.
@@ -124,6 +130,7 @@ public final class PreviewReadingSession: ObservableObject {
 
     public func reset() {
         anchor = nil
+        currentPage = nil
         returnAnchor = nil
         restore = nil
         click = nil

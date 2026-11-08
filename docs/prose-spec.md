@@ -57,19 +57,19 @@ The segmented control at the top right switches the center column. The sidebar a
 | Writing | Rendered blocks. Headings, paragraphs, lists, equations, figures and tables are drawn as typeset fragments from the real engine. The block that holds the caret shows its source. | New: Section 5 |
 | Focus | Writing mode with the sidebar and preview hidden, a narrower measure, the current paragraph at full contrast and other paragraphs dimmed, a fixed typewriter scroll position | New, mostly view state |
 
-Shortcuts: `⌘1` Code, `⌘2` Writing, `⌘3` Focus. `⌘⇧P` toggles the preview pane. `⌘0` toggles the sidebar. `⌘J` keeps command discovery. The mode is saved per document.
+Shortcuts: `⌘1` Code, `⌘2` Writing, `⌘3` Focus. `⌘⇧P` toggles the preview pane, and `⌘⌥P` fills the window with the preview for reading. `⌘0` toggles the sidebar. `⌘J` keeps command discovery. The mode is saved per document. (Phase 1: Writing and Focus explain that they arrive later; LeftBlank's `⌘4` outline pin is gone, because the sidebar holds the outline.)
 
 ### 3.3 Window anatomy
 
 Three columns, left to right, in a single `NSSplitView` under a `unifiedCompact` toolbar.
 
-**Sidebar (240 to 320 pt, Things look).** Search field at the top. Below it, a project tree rooted at the project folder. Folders collapse. The active `.typ` file is expanded one level further to show its outline from Tinymist `documentSymbol`, indented under the file row. Clicking an outline row scrolls the editor and the preview. The main compilation entry carries a small pin mark. A `+` button at the bottom creates a file or folder. Right-click gives rename, reveal in Finder, set as main entry, delete.
+**Sidebar (240 to 320 pt, Things look).** Search field at the top; it filters files by name (content search is later work). Below it, a project tree rooted at the project folder. Folders collapse. The active `.typ` file is expanded one level further to show its outline from Tinymist `documentSymbol`, indented under the file row. Clicking an outline row scrolls the editor and the preview. The main compilation entry carries a small pin mark. A `+` button at the bottom creates a file or folder. Right-click gives rename, reveal in Finder, set as main entry, delete.
 
-**Title row.** File name in bold with the project name in muted text under it. Center: a breadcrumb built from the heading ancestors of the caret position, then a status dot. Green means the last compile succeeded and matches the buffer. Amber means compiling. Red means the last compile failed and the preview is stale. Clicking the dot opens the diagnostics list. Right: mode control, info button (word count, reading time, compile time, fonts in use), export button (PDF, and the share sheet), preview toggle.
+**Title row.** File name in 14 pt semibold (15 pt does not fit two lines in the compact toolbar) with the project name in muted text under it. Center: a breadcrumb built from the heading ancestors of the caret position, then a status dot. Green means the last compile succeeded and matches the buffer. Amber means compiling. Red means the last compile failed and the preview is stale. A hollow grey dot means Tinymist is not running. Clicking the dot opens the diagnostics list. Right: mode control, info button (word count, reading time, compile time, fonts in use), export button (PDF, and the share sheet), preview toggle.
 
 **Center column.** The editor in one of the three modes. Measure is 65 to 72 characters at 16 pt body, centered, with the same margins LeftBlank uses now. The floating toolbar sits 16 pt above the bottom edge, centered, and only appears in Writing and Focus modes. It has five actions: text style (`Aa`), table, equation (`f(x)`), image, and `+` for the full insert catalog. Each action is a `⌘J` command, so the toolbar is a second entry point to the same registry, not a second implementation.
 
-**Preview pane (optional, 320 pt minimum).** LeftBlank's existing `WKWebView` preview with one visual change: pages are drawn as white cards with a 14 pt radius on the Intent page-grey canvas, with 24 pt gaps and the page number under each card. Zoom and fit controls stay in the pane header.
+**Preview pane (optional, 320 pt minimum).** LeftBlank's existing `WKWebView` preview with one visual change: pages are drawn as white cards with a 14 pt radius and Intent's `PanelCard` shadow on the page-grey canvas, with 20 pt of canvas on each side. Zoom and fit controls stay in the pane header. Tinymist's renderer places pages about 7 pt apart and the gap is not configurable, so the 24 pt gaps and per-card page numbers in the first draft are not possible; the pane header shows the current page instead (decided in Phase 1, 2026-11-08).
 
 **Status bar.** LeftBlank's existing 30 pt bar: command discovery hint on the left, save state, compile state, word count and caret position on the right.
 
@@ -77,7 +77,7 @@ Three columns, left to right, in a single `NSSplitView` under a `unifiedCompact`
 
 LeftBlank has one active buffer and a library of single documents. The target app has a folder-based project. The change:
 
-- A project is a folder on disk that contains at least one `.typ` file. The library gains a "Projects" section beside "Documents". Opening a folder from Finder or the Open dialog creates the project entry.
+- A project is a folder on disk, opened in place with File → Open Folder (`⌘⌥O`). Prose never copies it into the library, so Git and folder sync keep working, and nothing is written into the folder: recent folders, their main entries and folds live in `Application Support/Prose/Projects/recent.json`, with security-scoped bookmarks in the sandboxed edition. The library home lists recent folders above documents. A library document shows its own folder in the same sidebar, with its main entry fixed by the library.
 - The project remembers its main entry (`main.typ` by default, or the only `.typ` file). All compilation, preview and export use the main entry. Editing `sections/method.typ` previews the whole thesis, and preview-to-source jumps land in the right file. LeftBlank already preserves the main entry when navigating into included files, so this is an extension of existing behavior, not a rewrite.
 - One editing buffer at a time still holds. Switching files in the sidebar saves and swaps the buffer. A tab strip is out of scope for the first version.
 - `.bib`, `.pdf`, `.png`, `.svg` and other non-Typst files appear in the tree. `.bib` opens in Code mode as plain text. Images and PDFs open in Quick Look.
@@ -100,6 +100,7 @@ Take surfaces, type and spacing from Intent's current theme (`ThingsLook` for th
 | Selected sidebar row fill | violet at 10 percent | violet at 22 percent | `ThingsLook.selection` |
 | Hover | black at 4 percent | white at 5 percent | `ThingsLook.hover` |
 | Compile OK, warning, error | `#5CB85C`, `#E8A838`, `#E25555` | same | `AppTheme` |
+| Error and success text | `#C62828`, `#2E7D32` | `#EF7A7A`, `#6CC86C` | Derived in Phase 1: the compile colours are under 4.5:1 as text |
 
 The screenshot's selected outline row and preview toggle are system blue. We use dusk violet instead so the app matches Intent. Syntax colours in Code mode stay LeftBlank's Nano-derived set.
 

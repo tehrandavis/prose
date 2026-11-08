@@ -373,6 +373,16 @@ extension WritingFlowTests {
             """) as? Bool
             #expect(clicked == true)
             try await app.wait { app.workspace.selection.location != 0 }
+            // A jump answering the previous click can arrive after the reset
+            // above; under load it lands first. Let jumps settle, then read.
+            var settled = app.workspace.selection.location
+            for _ in 0 ..< 20 {
+                try await Task.sleep(for: .milliseconds(50))
+                if app.workspace.selection.location == settled {
+                    break
+                }
+                settled = app.workspace.selection.location
+            }
             return app.workspace.selection.location
         }
         let text = source as NSString
@@ -454,7 +464,7 @@ extension WritingFlowTests {
         }
         app.workspace.previewZoom = 1.4
         await app.layout()
-        try await waitForJavaScript(web, condition: "document.getElementById('typst-container').style.width === '140%'")
+        try await waitForJavaScript(web, condition: "document.getElementById('typst-container').style.width === 'calc(140% - 40px)'")
         let editor = try #require(app.workspace.editor)
         editor.insertSnippet(
             Snippet(text: "#unknown-function("),
@@ -518,6 +528,13 @@ extension WritingFlowTests {
         #expect(try await web
             .evaluateJavaScript("getComputedStyle(document.querySelector('.typst-page-inner')).fill") as? String ==
             "rgb(255, 255, 255)")
+        // Pages are cards: rounded corners and a soft shadow on the canvas.
+        #expect(try await web
+            .evaluateJavaScript("getComputedStyle(document.querySelector('.typst-doc > rect.typst-page-inner')).rx")
+            as? String == "\(PreviewScripts.cardRadius * 100)px")
+        #expect(try await (web
+            .evaluateJavaScript("getComputedStyle(document.querySelector('.typst-doc > rect.typst-page-inner')).filter")
+            as? String)?.contains("drop-shadow") == true)
     }
 }
 

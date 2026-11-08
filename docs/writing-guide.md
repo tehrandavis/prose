@@ -13,10 +13,11 @@ The app supports English and Simplified Chinese, with the localized name **Prose
 | Search commands | `/` inside the command panel; English and Chinese queries work in either interface language |
 | Go back or dismiss | `Esc` |
 | Move between inserted placeholders | `Tab` / `⇧Tab`; `Esc` to finish |
-| Writing / side-by-side / preview | `⌘1` / `⌘2` / `⌘3` |
-| Outline / document checks | `⌘4` / `⌘5` |
+| Code / Writing / Focus mode | `⌘1` / `⌘2` / `⌘3` (Writing and Focus arrive in a later version) |
+| Show or hide the preview / read the preview | `⇧⌘P` / `⌥⌘P` |
+| Sidebar / document checks | `⌘0` / `⌘5` |
 | New / library / save | `⌘N` / `⌘O` / `⌘S` |
-| Import a document | `⇧⌘O` |
+| Open a folder / import a document | `⌥⌘O` / `⇧⌘O` |
 | Save as / export PDF | `⇧⌘S` / `⇧⌘E` |
 | Completion / find | `⌃.` / `⌘F` |
 | Go to definition | `⌘`-click, `F12` (or `fn-F12`), or `⌃⌘J` |
@@ -37,7 +38,11 @@ When documentation includes a Typst example, the hover card opens an **Example**
 
 **Go Back** restores the previous file and caret, including nested jumps. `⌘W` closes the current file and returns to the previous document; `⌘Q` quits the Mac app. On iPad, `⌘W` returns from a module to the original document, or closes the main document to the library. The original document remains the compilation entry while you inspect dependencies. Your own modules stay editable; package sources display a lock and **Read-only** badge and cannot be overwritten.
 
-The outline appears in the left margin without moving the text. Hover to explore headings, then use the small pin to keep them visible; hovering the pinned control reveals its close action. `⌘4` also pins or dismisses it. The command panel keeps a stable height through searching, selection and parameter entry; its guide stays in the same place.
+**File → Open Folder** opens a folder of Typst files, such as a thesis, and edits the files where they are. Nothing is copied into the library, so Git, Dropbox and iCloud Drive keep working on the folder. The sidebar (`⌘0`) lists the folder's files, folders first, and nests the open file's headings under it. Click a heading to go to it. The search field filters files by name. The `+` button adds a Typst file or a folder, and each item's context menu offers Rename, Reveal in Finder, Set as Main Document and Move to Trash. A pin marks the main document: preview and export always compile it, whichever file is open. Other files, such as PDFs, images and `.bib` files, open in Quick Look. Recent folders appear on the library home and reopen after relaunch.
+
+The title row shows the file and its folder, a breadcrumb of the headings around the caret, and a status dot. Green means the preview matches your text, amber means it is typesetting, red means the document needs attention, and a hollow grey dot means the typesetting service is not running. Click the dot to see the checks.
+
+Without the sidebar, the outline appears in the left margin without moving the text. Hover to explore headings; its sidebar button opens the full sidebar. The command panel keeps a stable height through searching, selection and parameter entry; its guide stays in the same place.
 
 ## Completion and existing objects
 
