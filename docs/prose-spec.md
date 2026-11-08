@@ -149,6 +149,8 @@ How a block is rendered with document context: the engine compiles the main entr
 
 References: a block rendered alone cannot resolve a label outside it. The engine reads what each reference displays from the full compile (the text inside the reference's link) and gives the block document a stub label and a `show ref` rule with that text. Counter values and reference texts come from the last full compile, so typing inside a paragraph re-renders that block without waiting for a new full compile (measured in the Phase 2 spike, `docs/plans/2026-11-08-phase-2-engine-spike.md`).
 
+Built in Phase 2 (2026-11-08): `Engine/RenderBridge` exposes the table `prose_render_api()` (`Sources/ProseRenderFFI/include/ProseRender.h`), and ProseCore wraps it in the `BlockRenderer` actor. The calls are `engine_create`, `set_text`, `refresh`, `blocks`, `render` and `cache_stats`, with UTF-16 offsets throughout. On SICP a block renders in 0.48 ms (median, first time) and 0.003 ms from the cache. The engine evicts Typst's memo caches after each refresh and every 128 compiled renders, which keeps a long session near 415 MB of heap; one full compile of a 450-page book needs about 775 MB on its own. See `docs/plans/2026-11-08-phase-2-render-bridge.md`.
+
 Caching: results are keyed by (file, block source hash, state hash, width). An edit inside one paragraph re-renders that paragraph. An edit to a `#set` line re-renders everything after it. Renders run on a background actor and the main thread never waits.
 
 Failures: a block that fails to compile stays as source with LeftBlank's existing error styling. The rest of the document keeps rendering. A full-document compile failure marks all fragments stale (a thin amber bar at the left edge) but leaves them visible.

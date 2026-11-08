@@ -1,7 +1,7 @@
 # Phase 2: the render bridge
 
 Date: 2026-11-08
-Status: accepted 2026-11-08 (Tehran: "make it happen")
+Status: done 2026-11-08. See "Outcome" at the end.
 Spec: `docs/prose-spec.md`, Section 5.2. Builds on `docs/plans/2026-11-08-phase-2-engine-spike.md`.
 
 ## Goal
@@ -70,3 +70,31 @@ Prose is a Mac app; Tehran does not intend to build for iPad (2026-11-08). The r
 - **App size.** Typst linked into the app adds to the executable, on top of the Tinymist helper. Step B records the size before and after.
 - **Build time.** A clean build of the render bridge takes about 2 minutes on top of Tinymist. The build script reuses the output when inputs have not changed, as `build-syntax.sh` does.
 - **Two Typst copies.** Tinymist (a separate process) and the app now both run Typst 0.15.1 from the same tag, so preview and Writing mode agree on layout. A Tinymist upgrade must upgrade the render bridge in the same commit.
+
+## Outcome
+
+Built in four commits by Opus subagents, each reviewed and re-tested by the main session before it was committed: step A `b515439`, step B `adb3b7a`, a lint cleanup `a2d9f94`, step C `066be54`.
+
+| Measure (SICP, 448 pages, on a loaded Mac) | Result |
+|-|-|
+| Blocks rendered | 3,671 of 3,671, no failures |
+| First render, median and 95th percentile | 0.48 ms and 2.7 ms |
+| Cache hit, median | 0.003 ms |
+| Refresh: cold, after an edit | 0.8 to 1.0 s, 0.17 s |
+| Peak resident memory | about 1 GB |
+| Heap over 20 edits and three passes | flat near 415 MB (it grew past 4 GB before eviction) |
+| App executable | 10.8 MB to 52.7 MB |
+
+Differences from this note:
+
+- **Memory target.** The working set of one full compile of SICP is about 775 MB, and stock `typst compile` peaks at 907 MB on the same book, so the 600 MB target was not reachable without changing Typst. The engine instead keeps memory bounded: it evicts Typst's memo caches after each refresh and after every 128 compiled renders. The trade-off: a refresh after a long scroll with no edits starts cold (about 0.8 s, in the background).
+- **Cache correctness.** Blocks with identical text share a cache entry, so glyph offsets are stored relative to the block and moved to the block's place on each render. Each entry also records the edit version of every file its compile read, so an edited template or import never serves a stale block.
+- **Counters while typing.** Counter positions from the last refresh are mapped onto the current text by its unchanged start and end, so a heading keeps its number while text above it is edited.
+- **Swift API.** `BlockRenderer`'s init is `async` so the font scan runs off the main thread, and the default package directories include Tinymist's package cache, so blocks see the packages the preview downloaded.
+- **Lint.** `scripts/lint.sh` had been failing since the Phase 0 rename (import order) and Phase 1 (five violations), and an editor index cache in `Sources/.build` added hundreds of false reports. It passes again.
+
+Known gaps carried into Phase 3:
+
+- A file whose last good compile had no headings or equations gets no counter updates until the next successful refresh.
+- Files changed on disk by another app are not seen until the engine is recreated; `setText` is the only way in.
+- About 18.5 MB of the executable is Typst's embedded fonts, which the Tinymist helper also carries.

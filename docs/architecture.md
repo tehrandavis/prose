@@ -56,6 +56,12 @@ A project is a folder opened in place (`Workspace.openFolder`). `ProjectStore` r
 
 The sidebar (`ProjectSidebar`) is a column left of the editor, 240 to 320 points wide, stored per device. It lists the tree and nests the open file's headings from `OutlineNavigation`; without a folder it holds only the outline. The floating margin outline is shown only while the sidebar is hidden. The toolbar holds the sidebar button, the file and folder names, a breadcrumb from `OutlineNavigation.ancestry`, a status dot from `CompileStatus`, the Code, Writing and Focus control (`EditorMode`, Code only until Writing mode ships), Export and the preview toggle. Preview pages are styled as cards from the injected stylesheet; the pane header shows the current page from `PreviewReadingSession.currentPage`.
 
+## Render bridge
+
+The Mac app links one Rust static library, `ProseEngine.xcframework`, built from `Engine/RenderBridge` by `scripts/build-render.sh`. It contains Typst 0.15.1 (the same fork and tag as Tinymist) and re-exports the syntax bridge's `lb_syntax_api`, so the app carries one Rust runtime. Its C ABI is the function table `prose_render_api()`; every entry point that does work catches panics.
+
+`BlockRenderer` (ProseCore, an actor) owns one engine per document. `setText` replaces a file's text in memory; `refresh` runs a full compile of the main file with a small probe that records every heading's and equation's counter value, and reads what each reference displays from the links in the output. `render` builds a block document (the file's context lines, a page as wide as the measure, counter updates, stub labels with the full document's reference text, then the block), compiles it, and returns SVG, size, first baseline, ink bounds and glyph boxes with UTF-16 source offsets. Results are cached in an LRU with a byte budget (64 MB by default), keyed by the block document and width and checked against the edit version of every file the compile read. Typst's own memo caches are evicted after each refresh and every 128 compiled renders. Nothing in the editor draws fragments yet; Writing mode (Phase 3) will.
+
 ## Command discovery
 
 One registry holds stable IDs, English source labels, translated labels, bilingual keywords, groups, group keys, help, parameters, direct shortcuts and actions. Browsing and search share this registry. Labels resolve dynamically; the normalized search index includes both languages and stays valid through interface-language changes.

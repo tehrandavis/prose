@@ -32,7 +32,7 @@ Colours, type, radius and spacing come from Intent (`~/dev/Cadence/Cadence/Theme
 |-|-|-|
 | 0 | Rename bundle and module to Prose, replace icon and brand assets, swap Nano palette for Intent tokens | Done 2026-11-08 |
 | 1 | Project model, sidebar tree with nested outline, title row with breadcrumb and status dot, mode control (Code only), preview page cards | Done 2026-11-08 |
-| 2 | `Engine/RenderBridge` Rust crate: per-block render with document context, cache, SVG with glyph rectangles | Not started |
+| 2 | `Engine/RenderBridge` Rust crate: per-block render with document context, cache, SVG with glyph rectangles | Done 2026-11-08 |
 | 3 | Writing mode in the editor, with selection, undo, IME and VoiceOver acceptance tests before it is on by default | Not started |
 | 4 | Focus mode, floating toolbar, syntax-aware spell check | Not started |
 | 5 | Info popover, export sheet, per-document mode memory, screenshots, writing guide | Not started |

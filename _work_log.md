@@ -42,3 +42,15 @@ Open items:
 - Fixed a Phase 0 slip: `scripts/make-app-icon.py` was not classified in the CI path table.
 
 Next: Phase 2 proper (C ABI, cache, background rendering), using the spike's findings.
+
+## 2026-11-08: Phase 2
+
+- Design note `docs/plans/2026-11-08-phase-2-render-bridge.md`. Built by Opus subagents in steps; the main session reviewed each diff, reran the checks and committed.
+- Step A: `Engine/RenderBridge` became the engine library with a C ABI (`prose_render_api`), cache, ink bounds, baselines and UTF-16 glyph offsets. The agent found and fixed a cache bug that gave identical blocks the wrong offsets.
+- Step B: the Mac app links one combined Rust library (render plus syntax). Executable 10.8 MB to 52.7 MB.
+- Lint: `scripts/lint.sh` passes again (rename import order, Phase 1 violations, a stray editor index cache).
+- Step C: `BlockRenderer` actor in ProseCore with 12 tests (98.8 percent covered); memo-cache eviction keeps long sessions bounded (heap near 415 MB instead of past 4 GB).
+- Decided: Prose is Mac only; the iPad code is unmaintained.
+- Results: full suite 220 core and 149 app tests pass, coverage 87.56 percent; lint clean; SICP renders every block, median 0.48 ms.
+
+Open items: peak memory about 1 GB on a 450-page book; counters for a file with no prior headings; files changed by other apps; duplicated embedded fonts (18.5 MB). Optional cleanup: delete the iPad code.
