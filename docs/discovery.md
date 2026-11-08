@@ -81,7 +81,7 @@ source scripts/environment.sh
 LEFTBLANK_INTEGRATION=1 LEFTBLANK_UNIVERSE_NETWORK=1 swift test --filter 'universe|Universe|templateGallery|templateCreationOpens|cachedPackageBrowser|discoveryModel'
 ```
 
-The network scenarios are opt-in so ordinary CI is deterministic. Set `LEFTBLANK_DISCOVERY_ARTIFACTS` to an SSD-backed directory to save the 620- and 1040-point gallery renders for visual inspection.
+The network scenarios are opt-in so ordinary CI is deterministic. Set `LEFTBLANK_DISCOVERY_ARTIFACTS` to a directory to save the 620- and 1040-point gallery renders for visual inspection.
 
 Native-window acceptance also checks selection while the gallery reflows: select
 `basic-resume` from All templates, confirm its outlined card stays visible beside

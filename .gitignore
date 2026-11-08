@@ -10,3 +10,4 @@ Engine/TinymistBridge/target/
 Engine/SyntaxBridge/target/
 **/xcuserdata/
 Tools/MCPServer/target/
+.todos/

@@ -26,13 +26,8 @@ case "$sanitizer" in
     ;;
   *) echo 'Usage: scripts/build-ipad.sh [simulator|device] [none|address|thread]' >&2; exit 2 ;;
 esac
-# Cargo keeps build outputs in this SSD workspace; dependency sources also stay
-# on the development volume. CI uses its disposable checkout.
-if [ "${GITHUB_ACTIONS:-}" = true ]; then
-  export CARGO_HOME="$PWD/.tools/cargo-ipad"
-else
-  export CARGO_HOME=/Volumes/SSD/Developer/Codex/cargo-ipad
-fi
+# Cargo keeps dependency sources and build outputs inside the checkout.
+export CARGO_HOME="$PWD/.tools/cargo-ipad"
 export IPHONEOS_DEPLOYMENT_TARGET=17.0
 scripts/prepare-ipad-engine.sh
 rustup toolchain install 1.92.0 --profile minimal --target "$target"

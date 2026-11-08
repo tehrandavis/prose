@@ -3,7 +3,7 @@ import Foundation
 import LeftBlankTestSupport
 import Testing
 
-private let assistanceURL = URL(fileURLWithPath: "/Volumes/SSD/Developer/Codex/tmp/中文 notes.typ")
+private let assistanceURL = URL(fileURLWithPath: "/tmp/中文 notes.typ")
 
 private func assistanceJSON(_ value: Any) throws -> JSONValue {
     try JSONDecoder().decode(

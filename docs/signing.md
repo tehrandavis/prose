@@ -62,12 +62,10 @@ References: [Apple notarization workflow](https://developer.apple.com/documentat
 
 ## Mac App Store
 
-Build and export from the repository root on an SSD-backed checkout:
+Build and export from the repository root:
 
 ```sh
-export TMPDIR=/Volumes/SSD/Developer/Codex/tmp
-export TMP="$TMPDIR"
-export TEMP="$TMPDIR"
+source scripts/environment.sh
 LEFTBLANK_DISTRIBUTION=appstore scripts/build.sh release
 python3 scripts/export-appstore.py \
   --profile /absolute/path/LeftBlank.provisionprofile \

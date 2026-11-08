@@ -2,7 +2,7 @@
 
 LeftBlank uses SwiftUI and AppKit for the app and editing experience, with Tinymist as a managed child process for Typst language services and preview. Documents use ordinary `.typ` source and relative assets. The visual approach was inspired by Nano Emacs.
 
-Use Xcode 26 or later with a Swift 6.2 or later toolchain and the macOS SDK. The Tinymist and macOS MCP helpers, and the typst-syntax parser linked into LeftBlankCore, are built with Rust 1.92.0 (`rustup toolchain install 1.92.0 --profile minimal`). `scripts/build.sh` and `scripts/test.sh` build the parser through `scripts/bootstrap.sh`; run `scripts/build-syntax.sh` once before a plain `swift build` or `swift test`. Local development scripts expect the external development volume at `/Volumes/SSD/Developer`; run from an SSD checkout:
+Use Xcode 26 or later with a Swift 6.2 or later toolchain and the macOS SDK. The Tinymist and macOS MCP helpers, and the typst-syntax parser linked into LeftBlankCore, are built with Rust 1.92.0 (`rustup toolchain install 1.92.0 --profile minimal`). `scripts/build.sh` and `scripts/test.sh` build the parser through `scripts/bootstrap.sh`; run `scripts/build-syntax.sh` once before a plain `swift build` or `swift test`. Run from any checkout; `scripts/environment.sh` keeps temporary files, Cargo caches and fixtures under the checkout's `.tools/` directory, which git ignores:
 
 ```sh
 scripts/build.sh release

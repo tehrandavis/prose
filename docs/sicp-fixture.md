@@ -21,9 +21,8 @@ python3 scripts/prepare-sicp.py --compile \
 
 The `--typst` argument also accepts a normal Typst executable. Omit `--compile`
 to prepare source only. The default destination is
-`/Volumes/SSD/Developer/Codex/tmp/leftblank-sicp`; `--output` must also resolve onto the
-mounted SSD. The verified book, PDF, diagrams and original editable Texinfo source are also
-committed under `Examples/Books/SICP`; generation uses the SSD working directory
+`.tools/tmp/leftblank-sicp` in the checkout. The verified book, PDF, diagrams and original editable Texinfo source are also
+committed under `Examples/Books/SICP`; generation uses that working directory
 so it does not overwrite the checked-in example automatically.
 
 - `book/main.typ`: one complete, editable Typst manuscript.

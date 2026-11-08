@@ -2,7 +2,7 @@
 """Download a real multi-MB book and prepare a reproducible highlighted fixture.
 
 Run after sourcing scripts/environment.sh. The source and generated document
-are regenerated on the SSD; reviewed copies live in Examples/Books. Prose is preserved, Typst punctuation escaped, chapter labels
+are regenerated under the checkout's .tools/tmp; reviewed copies live in Examples/Books. Prose is preserved, Typst punctuation escaped, chapter labels
 become headings, and small benchmark code/math blocks are distributed across it.
 """
 import hashlib
@@ -12,12 +12,9 @@ from pathlib import Path
 import re
 import urllib.request
 
-ssd = Path("/Volumes/SSD")
-if not ssd.is_mount():
-    raise SystemExit("The development SSD is not mounted.")
+if "TMPDIR" not in os.environ:
+    raise SystemExit("Source scripts/environment.sh first; it sets TMPDIR for fixtures.")
 temporary = Path(os.environ["TMPDIR"]).resolve(strict=True)
-if not temporary.is_relative_to(ssd.resolve()):
-    raise SystemExit("Source scripts/environment.sh first; fixtures must stay on the SSD.")
 root = temporary / "leftblank-large-document"
 root.mkdir(parents=True, exist_ok=True)
 url = "https://www.gutenberg.org/ebooks/2600.txt.utf-8"

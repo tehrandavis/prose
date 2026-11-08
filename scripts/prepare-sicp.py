@@ -2,7 +2,7 @@
 """Prepare a pinned, attributed SICP book as a real-world Typst editor fixture.
 
 Requires Python 3, Pandoc 3.11+ and (with --compile) Typst. Never executes the
-book's Scheme examples or downloaded build scripts. All downloads stay on SSD.
+book's Scheme examples or downloaded build scripts. All downloads stay under the checkout's .tools/tmp.
 """
 
 import argparse
@@ -23,8 +23,7 @@ import zipfile
 COMMIT = "bda03f79d6e2e8899ac2b5ca6a3732210e290a79"
 ARCHIVE_URL = f"https://codeload.github.com/sarabander/sicp/zip/{COMMIT}"
 ARCHIVE_SHA256 = "0cf3220c848fa74b90e3235ef352694df772839f96f459e5fbe8eb6dc78417a9"
-SSD = Path("/Volumes/SSD")
-DEFAULT_OUTPUT = SSD / "Developer/Codex/tmp/leftblank-sicp"
+DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / ".tools/tmp/leftblank-sicp"
 EXPECTED_COUNTS = {"code_blocks": 1122, "scheme_blocks": 1098, "math_expressions": 1356, "source_figures": 84, "footnotes": 339, "headings": 282}
 PRELUDE = r'''// SICP, second edition: a reading and editor-performance fixture.
 // Abelson and Sussman with Julie Sussman. HTML/figures by Andres Raba and
@@ -246,8 +245,6 @@ def main():
     parser.add_argument("--compile", action="store_true", help="Also compile book/main.pdf with Typst")
     parser.add_argument("--typst", default=shutil.which("typst"), help="Typst executable (for --compile)")
     args = parser.parse_args()
-    if not SSD.is_mount() or SSD.resolve() not in args.output.resolve().parents:
-        parser.error("Fixture output must be on the mounted /Volumes/SSD volume")
     if not shutil.which("pandoc"):
         parser.error("Pandoc is required; install it before preparing this fixture")
     if args.compile and not args.typst:

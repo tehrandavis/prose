@@ -35,7 +35,7 @@ def main():
     artifacts.mkdir(parents=True, exist_ok=True)
     hurl = args.hurl.resolve(strict=True) if args.hurl else None
     contract = Path(__file__).resolve().parent.parent / 'Tests/MCP/authoring-guides.hurl'
-    # Require an explicitly configured temporary directory (SSD locally).
+    # Require an explicitly configured temporary directory (.tools/tmp locally).
     temp_root = Path(os.environ['TMPDIR']).resolve(strict=True)
     hidden = resources.with_name(resources.name + '.smoke-' + uuid.uuid4().hex)
     with tempfile.TemporaryDirectory(prefix='leftblank-launch-', dir=temp_root) as temporary:

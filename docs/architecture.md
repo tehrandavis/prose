@@ -118,7 +118,7 @@ Functional tests use production windows, text views, workspace, WebKit and Tinym
 
 Coverage merges test-bundle profiles and deduplicates LCOV file/line records. All first-party production Swift must be accounted for; missing files fail the report, and overall coverage must reach 80%. Raw LLVM JSON, LCOV, file summaries and HTML remain available. Coverage does not replace behavioral assertions or real visual checks.
 
-Local scripts keep downloads, build outputs and test data on the SSD checkout. `build/LeftBlank.app` has a development signature. Release scripts import a Developer ID identity into a temporary keychain, sign helpers and the app, notarize, staple and validate with Gatekeeper. Release commits must already belong to main, and version tags must match `Info.plist`. Missing credentials or failed validation stop publication. See [signing](signing.md).
+Local scripts keep downloads, build outputs and test data inside the checkout. `build/LeftBlank.app` has a development signature. Release scripts import a Developer ID identity into a temporary keychain, sign helpers and the app, notarize, staple and validate with Gatekeeper. Release commits must already belong to main, and version tags must match `Info.plist`. Missing credentials or failed validation stop publication. See [signing](signing.md).
 
 GitHub Actions uses macOS 15 arm64 runners, pinned action commits and pinned dependency checksums. PR/main jobs run functional tests, coverage and release builds. Version tags rerun verification, produce an arm64 ZIP plus SHA-256, and publish a GitHub Release. Permissions are limited to each job's needs.
 

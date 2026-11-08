@@ -103,7 +103,7 @@ undo/redo and compilation on both supported simulator sizes in main CI.
 
 ## Build and validation
 
-Run from an SSD-backed worktree under `/Volumes/SSD/Developer`:
+Run from the repository root:
 
 ```sh
 scripts/test-ipad-engine.sh

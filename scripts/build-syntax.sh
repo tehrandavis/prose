@@ -6,12 +6,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/environment.sh
+export CARGO_HOME="$PWD/.tools/cargo-syntax"
 if [ "${GITHUB_ACTIONS:-}" = true ]; then
-  export CARGO_HOME="$PWD/.tools/cargo-syntax"
   rustup toolchain install 1.92.0 --profile minimal --component rustfmt --component clippy
-else
-  # Shared with the iPad engine, which already caches the same Typst git source.
-  export CARGO_HOME=/Volumes/SSD/Developer/Codex/cargo-ipad
 fi
 export MACOSX_DEPLOYMENT_TARGET=14.0
 target=aarch64-apple-darwin

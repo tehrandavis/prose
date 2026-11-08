@@ -18,7 +18,7 @@ SwiftUI, AppKit/NSTextView, LeftBlankCore and pinned Tinymist remain the foundat
 
 The coverage target is at least 80% of all first-party core and app Swift lines, reported per file. UI files are not excluded to inflate results. Functional integration takes priority: discovery → parameters → insertion → placeholders → undo; file conflicts and recovery; real compilation, export and multiple files; preview failure and recovery. Small parsing and boundary tests complement these flows. Real app checks cover visuals and interaction.
 
-GitHub Actions builds on macOS arm64, runs functional tests and coverage, and uploads reports and app artifacts. Matching version tags trigger Developer ID signing, Apple notarization and stapling before publishing a ZIP and checksum. Missing credentials or failed checks stop publication. Ordinary CI builds remain development-signed. Local temporary files stay on the SSD; CI uses runner storage.
+GitHub Actions builds on macOS arm64, runs functional tests and coverage, and uploads reports and app artifacts. Matching version tags trigger Developer ID signing, Apple notarization and stapling before publishing a ZIP and checksum. Missing credentials or failed checks stop publication. Ordinary CI builds remain development-signed. Local temporary files stay in the checkout's `.tools/tmp`; CI uses runner storage.
 
 ## Scope
 

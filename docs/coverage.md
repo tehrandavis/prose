@@ -14,7 +14,7 @@ executable line once, and enforces the same 80% floor. All `iPad/Sources` UI cod
 and the iOS implementation of `Sources/LeftBlankCore` count. Missing source records
 fail the gate. LLVM also measures the shared package when a version of Xcode emits
 an empty xccov package target; raw xccov reports remain available for diagnosis.
-Profiles stay beside the SSD-backed build products.
+Profiles stay beside the build products.
 `TinymistTransport.swift` contains only a protocol on iOS, so its absent
 executable records are valid; executable code added there will count.
 
