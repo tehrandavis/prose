@@ -61,7 +61,7 @@ Functional tests assert identical manuscript frames/insets with the outline expa
 
 ## Identity
 
-The approved monochrome Sigma uses an ivory continuous stroke on charcoal, suggesting separate thoughts coming together into writing. A golden-ratio skeleton and sine pressure envelope generate ICNS, SVG, social previews and favicons from one source. ICNS includes 16–1024 pixel representations, with optical correction at small sizes. See [construction](../design/sigma/README.md) and [brand assets](../Brand/README.md).
+The app icon is the Prose P with a text caret on a white tile. `scripts/make-app-icon.py` builds the ICNS files, with 16 to 1024 pixel representations, from one source image. See [brand assets](../Brand/README.md).
 
 ## Context and document checks
 

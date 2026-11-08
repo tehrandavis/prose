@@ -499,7 +499,7 @@ final class WritingTests: XCTestCase {
     func testWelcomePreviewAndPDFExport() {
         let app = startWriting(template: "welcome")
         capture("English writing")
-        expect((app.textViews["manuscript"].firstMatch.value as? String)?.contains("prose-mark.svg")) == true
+        expect((app.textViews["manuscript"].firstMatch.value as? String)?.contains("prose-mark.png")) == true
         app.buttons["layout-preview"].firstMatch.tap()
         waitForState(
             NSPredicate(format: "value == %@", "Preview Updated"),
@@ -743,7 +743,7 @@ final class WritingTests: XCTestCase {
         let resources = app.buttons["resource-existing"].firstMatch
         expect(appears(resources, timeout: 30)) == true
         resources.tap()
-        tapSettled(app.buttons["prose-mark.svg"].firstMatch, in: app, name: "Project image")
+        tapSettled(app.buttons["prose-mark.png"].firstMatch, in: app, name: "Project image")
         // Selecting the image enables Insert in a later SwiftUI update.
         let insert = app.buttons["Insert"].firstMatch
         waitForState(NSPredicate { _, _ in
@@ -753,7 +753,7 @@ final class WritingTests: XCTestCase {
         waitForState(NSPredicate { _, _ in
             editor.exists && editor.value as? String != original
         }, in: app, name: "Project image inserted")
-        expect((editor.value as? String)?.components(separatedBy: "prose-mark.svg").count) == 3
+        expect((editor.value as? String)?.components(separatedBy: "prose-mark.png").count) == 3
         capture("Reused project image")
         tapSettled(app.buttons["commands"].firstMatch, in: app, name: "Commands button")
         tapSettled(app.buttons["Undo"].firstMatch, in: app, name: "Undo command")

@@ -15,7 +15,6 @@ included:
   - Tests
   - Benchmarks
   - scripts
-  - design
 only_rules:
   - custom_rules
   - accessibility_label_for_image

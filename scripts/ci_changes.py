@@ -33,12 +33,12 @@ MAC = (
     'Tests/ProseAppTests/', 'Tests/MCP/',
     'Tools/MCPServer/',
     # Only scripts/lint.sh reads these; Mac regression runs it.
-    'Benchmarks/', 'design/', '.swiftlint.yml', '.swiftformat',
+    'Benchmarks/', '.swiftlint.yml', '.swiftformat',
     # Mac bundle metadata and icons. The iPad project references only
     # Resources/Icons, Licenses, Packages and the license texts.
     'Resources/Info.plist', 'Resources/Preview-Info.plist', 'Resources/Prose.AppStore.entitlements',
     'Resources/Prose.Helper.entitlements', 'Resources/Prose.iCloud.entitlements.example',
-    'Resources/AppIcon.icns', 'Resources/AppIcon.svg', 'Resources/AppIconLight.icns', 'Resources/AppIconLight.svg',
+    'Resources/AppIcon.icns', 'Resources/AppIconLight.icns',
     'Resources/en.lproj/', 'Resources/zh-Hans.lproj/',
     'scripts/benchmark-books.sh', 'scripts/bootstrap.sh', 'scripts/build.sh', 'scripts/build-mcp.sh',
     'scripts/build-syntax.sh', 'scripts/build-tinymist.sh', 'scripts/check-memory.sh', 'scripts/export-appstore.py', 'scripts/package-app.py',

@@ -22,10 +22,10 @@ public enum WelcomeDocument {
         return CoreResources.bundle.url(forResource: "welcome-cover" + suffix, withExtension: "png")
     }
 
-    public static let markFilename = "prose-mark.svg"
+    public static let markFilename = "prose-mark.png"
 
     public static func assets() throws -> [String: Data] {
-        guard let url = CoreResources.bundle.url(forResource: "prose-mark", withExtension: "svg") else {
+        guard let url = CoreResources.bundle.url(forResource: "prose-mark", withExtension: "png") else {
             throw CocoaError(.fileNoSuchFile)
         }
         return try [markFilename: Data(contentsOf: url)]

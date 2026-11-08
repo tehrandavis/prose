@@ -20,7 +20,7 @@ func bundledWelcomeCompilesWithRepairedPackagesAndBlockedRegistry() throws {
     try BundledPackages.prepare(in: cache, resources: repo.appendingPathComponent("Resources/Packages"))
     try WelcomeDocument.prepareAssets(in: root)
     #expect(try Data(contentsOf: root.appendingPathComponent(WelcomeDocument.markFilename)) ==
-        Data(contentsOf: repo.appendingPathComponent("Brand/mark-dark.svg")))
+        Data(contentsOf: repo.appendingPathComponent("Sources/ProseCore/Resources/Templates/prose-mark.png")))
     for language in [AppLanguage.english, .simplifiedChinese] {
         let input = root.appendingPathComponent("welcome-\(language.rawValue).typ")
         let output = input.deletingPathExtension().appendingPathExtension("pdf")

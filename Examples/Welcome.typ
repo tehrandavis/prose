@@ -17,7 +17,7 @@
 #codly(display-name: false, display-icon: false, zebra-fill: none)
 
 #grid(columns: (10mm, 1fr), align: (left, horizon),
-  image("prose-mark.svg", width: 9mm),
+  image("prose-mark.png", width: 9mm),
   text(size: 9pt, tracking: 3pt, fill: muted)[P R O S E   /   A FIELD GUIDE],
 )
 #v(9mm)

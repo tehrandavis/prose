@@ -110,7 +110,7 @@ class PathClassificationTests(unittest.TestCase):
         'Resources/Packages/preview/cetz/0.5.2/src/lib.typ': {'mac', 'ipad'},
         'Resources/ThirdParty.txt': {'mac', 'ipad'},
         'Examples/Welcome.typ': {'mac', 'ipad'},
-        'Brand/mark-dark.svg': {'mac', 'ipad'},
+        'Brand/Prose/icon-1024.png': {'mac', 'ipad'},
         'scripts/environment.sh': {'mac', 'ipad'},
         'scripts/lint.sh': {'mac', 'ipad'},
         'scripts/tinymist-vfs.patch': {'mac', 'ipad'},
