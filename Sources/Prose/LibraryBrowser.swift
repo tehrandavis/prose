@@ -3,7 +3,6 @@ import SwiftUI
 
 struct LibraryBrowser: View {
     @ObservedObject var workspace: Workspace
-    @ObservedObject private var localization = AppLocalization.shared
     @ObservedObject var library: LibraryController
     @State private var query = ""
     @State private var showingTrash = false

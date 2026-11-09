@@ -15,7 +15,7 @@ private func sampleArchive() throws -> Data {
     let archive = try sampleArchive()
     let book = SampleBook.sicp
     #expect(book.matches("sicp"))
-    #expect(book.matches("计算机 书籍"))
+    #expect(book.matches("computer book"))
     #expect(!book.matches("resume"))
     let cache = root.appendingPathComponent("Cache"), staging = root.appendingPathComponent("Staging")
     let store = SampleBookStore(cacheURL: cache, transport: { request in

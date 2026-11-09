@@ -344,18 +344,18 @@ final class MCPConnection: ObservableObject {
             throw AgentToolError("unavailable", "Enable the coding agent connection first.")
         }
         return """
-        请把这台 Mac 上的 Prose MCP 服务配置到你当前使用的 coding agent 客户端。
-        应用已自带服务，无需下载 server 或安装 Rust/Cargo/Node/Python，应用需保持运行。
-        连接信息文件：\(descriptorURL.path)
-        预期应用标识：\(AppDistribution.current.bundleIdentifier)
-        预期服务名称：\(serverName)
-        1. 确认在同一台 Mac 执行，识别当前客户端的实际配置位置。
-        2. 用本地程序读取 JSON，校验 format_version=1、应用标识、名称和 URL 主机 127.0.0.1。文件含凭证，不要打印全文、token 或带凭证的命令，不写入仓库或聊天。
-        3. 按已安装客户端官方文档配置用户私有范围的 Streamable HTTP 服务，凭证通过 Authorization Bearer 使用。保留其他配置；同名不同应用的连接报告冲突。不要修改全局审批或信任设置。确保客户端重启后仍能取得凭证。
-        4. 重载服务，列出工具并只读调用 get_app_state，验证应用和 instance_id。不要读取正文或修改文档来测试安装。无法在当前会话重载时，报告配置已写入、尚未验证，并给出重连步骤。
-        5. 简要报告配置位置、服务名称和验证结果，不显示凭证。遇到文件缺失、身份不符、认证失败或重定向时停止，让我回到应用重新启用连接。不要扫描凭证或绕开 MCP 访问文档库。
-        连接后的创作请遵循 server instructions：单文件使用 create_document，多文件和资源使用 import_project 完整清单导入；持续修改使用 str_replace 或批量 apply_patch。路径使用 get_document.entry 和 list_files 的原值；报错时按 error.recovery 的指引读取状态并修复，避免盲目重放写请求。
-        官方参考：https://developers.openai.com/codex/mcp 和 https://code.claude.com/docs/en/mcp
+        Set up the Prose MCP service on this Mac in the coding agent client you are using now.
+        The app ships the service, so do not download a server or install Rust, Cargo, Node or Python. Keep the app running.
+        Connection file: \(descriptorURL.path)
+        Expected app identifier: \(AppDistribution.current.bundleIdentifier)
+        Expected service name: \(serverName)
+        1. Make sure you run on the same Mac, and find where the current client keeps its configuration.
+        2. Read the JSON with a local program. Check format_version=1, the app identifier, the name, and that the URL host is 127.0.0.1. The file holds a credential: do not print the whole file, the token or a command that contains the credential, and do not write it to a repository or the chat.
+        3. Follow the installed client's official documentation to add a Streamable HTTP service in the user's private scope, with the credential sent as Authorization Bearer. Keep other configuration. Report a conflict if a connection with the same name belongs to a different app. Do not change global approval or trust settings. Make sure the client can still get the credential after it restarts.
+        4. Reload the service, list its tools, and call get_app_state read-only to check the app and instance_id. Do not read document text or change a document to test the setup. If you cannot reload in this session, report that the configuration is written but not verified, and give the steps to reconnect.
+        5. Report the configuration location, the service name and the result in a few lines, without the credential. Stop if the file is missing, the identity does not match, authentication fails or you are redirected, and ask me to enable the connection again in the app. Do not search for credentials or reach the library other than through MCP.
+        When connected, follow the server instructions for writing: use create_document for a single file and import_project with a full manifest for several files and resources; for continued edits use str_replace or a batched apply_patch. Use paths exactly as get_document.entry and list_files return them. On an error, follow error.recovery to read the state and repair it; do not replay write requests blindly.
+        Official references: https://developers.openai.com/codex/mcp and https://code.claude.com/docs/en/mcp
         """
     }
 

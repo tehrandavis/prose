@@ -61,9 +61,8 @@ def package(binary_dir, distribution):
             raise RuntimeError('Expected one resolved Sparkle framework')
         (contents / 'Frameworks').mkdir()
         shutil.copytree(frameworks[0], contents / 'Frameworks/Sparkle.framework', symlinks=True)
-        for language, title in [('en', 'Prose Preview'), ('zh-Hans', 'Prose 预览版')]:
-            (resources / (language + '.lproj') / 'InfoPlist.strings').write_text(
-                f'"CFBundleName" = "{title}";\n"CFBundleDisplayName" = "{title}";\n')
+        (resources / 'en.lproj/InfoPlist.strings').write_text(
+            '"CFBundleName" = "Prose Preview";\n"CFBundleDisplayName" = "Prose Preview";\n')
     (contents / 'Info.plist').write_bytes(plistlib.dumps(info))
     print(app)
 

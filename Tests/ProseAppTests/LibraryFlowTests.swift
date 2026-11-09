@@ -329,10 +329,7 @@ extension WritingFlowTests {
         defer { app.close() }
         let suite = "Prose.tests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
-        let oldLanguage = L10n.language
-        defer { defaults.removePersistentDomain(forName: suite)
-            L10n.setLanguage(oldLanguage)
-        }
+        defer { defaults.removePersistentDomain(forName: suite) }
         let settings = WorkspaceSettings(workspace: app.workspace, defaults: defaults)
         defer { settings.stop() }
         let editor = try #require(app.workspace.editor)

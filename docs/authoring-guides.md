@@ -12,7 +12,7 @@ Guides use the standard [MCP Resources](https://modelcontextprotocol.io/specific
 and [Prompts](https://modelcontextprotocol.io/specification/2025-11-25/server/prompts)
 interfaces. Document operations remain Tools; there are no guide-reading tools.
 
-- `prompts/list` lists a prompt per guide, including a description, bilingual
+- `prompts/list` lists a prompt per guide, including a description, English
   keywords, and the required string argument `request`.
 - `prompts/get(name, arguments: {request})` returns messages containing the
   workflow as an embedded resource, supporting resource URIs, and the supplied
@@ -38,7 +38,7 @@ Example protocol sequence (JSON-RPC envelopes and transport metadata omitted):
 
 ```text
 prompts/list
-prompts/get {"name":"dimensional-drawing","arguments":{"request":"画一张设备外壳尺寸图，尺寸暂未提供"}}
+prompts/get {"name":"dimensional-drawing","arguments":{"request":"Draw a dimensioned sheet of a device enclosure; no measurements yet"}}
 resources/read {"uri":"prose://guides/dimensional-drawing/drawing-kit.typ"}
 resources/read {"uri":"prose://guides/dimensional-drawing/product.typ"}
 resources/read {"uri":"prose://guides/dimensional-drawing/license.txt"}
@@ -128,7 +128,7 @@ To add a capability such as mathematical presentations or arXiv paper authoring:
 3. Add attribution and applicable license information. Check the availability of
    fonts, packages, export formats, and external capabilities the workflow needs.
 4. Append an entry to `catalog.json` with a stable unique `id`, `title`,
-   `summary`, `version`, bilingual `keywords`, and `files`. Each file descriptor
+   `summary`, `version`, English `keywords`, and `files`. Each file descriptor
    contains `path`, `description`, and optional `entrypoint`. Mark a general
    fallback guide with `fallback: true`; specialized guides default to false.
 5. Verify all resource references, compile each entry example using its logical
@@ -144,7 +144,7 @@ tool, or transport change is needed. A catalog descriptor looks like:
   "title": "A descriptive workflow title",
   "summary": "When an agent should choose this workflow.",
   "version": "1.0.0",
-  "keywords": ["short discovery terms", "中文关键词"],
+  "keywords": ["short", "discovery", "terms"],
   "files": [
     {"path": "guide.md", "description": "Workflow."},
     {"path": "main.typ", "description": "Complete example.", "entrypoint": true},
@@ -189,7 +189,7 @@ checks. Run Hurl MCP contract scenarios in GitHub CI under the repository's
 existing test policy. Do not test against private user documents.
 
 For behavior acceptance, connect a client with no separately installed authoring
-skill and use a vague request such as "画一张工业尺寸图" or "给这一页做张小黑配图".
+skill and use a vague request such as "draw an industrial dimension sheet" or "make a Xiaohei illustration for this page".
 Check that it discovers a suitable guide, identifies the takeaway and unknowns,
 adapts a source example, and inspects the rendered result. These prompts test the
 complete agent experience; schema and compilation tests alone cannot establish

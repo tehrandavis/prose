@@ -18,8 +18,8 @@ public enum BuiltInTemplate: String, CaseIterable, Identifiable, Sendable {
 
     public func matches(_ query: String) -> Bool {
         let terms = self == .welcome
-            ? "prose write typst 用 Typst 写作 welcome start guide tutorial writing math diagram code 欢迎 入门 教程 写作 公式 图解 代码"
-            : "blank empty page plain new 空白 页面 新建"
+            ? "prose write typst welcome start guide tutorial writing math diagram code"
+            : "blank empty page plain new"
         return query.lowercased().split(whereSeparator: { $0.isWhitespace }).allSatisfy {
             (terms + " " + title.lowercased()).contains($0)
         }

@@ -51,6 +51,8 @@ Remove `Sources/ProseCore/Resources/zh-Hans.lproj`, `Resources/zh-Hans.lproj`, t
 
 Spell check and command search then work in English only. The spell checker's language follows the system's spelling setting, as in other Mac apps.
 
+**Step A outcome (2026-11-09): the font went.** Both engines search the system fonts: the block engine scans them (`fonts::system()` in `Engine/RenderBridge/src/engine.rs`), and Tinymist keeps its default `systemFonts: true`, because Prose sets neither `systemFonts` nor `--ignore-system-fonts`. macOS ships Simplified Chinese faces in the base system (`Songti.ttc` in `/System/Library/Fonts/Supplemental`, plus `Hiragino Sans GB.ttc` and `STHeiti` in `/System/Library/Fonts`). A Tinymist 0.15.8 export of `= 中文标题` and a Chinese paragraph, with no font path, embeds `STSong` and extracts the text intact. The same export with the Noto path added also picks `STSong`, so the bundled font was not even used when the system fonts were on. Only with `--ignore-system-fonts` does the CJK text fall back to Libertinus (missing glyphs), and Noto then appears as `NotoSansSC-Thin`, the variable font's default instance. Two tests now guard this: `blockRendererDrawsCJKTextWithSystemFontsAlone` (the block engine, no font directories: `中文` and `中中` draw different shapes, while with `fallback: false` they draw identical missing-glyph boxes) and `realTinymistRoundTrip` (the exported PDF embeds a non-Latin font). `PingFang SC` and `Noto Sans SC` left the welcome guide's and blank template's font lists. Typst's font search never found PingFang (it already warned "unknown font family: pingfang sc"), and Noto is no longer bundled; each family it cannot find adds that warning. `WelcomeTemplateTests` now fails on any such warning.
+
 ### 2. Focus is Writing mode plus view state
 
 - `EditorMode.focus` becomes available. Entering Focus from Code enters Writing first, then applies the Focus state. The layout model, the engine and the fragments are the same objects.
@@ -194,3 +196,13 @@ UI tests are `extension WritingFlowTests`, on the real window, editor and engine
 - **`Esc` ownership.** Several parts of the app use `Esc`. Test 5 covers each owner.
 - **Spell check on books.** `NSSpellChecker` on a 3 MB file is slow if run at once. Decision 8 checks the viewport and edits only.
 - **Removing the font.** If CJK text in documents depends on `NotoSansSC.ttf`, removing it would break documents, not only the interface. Step A checks before it deletes.
+
+## Step A outcome (2026-11-09)
+
+- The Simplified Chinese interface is gone: both `zh-Hans.lproj` folders, the Chinese welcome template, cover and example, `AppLocalization.swift`, the language picker in Settings (the General tab now starts with Appearance), `AppLanguage` and its notification, the `language` field of synced preferences (old saved preferences that still carry it load without error), and every Chinese keyword in the command registry, Universe discovery, template and sample-book search, and the authoring guide catalog. `L10n.text` and `L10n.format` stay as an English lookup in `en.lproj`, so no call site changed.
+- Two Chinese strings outside the interface files were translated: the MCP setup prompt (`MCPConnection.swift`) and one edit-range error (`TextEditing.swift`).
+- `NotoSansSC.ttf` and its licence are removed, with the evidence in decision 1. `PingFang SC` and `Noto Sans SC` left the welcome guide's and blank template's font lists; `WelcomeTemplateTests` now fails on any "unknown font family" warning.
+- Packaging and release scripts expect English only (`CFBundleLocalizations` is `en`; release notes have one `## en-US` section).
+- Kept on purpose: the xiaohei authoring guide's Chinese example scenes (a guide for outside agents, not the interface), `docs/mcp-design.md` (a design record written in Chinese), CJK text in editor tests and in the War and Peace fixture.
+- An incremental build kept a stale `zh-Hans.lproj` inside `.build/out/Products/*/Prose_ProseCore.bundle`. On another checkout, delete that bundle folder before building.
+- Results (main-session rerun): 243 core and 173 app tests pass, coverage 88.59 percent; lint (0 violations) and the release build pass.

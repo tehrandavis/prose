@@ -66,7 +66,7 @@ extension WritingFlowTests {
         let model = UniverseBrowserModel(store: store, mode: .templates)
         await model.load()
         #expect(model.selected == nil, "Opening the gallery must not select an unseen community template")
-        model.query = "简历"
+        model.query = "cv"
         #expect(model.results.first?.name == "basic-resume")
         #expect(model.selected == nil)
         model.selectedID = "basic-resume"
@@ -383,11 +383,11 @@ extension WritingFlowTests {
         }
         #expect(model.isLoading)
         #expect(model.snapshot?.source == .bundled)
-        model.query = "简历"
+        model.query = "cv"
         #expect(model.results.contains { $0.name == "basic-resume" })
         #expect(model.selected == nil)
         model.changeMode(.packages)
-        model.query = "代码"
+        model.query = "code"
         #expect(model.results.contains { $0.name == "codly" })
         await network.complete(UniverseHTTPResponse(data: Self.index, statusCode: 200))
         await refresh.value

@@ -1,4 +1,4 @@
-"""One version and one bilingual release message for both release channels."""
+"""One version and one English release message for both release channels."""
 import argparse
 import json
 from pathlib import Path
@@ -8,13 +8,13 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parent.parent
 VERSION = r'(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)'
-LOCALES = ('en-US', 'zh-Hans')
+LOCALES = ('en-US',)
 
 
 def parse_notes(text):
-    sections = re.split(r'^## (en-US|zh-Hans)\s*$', text, flags=re.MULTILINE)
-    if sections[0].strip() or len(sections) != 5 or tuple(sections[1::2]) != LOCALES:
-        raise ValueError('Release notes need exactly ## en-US and ## zh-Hans, in that order')
+    sections = re.split(r'^## (\S+)\s*$', text, flags=re.MULTILINE)
+    if sections[0].strip() or len(sections) != 3 or tuple(sections[1::2]) != LOCALES:
+        raise ValueError('Release notes need exactly one ## en-US section')
     notes = dict(zip(sections[1::2], (body.strip() for body in sections[2::2])))
     for locale, body in notes.items():
         if not body or len(body) > 4000 or re.search(r'\bTODO\b', body, flags=re.IGNORECASE):
@@ -60,7 +60,7 @@ def main():
         notes.parent.mkdir(exist_ok=True)
         # Exclusive creation avoids overwriting an existing release message.
         with notes.open('x') as file:
-            file.write('## en-US\n\nTODO: describe the changes for users.\n\n## zh-Hans\n\nTODO: 用中文介绍本次更新。\n')
+            file.write('## en-US\n\nTODO: describe the changes for users.\n')
         text = path.read_text().replace('<string>' + info['CFBundleShortVersionString'] + '</string>',
                                         '<string>' + args.version + '</string>', 1)
         text = re.sub(r'(<key>CFBundleVersion</key>\s*<string>)[^<]+', r'\g<1>' + str(build), text)

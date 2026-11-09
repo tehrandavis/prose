@@ -4,7 +4,7 @@ This iteration completed command discovery, feedback and recovery while establis
 
 ## Product behavior
 
-- `⌘J` remains the discovery entry point. Categories follow writing intent, with nested groups for mathematics. English and Chinese search show paths, purpose, examples and official references while retaining familiar direct shortcuts.
+- `⌘J` remains the discovery entry point. Categories follow writing intent, with nested groups for mathematics. English search shows paths, purpose, examples and official references while retaining familiar direct shortcuts.
 - Insertion uses structured parameters and Tab placeholders as one undoable edit. Markup, math and preamble placement follow context. A document or caret change during an asynchronous query cancels the insertion.
 - Universe reads the official package index, searches names, purpose and categories, and shows versions and documentation. Imports pin versions. The index supports offline browsing; Tinymist obtains package code when compilation needs it.
 - Preview supports original page colors and dark reading. Dark reading changes only the screen, not source or PDF output; images retain their colors.

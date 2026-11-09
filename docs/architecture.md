@@ -96,7 +96,7 @@ flowchart LR
 
 ## Command discovery
 
-One registry holds stable IDs, English source labels, translated labels, bilingual keywords, groups, group keys, help, parameters, direct shortcuts and actions. Browsing and search share this registry. Labels resolve dynamically; the normalized search index includes both languages and stays valid through interface-language changes.
+One registry holds stable IDs, English labels, English keywords, groups, group keys, help, parameters, direct shortcuts and actions. Browsing and search share this registry. Labels resolve through `L10n` (English only); the normalized search index covers titles, keywords, descriptions and shortcuts.
 
 The panel has closed, category, search and parameter-entry states. `⌘J` toggles it, letters enter categories, `/` begins search and `Esc` returns through levels. Ordinary spaces and input-method candidate keys are not intercepted during editing.
 

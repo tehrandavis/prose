@@ -1,6 +1,6 @@
 # Preview updates
 
-Prose Preview (Prose 预览版) is the main-branch testing channel. It can coexist with
+Prose Preview is the main-branch testing channel. It can coexist with
 Prose, including the future App Store edition. The marketing version changes with
 releases; the build number identifies each CI build. About Prose Preview also
 shows the source commit.

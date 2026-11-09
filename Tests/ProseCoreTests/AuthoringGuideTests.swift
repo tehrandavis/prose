@@ -11,7 +11,7 @@ struct AuthoringGuideTests {
         let names = prompts.compactMap { $0["name"].string }
         #expect(names.contains("dimensional-drawing") && names.contains("xiaohei-illustrations"))
         #expect(Set(names).count == prompts.count)
-        #expect(prompts.contains { $0["description"].string?.contains("小黑") == true })
+        #expect(prompts.contains { $0["description"].string?.contains("xiaohei") == true })
         let resources = try AuthoringGuides.resources()
         #expect(!resources.isEmpty)
         for prompt in prompts {

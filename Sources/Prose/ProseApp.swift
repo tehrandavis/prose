@@ -21,7 +21,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var windowToolbar: WindowToolbar?
     private var settingsWindow: NSWindow?
     private var settingsController: WorkspaceSettings?
-    private var languageObserver: AnyCancellable?
     private var dockIcon: DockIconController?
     #if PROSE_PREVIEW
         private let previewUpdater = PreviewUpdater()
@@ -67,15 +66,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 self?.window?.title = title + " — " + AppDistribution.current.applicationName
             }
         workspace.onShortcutChange = { [weak self] in self?.installMenu() }
-        languageObserver = NotificationCenter.default.publisher(for: .proseLanguageChanged).sink { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.installMenu()
-                self?.settingsWindow?.title = L10n.text("Settings")
-                if let self {
-                    self.window?.title = workspace.title + " — " + AppDistribution.current.applicationName
-                }
-            }
-        }
         workspace.startService()
         Task {
             await workspace.library.start()

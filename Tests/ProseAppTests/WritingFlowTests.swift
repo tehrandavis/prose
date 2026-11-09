@@ -45,7 +45,7 @@ struct WritingFlowTests {
         #expect(editor.string.hasPrefix("// = Shortcuts"))
         app.workspace.togglePalette()
         app.workspace.searchMode = true
-        app.workspace.query = "撤销"
+        app.workspace.query = "undo"
         try app.workspace.selectCommand(#require(app.workspace.filteredCommands.first))
         #expect(editor.string.hasPrefix("= Shortcuts"))
         try app.workspace.execute(#require(WritingCommand.all.first { $0.id == "redo" }))
@@ -68,7 +68,7 @@ struct WritingFlowTests {
         #expect(!editor.isEditable)
         app.window.sendEvent(app.key("/", code: 44))
         #expect(app.workspace.searchMode)
-        app.workspace.query = "表格"
+        app.workspace.query = "table"
         #expect(app.workspace.filteredCommands.contains { $0.id == "table" })
         let table = try #require(app.workspace.filteredCommands.first { $0.id == "table" })
         app.workspace.selectCommand(table)

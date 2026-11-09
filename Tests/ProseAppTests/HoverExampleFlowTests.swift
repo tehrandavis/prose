@@ -14,9 +14,6 @@ extension WritingFlowTests {
         let editor = try #require(app.workspace.editor)
         let selection = editor.selectedRange()
         let previewURL = app.workspace.previewURL
-        let language = L10n.language
-        defer { L10n.setLanguage(language) }
-        L10n.setLanguage(.simplifiedChinese)
         for appearance in [NSAppearance.Name.aqua, .darkAqua] {
             app.window.appearance = NSAppearance(named: appearance)
             await app.layout()
@@ -223,9 +220,8 @@ private func compiledPage(_ example: HoverExample, packageCache: URL) async thro
         return nil
     }
     process.executableURL = binary
-    process.arguments = ["compile", "--root", root.path, "--package-cache-path", packageCache.path]
-        + (TinymistClient.bundledFontURL.map { ["--font-path", $0.deletingLastPathComponent().path] } ?? [])
-        + [input.path, output.path]
+    process.arguments = ["compile", "--root", root.path, "--package-cache-path", packageCache.path,
+                         input.path, output.path]
     process.standardOutput = FileHandle.nullDevice
     process.standardError = FileHandle.nullDevice
     try process.run()

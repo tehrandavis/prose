@@ -8,9 +8,9 @@ Prose treats a template as a starting document and a package as a tool for the c
 
 The gallery begins without a selected community item or a detail pane. **Write in Typst** and SICP share a compact opening row when space allows, with **Blank page** beside the section title. These three starters appear only in All templates. Narrow windows stack these starting points. The community grid follows under its own heading. Selecting a community card opens its details and keeps that card visible as the grid changes width. Back to results closes the details while preserving the browsing position; changing the query, collection or intent clears the selection. An unseen first result is never selected automatically.
 
-Two built-in choices lead the gallery: **Write in Typst**, Prose's original editable guide, and **Blank page**. A first launch starts with the guide in the selected app language and a side-by-side preview. Choosing the guide again also opens its preview. Switching languages never replaces existing writing, and recovery always wins over new welcome content. The guide combines prose, headings, inline and display equations, a table, a CeTZ diagram and a Codly code block. It introduces the outline, command discovery, preview, library and export with ordinary writing examples. Both English and Simplified Chinese versions have centered page numbers and the approved Prose sigma mark in the opening header. The cover follows the app language. The source is a normal Typst document with explicit pinned imports and a relative `prose-mark.svg` asset. The mark is copied into the document project, retained by source-project export, and generated from the same geometry as the app icon. Existing manuscripts and their assets are never replaced by a language or app update. CeTZ 0.5.2, its oxifmt 1.0.0 dependency and Codly 1.3.0 ship as source with their licenses, so both built-in choices compile without a network request. Other Universe templates may download package code on first creation. Built-in choices remain visible when the catalog cannot be reached.
+Two built-in choices lead the gallery: **Write in Typst**, Prose's original editable guide, and **Blank page**. A first launch starts with the guide and a side-by-side preview. Choosing the guide again also opens its preview. Recovery always wins over new welcome content. The guide combines prose, headings, inline and display equations, a table, a CeTZ diagram and a Codly code block. It introduces the outline, command discovery, preview, library and export with ordinary writing examples. It has centered page numbers and the approved Prose sigma mark in the opening header. Prose is English only, so there is one guide and one cover. The source is a normal Typst document with explicit pinned imports and a relative `prose-mark.svg` asset. The mark is copied into the document project, retained by source-project export, and generated from the same geometry as the app icon. Existing manuscripts and their assets are never replaced by an app update. CeTZ 0.5.2, its oxifmt 1.0.0 dependency and Codly 1.3.0 ship as source with their licenses, so both built-in choices compile without a network request. Other Universe templates may download package code on first creation. Built-in choices remain visible when the catalog cannot be reached.
 
-The original guide is in `Sources/ProseCore/Resources/Templates`, with an English copy in `Examples/Welcome.typ` and a generated first-page thumbnail. To regenerate its thumbnail with the pinned engine, run:
+The original guide is in `Sources/ProseCore/Resources/Templates`, with a copy in `Examples/Welcome.typ` and a generated first-page thumbnail. To regenerate its thumbnail with the pinned engine, run:
 
 ```sh
 source scripts/environment.sh
@@ -38,7 +38,7 @@ Creating a template runs the bundled Tinymist `tinymist.doInitTemplate` command 
 
 The template gallery's All templates collection includes a SICP card with an
 original typographic cover, source/license link and **Add to my writing** action.
-It also matches SICP and bilingual book searches. No book is downloaded at app
+It also matches SICP and English book searches. No book is downloaded at app
 launch. Adding it downloads about 1.9 MB, verifies the pinned SHA-256 and byte
 count, and imports a complete editable copy with all 84 illustrations and local
 styles. The archive is cached for offline reuse. Each addition has a new library
@@ -56,7 +56,7 @@ retried; failed or cancelled downloads never replace the current writing.
 
 The existing Universe command opens the Packages intent. Its collections are diagrams and charts, math and science, code and algorithms, layout and typography, tables and data, and writing tools. Templates are excluded from this list.
 
-Search matches package names, descriptions, keywords, categories, disciplines, and bilingual intent synonyms. Exact name and literal query matches take precedence over broader synonyms. A small explicit editorial list gives useful packages a starting position in the unfiltered catalog; this is not a popularity or quality score. Search remains available offline from the saved index. Incompatible engine versions remain visible for discovery, with the create/import action disabled and a reason shown.
+Search matches package names, descriptions, keywords, categories, disciplines, and English intent synonyms. Exact name and literal query matches take precedence over broader synonyms. A small explicit editorial list gives useful packages a starting position in the unfiltered catalog; this is not a popularity or quality score. Search remains available offline from the saved index. Incompatible engine versions remain visible for discovery, with the create/import action disabled and a reason shown.
 
 **Insert import** preserves the existing native, undoable insertion path and pins the chosen version. Package documentation remains the authority for setup and examples. An empty library can browse packages, but must open a document before inserting one.
 
@@ -70,11 +70,11 @@ The app includes a metadata-only catalog snapshot for first-launch offline disco
 
 Community template creation and the first SICP download still require a connection unless already cached; the welcome guide and blank page are fully included. An explicit Cancel action interrupts pending downloads and leaves the current writing open. Browsing package metadata does not download or execute package code.
 
-Discovery uses the package catalog and bilingual search. No document text, click history, or query is uploaded to a recommendation service.
+Discovery uses the package catalog and English search. No document text, click history, or query is uploaded to a recommendation service.
 
 ## Verification
 
-Functional tests use controlled slow/error/canceled transports to check stale-index search while a refresh is pending, repeated tab changes without additional requests, first-launch bundled search, and cancellation/retry of offscreen thumbnail downloads. They also cover cached/offline catalog behavior, bilingual search and mode switching, narrow/wide native rendering, no document changes while browsing, source/asset validation, and an opt-in network path through the official registry and real Tinymist to a managed document and PDF. The app-level network scenario also verifies that creation opens the new managed document, preserves the previous writing, and cleans the staging directory.
+Functional tests use controlled slow/error/canceled transports to check stale-index search while a refresh is pending, repeated tab changes without additional requests, first-launch bundled search, and cancellation/retry of offscreen thumbnail downloads. They also cover cached/offline catalog behavior, English intent search and mode switching, narrow/wide native rendering, no document changes while browsing, source/asset validation, and an opt-in network path through the official registry and real Tinymist to a managed document and PDF. The app-level network scenario also verifies that creation opens the new managed document, preserves the previous writing, and cleans the staging directory.
 
 ```sh
 source scripts/environment.sh
@@ -98,11 +98,3 @@ an unselected hosted view.
 - [Official Typst package catalog](https://packages.typst.org/preview/index.json)
 - [Typst packages repository and template manifest documentation](https://github.com/typst/packages)
 - [Tinymist template scaffolding implementation](https://github.com/Myriad-Dreamin/tinymist/blob/v0.15.8/crates/tinymist/src/cmd.rs)
-
-## A future Chinese book sample
-
-The strongest next candidate is [Dive into Deep Learning in Chinese](https://github.com/d2l-ai/d2l-zh): an extensive Chinese technical book with equations, illustrations, and executable Python examples. It complements SICP with a modern applied subject. Its chapter-based Markdown sources also fit Prose's existing source-project model. This is a recommendation, not a bundled or converted book in this release.
-
-Use the book's own attribution and licensing, rather than inferring everything from the repository badge: its [publication configuration](https://github.com/d2l-ai/d2l-zh/blob/master/config.ini) identifies CC-BY-SA-4.0 and MIT-0, while the repository also includes an Apache-2.0 license. A conversion should preserve notices, credit the authors, identify modifications, and check externally sourced figures.
-
-[Hello Algo](https://github.com/krahets/hello-algo) is more approachable and visually rich, but its [CC-BY-NC-SA-4.0 license](https://github.com/krahets/hello-algo/blob/main/LICENSE) makes it a less suitable default distribution candidate without separate permission. Keep the discovery interface ready for another sample without promising a complete Chinese book until conversion quality and redistribution details have been reviewed.

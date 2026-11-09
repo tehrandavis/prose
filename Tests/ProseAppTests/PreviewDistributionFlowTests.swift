@@ -120,9 +120,9 @@ extension WritingFlowTests {
             #expect(updater.channels.allowedChannels(for: updater.controller.updater).isEmpty)
             #expect(checks.count == 2)
             #expect(PreviewUpdateChannel.allCases.map(\.rawValue) == ["nightly", "alpha"])
-            #expect(L10n.text("Update Channel", language: .simplifiedChinese) == "更新通道")
-            #expect(L10n.text("Nightly (more stable)", language: .simplifiedChinese) == "每晚（较稳定）")
-            #expect(L10n.text("Every merge (Alpha)", language: .simplifiedChinese) == "每次合入（Alpha）")
+            #expect(L10n.text("Update Channel") == "Update Channel")
+            #expect(L10n.text("Nightly (more stable)") == "Nightly (more stable)")
+            #expect(L10n.text("Every merge (Alpha)") == "Every merge (Alpha)")
         }
     #endif
 }

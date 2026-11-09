@@ -14,22 +14,19 @@ python3 scripts/release_metadata.py prepare 0.6.0
 ```
 
 This changes `CFBundleShortVersionString` to `0.6.0`, increments `CFBundleVersion`
-from 10 to 11, and creates `releases/0.6.0.md`. Finish both sections of that file:
+from 10 to 11, and creates `releases/0.6.0.md`. Finish its one section:
 
 ```text
 ## en-US
 
 - Describe the changes that matter to users.
-
-## zh-Hans
-
-- 用中文说明用户能感知到的改进。
 ```
 
-Use plain text and bullet points, with 1–4000 characters per language. Placeholder
-TODO text, missing translations, Markdown links and formatting are rejected.
-This file is the release message: GitHub uses it as the Release body; Apple gets
-each language's section as its localized “What's New.” GitHub's generated commit
+Prose is English only, so the file has exactly one `## en-US` section. Use plain
+text and bullet points, 1–4000 characters. Placeholder TODO text, other locale
+sections, Markdown links and formatting are rejected. This file is the release
+message: GitHub uses it as the Release body; Apple gets the section as its
+“What's New.” GitHub's generated commit
 list and the annotated tag message are not substituted for the user-facing copy.
 
 Commit the version and message with the application changes, merge the PR, and
@@ -63,7 +60,7 @@ review. The next version should describe actual application changes.
    reused on retry only with matching CI provenance. Invalid, expired, internal-only
    or mismatched builds stop release. Pre-existing manual builds cannot be claimed.
 7. Creates or reuses the App Store version, uses its inherited storefront assets,
-   writes bilingual update notes, attaches the build, and submits a review containing
+   writes the English update notes, attaches the build, and submits a review containing
    only this app version. The App Review notes state that the Mac app is free, has
    no in-app purchases and needs no login. The review contact is inherited from the previous version. Confirms the submission state with a separate API read.
 8. Publishes the GitHub ZIP, checksum and shared release message. Saves the App Store

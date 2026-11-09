@@ -29,7 +29,7 @@ func realTinymistRoundTrip() async throws {
     try Data("= Saved sentinel\n".utf8).write(to: file)
     try Data("Included content.".utf8).write(to: root.appendingPathComponent("section.typ"))
     let source = """
-    #set text(font: "Noto Sans SC")
+    #set text(size: 11pt)
     = Unsaved 文稿
     中文😀 Body
     $ x^2 $
@@ -65,9 +65,12 @@ func realTinymistRoundTrip() async throws {
     #expect(rendered.contains("Unsaved"))
     #expect(rendered.contains("文稿"))
     #expect(rendered.contains("Included content"))
-    #expect(!diagnosticEvents.contains {
-        $0["diagnostics"].array.contains { $0["message"].string == "unknown font family: noto sans sc" }
-    })
+    // Prose bundles no CJK font: Tinymist keeps system fonts on, and they draw the Chinese text.
+    let fonts = try embeddedFontNames(inPDFAt: URL(fileURLWithPath: pdf))
+    #expect(
+        fonts.contains { !$0.hasPrefix("Libertinus") && !$0.hasPrefix("NewCM") && !$0.contains("Emoji") },
+        "\(fonts)",
+    )
     #expect(!rendered.contains("Saved sentinel"))
     #expect(try String(contentsOf: file, encoding: .utf8) == "= Saved sentinel\n")
 
@@ -139,4 +142,12 @@ func realTinymistRoundTrip() async throws {
         #expect(multiText.contains(expected), "Rendered: \(multiText); expected: \(expected)")
     }
     #expect(try String(contentsOf: child, encoding: .utf8) == "Included content.")
+}
+
+/// The base names of the fonts a PDF embeds, without the subset tag (`ABCDEF+`).
+private func embeddedFontNames(inPDFAt url: URL) throws -> Set<String> {
+    let text = try String(decoding: Data(contentsOf: url), as: UTF8.self)
+    let pattern = try NSRegularExpression(pattern: "/FontName\\s*/(?:[A-Z]{6}\\+)?([A-Za-z0-9_-]+)")
+    let matches = pattern.matches(in: text, range: NSRange(text.startIndex..., in: text))
+    return Set(matches.compactMap { Range($0.range(at: 1), in: text).map { String(text[$0]) } })
 }

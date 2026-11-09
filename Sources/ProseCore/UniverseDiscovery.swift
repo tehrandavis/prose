@@ -59,35 +59,35 @@ public struct UniverseDiscoveryGroup: Identifiable, Sendable {
             titleKey: "Research & study",
             symbolName: "book-open-text",
             categories: ["paper", "thesis"],
-            terms: ["academic", "research", "dissertation", "论文", "学术"],
+            terms: ["academic", "research", "dissertation"],
         ),
         .init(
             id: "work",
             titleKey: "Work & reports",
             symbolName: "file-text",
             categories: ["report", "office"],
-            terms: ["report", "letter", "invoice", "memo", "报告", "信函"],
+            terms: ["report", "letter", "invoice", "memo"],
         ),
         .init(
             id: "career",
             titleKey: "CVs & applications",
             symbolName: "notebook",
             categories: ["cv"],
-            terms: ["resume", "curriculum vitae", "cover letter", "简历", "求职"],
+            terms: ["resume", "curriculum vitae", "cover letter"],
         ),
         .init(
             id: "present",
             titleKey: "Slides & posters",
             symbolName: "layout",
             categories: ["presentation", "poster", "flyer"],
-            terms: ["slides", "presentation", "poster", "海报", "演示"],
+            terms: ["slides", "presentation", "poster"],
         ),
         .init(
             id: "books",
             titleKey: "Books & writing",
             symbolName: "books",
             categories: ["book"],
-            terms: ["book", "novel", "notes", "journal", "书籍", "笔记"],
+            terms: ["book", "novel", "notes", "journal"],
         ),
     ]
     private static let packageGroups: [Self] = [
@@ -97,42 +97,42 @@ public struct UniverseDiscoveryGroup: Identifiable, Sendable {
             titleKey: "Diagrams & charts",
             symbolName: "wave-sine",
             categories: ["visualization"],
-            terms: ["diagram", "chart", "plot", "drawing", "graph", "绘图", "图表", "流程图"],
+            terms: ["diagram", "chart", "plot", "drawing", "graph"],
         ),
         .init(
             id: "math",
             titleKey: "Math & science",
             symbolName: "sigma",
             categories: [],
-            terms: ["math", "equation", "physics", "chemistry", "algebra", "数学", "公式", "科学"],
+            terms: ["math", "equation", "physics", "chemistry", "algebra"],
         ),
         .init(
             id: "code",
             titleKey: "Code & algorithms",
             symbolName: "code",
             categories: [],
-            terms: ["code", "algorithm", "pseudocode", "syntax", "代码", "算法"],
+            terms: ["code", "algorithm", "pseudocode", "syntax"],
         ),
         .init(
             id: "layout",
             titleKey: "Layout & typography",
             symbolName: "layout",
             categories: ["layout", "text", "model", "languages"],
-            terms: ["typography", "page", "font", "layout", "排版", "字体"],
+            terms: ["typography", "page", "font", "layout"],
         ),
         .init(
             id: "data",
             titleKey: "Tables & data",
             symbolName: "table",
             categories: ["integration"],
-            terms: ["table", "csv", "data", "spreadsheet", "表格", "数据"],
+            terms: ["table", "csv", "data", "spreadsheet"],
         ),
         .init(
             id: "tools",
             titleKey: "Writing tools",
             symbolName: "brackets-curly",
             categories: ["utility", "components", "scripting", "fun"],
-            terms: ["bibliography", "citation", "reference", "glossary", "工具", "参考文献"],
+            terms: ["bibliography", "citation", "reference", "glossary"],
         ),
     ]
 
@@ -198,27 +198,26 @@ struct UniverseSearchIndex: Sendable {
         "glossarium",
         "physica",
     ]
-    /// Both languages are indexed together, so changing app language never invalidates search.
     private static let concepts: [[String]] = [
-        ["diagram", "diagrams", "flowchart", "flowcharts", "流程图", "框图"],
-        ["draw", "drawing", "canvas", "绘图", "画图"],
-        ["chart", "charts", "plot", "plots", "图表", "绘制图表"],
-        ["math", "mathematics", "equation", "equations", "数学", "公式"],
-        ["code", "syntax", "代码", "代码块"],
-        ["algorithm", "algorithms", "pseudocode", "算法", "伪代码"],
-        ["resume", "cv", "curriculum vitae", "简历", "求职"],
-        ["paper", "academic", "research", "论文", "学术"],
-        ["thesis", "dissertation", "学位论文", "毕业论文"],
-        ["slides", "presentation", "presentations", "演示", "幻灯片"],
-        ["report", "reports", "报告"], ["poster", "posters", "海报"],
-        ["book", "books", "书籍"], ["table", "tables", "csv", "表格"],
-        ["typography", "layout", "排版"], ["font", "fonts", "字体"],
-        ["bibliography", "citation", "references", "参考文献", "引用"],
-        ["chemistry", "化学"], ["physics", "物理"], ["chinese", "cjk", "中文"],
+        ["diagram", "diagrams", "flowchart", "flowcharts"],
+        ["draw", "drawing", "canvas"],
+        ["chart", "charts", "plot", "plots"],
+        ["math", "mathematics", "equation", "equations"],
+        ["code", "syntax"],
+        ["algorithm", "algorithms", "pseudocode"],
+        ["resume", "cv", "curriculum vitae"],
+        ["paper", "academic", "research"],
+        ["thesis", "dissertation"],
+        ["slides", "presentation", "presentations"],
+        ["report", "reports"], ["poster", "posters"],
+        ["book", "books"], ["table", "tables", "csv"],
+        ["typography", "layout"], ["font", "fonts"],
+        ["bibliography", "citation", "references"],
+        ["chinese", "cjk"],
     ]
 
     init(packages: [UniversePackage]) {
-        let translated = Dictionary(uniqueKeysWithValues: UniverseCategory.all.map { ($0.id, $0.searchTerms) })
+        let translated = Dictionary(uniqueKeysWithValues: UniverseCategory.all.map { ($0.id, $0.title) })
         entries = packages.map { package in
             let keywords = Self
                 .normalize((package.keywords + package.categories + package.disciplines).joined(separator: " "))

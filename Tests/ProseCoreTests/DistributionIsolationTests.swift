@@ -31,6 +31,6 @@ struct DistributionIsolationTests {
         previewDefaults.set("light", forKey: "appearance")
         #expect(stableDefaults.string(forKey: "appearance") == "dark")
         #expect(previewDefaults.string(forKey: "appearance") == "light")
-        #expect(L10n.text("Prose Preview", language: .simplifiedChinese) == "Prose 预览版")
+        #expect(L10n.text("Prose Preview") == "Prose Preview")
     }
 }

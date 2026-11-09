@@ -27,9 +27,6 @@ final class WorkspaceSettings: ObservableObject {
             // @Published sends before storage changes; collect after this turn.
             Task { @MainActor [weak self] in self?.persist() }
         }.store(in: &subscriptions)
-        NotificationCenter.default.publisher(for: .proseLanguageChanged).sink { [weak self] _ in
-            Task { @MainActor [weak self] in self?.persist() }
-        }.store(in: &subscriptions)
         workspace.$appearance.dropFirst().sink { [weak self] _ in
             Task { @MainActor [weak self] in self?.persist() }
         }.store(in: &subscriptions)
@@ -71,11 +68,6 @@ final class WorkspaceSettings: ObservableObject {
         if workspace.documentTemplate != template {
             workspace.documentTemplate = template
         }
-        if let language = AppLanguage(rawValue: value.language),
-           L10n.language != language
-        {
-            L10n.setLanguage(language)
-        }
     }
 
     private func persist() {
@@ -83,7 +75,6 @@ final class WorkspaceSettings: ObservableObject {
             return
         }
         let next = SyncedPreferences(
-            language: L10n.language.rawValue,
             commandKey: workspace.commandKey,
             fontSize: workspace.fontSize,
             previewDark: workspace.previewDark,
@@ -109,7 +100,6 @@ struct WritingSettingsView: View {
     #if PROSE_PREVIEW
         var updater: PreviewUpdater? = nil
     #endif
-    @ObservedObject private var localization = AppLocalization.shared
 
     var body: some View {
         TabView {
@@ -123,20 +113,11 @@ struct WritingSettingsView: View {
         }
         .padding(.top, 12)
         .frame(width: Self.windowSize.width, height: Self.windowSize.height)
-        .environment(\.locale, L10n.locale)
     }
 
     private var generalSettings: some View {
         Form {
             Section {
-                Picker(
-                    L10n.text("App Language"),
-                    selection: Binding(get: { localization.language }, set: { localization.select($0) }),
-                ) {
-                    Text(L10n.text("Follow System")).tag(AppLanguage.system)
-                    Text("English").tag(AppLanguage.english)
-                    Text("简体中文").tag(AppLanguage.simplifiedChinese)
-                }.accessibilityIdentifier("settings.language")
                 Picker(L10n.text("Appearance"), selection: $workspace.appearance) {
                     Text(L10n.text("Follow System")).tag(AppAppearance.system)
                     Text(L10n.text("Light")).tag(AppAppearance.light)

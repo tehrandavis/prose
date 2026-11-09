@@ -3,7 +3,6 @@ import SwiftUI
 
 struct FloatingOutline: View {
     @ObservedObject var workspace: Workspace
-    @ObservedObject private var localization = AppLocalization.shared
     let availableMargin: CGFloat
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovering = false

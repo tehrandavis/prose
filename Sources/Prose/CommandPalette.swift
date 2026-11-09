@@ -3,7 +3,6 @@ import SwiftUI
 
 /// A fixed-height command desk: selection never moves the manuscript or controls.
 struct CommandPalette: View {
-    @ObservedObject private var localization = AppLocalization.shared
     @ObservedObject var workspace: Workspace
     private var root: Bool {
         workspace.paletteGroup == nil && !workspace.searchMode && workspace.activeCommand == nil

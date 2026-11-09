@@ -61,7 +61,7 @@ private func universeDirectory() throws -> URL {
     #expect(snapshot.search("draw", category: "visualization").map(\.name) == ["cetz", "fletcher"])
     #expect(snapshot.search("FLOWCHART graph").map(\.name) == ["fletcher"])
     #expect(snapshot.search("cafe").first?.name == "cetz")
-    #expect(snapshot.search("绘图").count == 2)
+    #expect(snapshot.search("canvas").count == 2)
     #expect(snapshot.search("mathematics").first?.name == "cetz")
     #expect(snapshot.search("draw", category: "text").isEmpty)
     #expect(snapshot.search("nothing matches").isEmpty)

@@ -128,10 +128,10 @@ func everyDiscoveredInsertionProducesARealDocument() async throws {
             #expect(command.documentationURL == nil)
         }
     }
-    #expect(WritingCommand.search("分数").contains { $0.id == "fraction" })
+    #expect(WritingCommand.search("fraction").contains { $0.id == "fraction" })
     #expect(WritingCommand.search("matrix").contains { $0.id == "matrix" })
-    #expect(WritingCommand.search("首行 缩进").contains { $0.id == "firstLineIndent" })
-    #expect(WritingCommand.search("插件").contains { $0.id == "universe" })
+    #expect(WritingCommand.search("first line indent").contains { $0.id == "firstLineIndent" })
+    #expect(WritingCommand.search("plugin").contains { $0.id == "universe" })
     #expect(CommandGroup.roots.count <= 10)
 
     for (id, fields) in [

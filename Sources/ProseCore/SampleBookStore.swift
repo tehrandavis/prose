@@ -36,7 +36,7 @@ public enum SampleBook: String, Sendable {
 
     public func matches(_ query: String) -> Bool {
         let terms = query.lowercased().split(whereSeparator: \.isWhitespace)
-        let keywords = "sicp structure interpretation computer programs scheme book example 计算机 程序 构造 解释 范本 书籍"
+        let keywords = "sicp structure interpretation computer programs scheme book example"
         return terms.allSatisfy { keywords.contains($0) }
     }
 }

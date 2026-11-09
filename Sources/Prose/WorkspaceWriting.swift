@@ -74,7 +74,6 @@ extension Workspace {
             _ = try? DocumentStorage.write(text, to: draftURL, baseline: nil)
         }
         let packages = BlockRenderer.defaultPackageDirectories(packageCache: packageCache)
-        let fonts = BlockRenderer.defaultFontDirectories
         writingEngineTask = Task {
             // The font scan takes about 180 ms; keep it off the main thread.
             let result = await Task.detached(priority: .userInitiated) { () -> Result<
@@ -86,7 +85,6 @@ extension Workspace {
                         root: key.root,
                         main: key.main,
                         packageDirectories: packages,
-                        fontDirectories: fonts,
                     ))
                 } catch {
                     return .failure(BlockRendererError(error.localizedDescription))

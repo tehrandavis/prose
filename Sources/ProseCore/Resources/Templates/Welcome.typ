@@ -8,7 +8,7 @@
 #let sage = rgb("dbe6df")
 #set document(title: "Write in Typst", author: "Prose")
 #set page(paper: "a4", margin: (x: 25mm, y: 22mm), numbering: "01", number-align: center)
-#set text(font: ("Libertinus Serif", "PingFang SC", "Noto Sans SC"), size: 11pt, fill: ink)
+#set text(font: "Libertinus Serif", size: 11pt, fill: ink)
 #set par(leading: 0.75em)
 #set heading(numbering: none)
 #show heading.where(level: 1): set text(size: 32pt, weight: "regular")

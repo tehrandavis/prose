@@ -65,7 +65,7 @@ public enum TextEditing {
             guard edit.range.location >= 0, edit.range.length >= 0, edit.range.location <= boundary,
                   edit.range.length <= boundary - edit.range.location
             else {
-                throw CommandError.invalid("排版服务返回了无效或重叠的编辑范围。")
+                throw CommandError.invalid("The typesetting service returned an invalid or overlapping edit range.")
             }
             result.replaceCharacters(in: edit.range, with: edit.text)
             boundary = edit.range.location

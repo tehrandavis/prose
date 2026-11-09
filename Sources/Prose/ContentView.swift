@@ -3,7 +3,6 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var workspace: Workspace
-    @ObservedObject private var localization = AppLocalization.shared
     /// The editor's share in side-by-side layout; per device, not synced.
     @State private var splitFraction: CGFloat
     @State private var dragStartWidth: CGFloat?

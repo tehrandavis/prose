@@ -65,7 +65,6 @@ extension Workspace {
 
 struct ProjectSidebar: View {
     @ObservedObject var workspace: Workspace
-    @ObservedObject private var localization = AppLocalization.shared
     @State private var query = ""
     @State private var renaming: URL?
     @State private var draftName = ""

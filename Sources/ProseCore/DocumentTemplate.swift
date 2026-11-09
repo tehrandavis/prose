@@ -12,7 +12,7 @@ public enum DocumentTemplate: String, CaseIterable, Identifiable, Sendable {
     }
 
     public var source: String {
-        let base = "#set text(font: (\"New York\", \"PingFang SC\"), size: 11pt)\n#set page(margin: 24mm)\n\n"
+        let base = "#set text(font: \"New York\", size: 11pt)\n#set page(margin: 24mm)\n\n"
         switch self {
         case .blank: return base
         case .codeNotes:

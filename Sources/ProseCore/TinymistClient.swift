@@ -24,10 +24,6 @@ public enum ServiceError: LocalizedError {
 
 @MainActor
 public final class TinymistClient {
-    public static var bundledFontURL: URL? {
-        CoreResources.bundle.url(forResource: "NotoSansSC", withExtension: "ttf")
-    }
-
     public init() {}
 
     public var onNotification: ((String, JSONValue) -> Void)?
@@ -104,8 +100,6 @@ public final class TinymistClient {
         guard generation == session else {
             throw ServiceError.disconnected
         }
-        // Supply the bundled, portable CJK fallback font (Resources/ThirdParty.txt).
-        let bundledFont = Self.bundledFontURL
         let response = try await request("initialize", [
             "processId": ProcessInfo.processInfo.processIdentifier,
             "rootUri": root.absoluteString,
@@ -133,7 +127,8 @@ public final class TinymistClient {
                 ],
             ],
             "initializationOptions": [
-                "fontPaths": (fontPaths + [bundledFont].compactMap(\.self)).map(\.path),
+                // System fonts stay on (Tinymist's default): they cover CJK text.
+                "fontPaths": fontPaths.map(\.path),
                 "rootPath": root.path,
                 "exportPdf": "never",
                 "outputPath": outputDirectory.appendingPathComponent("$name").path,

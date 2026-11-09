@@ -1,11 +1,9 @@
 import Foundation
 
-/// Localized starter content is chosen only when a document is created.
-/// Existing manuscripts are never retranslated when the interface changes.
+/// The bundled guide that a new "Welcome" document starts from.
 public enum WelcomeDocument {
-    public static func source(language: AppLanguage? = nil) -> String {
-        let suffix = AppLanguage.resolve(language ?? L10n.language) == .simplifiedChinese ? ".zh-Hans" : ""
-        guard let url = CoreResources.bundle.url(forResource: "Welcome" + suffix, withExtension: "typ"),
+    public static func source() -> String {
+        guard let url = CoreResources.bundle.url(forResource: "Welcome", withExtension: "typ"),
               let source = try? String(contentsOf: url, encoding: .utf8)
         else {
             return DocumentTemplate.blank.source
@@ -14,12 +12,7 @@ public enum WelcomeDocument {
     }
 
     public static var thumbnailURL: URL? {
-        thumbnailURL(language: L10n.language)
-    }
-
-    public static func thumbnailURL(language: AppLanguage) -> URL? {
-        let suffix = AppLanguage.resolve(language) == .simplifiedChinese ? ".zh-Hans" : ""
-        return CoreResources.bundle.url(forResource: "welcome-cover" + suffix, withExtension: "png")
+        CoreResources.bundle.url(forResource: "welcome-cover", withExtension: "png")
     }
 
     public static let markFilename = "prose-mark.png"

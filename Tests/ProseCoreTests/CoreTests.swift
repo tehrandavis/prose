@@ -45,8 +45,8 @@ import Testing
     let bold = try TypstInsertion.make("bold", selection: value)
     #expect(bold.text == "*«中文😀»*")
     #expect(bold.selections.isEmpty)
-    let list = try TypstInsertion.make("bullet", selection: value, language: .simplifiedChinese)
-    #expect((list.text as NSString).substring(with: list.selections[0]) == "第二项")
+    let list = try TypstInsertion.make("bullet", selection: value)
+    #expect((list.text as NSString).substring(with: list.selections[0]) == "Second item")
     let image = try TypstInsertion.make("image", values: ["path": "图«一».png", "caption": "«说明»"])
     #expect(image.text.contains("图«一».png"))
     #expect(image.text.contains("«说明»"))
@@ -86,12 +86,12 @@ import Testing
     let command = try #require(WritingCommand.all.first { $0.id == "heading" })
     let plan = try InsertionPlan(
         command: command,
-        snippet: TypstInsertion.make("heading", language: .simplifiedChinese),
+        snippet: TypstInsertion.make("heading"),
         text: "beforeafter",
         selection: NSRange(location: 6, length: 0),
     )
-    #expect(plan.snippet.text == "\n\n= 标题\n\n")
-    #expect((plan.snippet.text as NSString).substring(with: plan.snippet.selections[0]) == "标题")
+    #expect(plan.snippet.text == "\n\n= Heading\n\n")
+    #expect((plan.snippet.text as NSString).substring(with: plan.snippet.selections[0]) == "Heading")
 }
 
 @Test func storageProtectsExternalEditsAndDeletion() throws {
@@ -115,7 +115,7 @@ import Testing
         let keys = WritingCommand.all.filter { $0.group == group.id }.map(\.key)
         #expect(Set(keys).count == keys.count)
     }
-    #expect(WritingCommand.search("公式").contains { $0.id == "equation" })
+    #expect(WritingCommand.search("block equation").contains { $0.id == "equation" })
     #expect(WritingCommand.search("export pdf").contains { $0.id == "export" })
 }
 

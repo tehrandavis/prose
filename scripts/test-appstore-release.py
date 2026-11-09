@@ -126,7 +126,7 @@ class UploadTests(unittest.TestCase):
 class ReleaseTests(unittest.TestCase):
     def setUp(self):
         self.apple = FakeApple()
-        self.metadata = {'version': '0.6.0', 'build': '11', 'notes': {'en-US': '- Faster editing.', 'zh-Hans': '- 编辑更流畅。'}}
+        self.metadata = {'version': '0.6.0', 'build': '11', 'notes': {'en-US': '- Faster editing.'}}
         self.release = asc.Release(self.apple, 'app', self.metadata)
 
     def test_submit_and_repeated_run_make_one_submission(self):
@@ -305,7 +305,7 @@ class HttpTests(unittest.TestCase):
 
 class MetadataTests(unittest.TestCase):
     def test_tag_version_notes_and_placeholders(self):
-        notes = '## en-US\n\n- Faster.\n\n## zh-Hans\n\n- 更快。\n'
+        notes = '## en-US\n\n- Faster.\n'
         with tempfile.TemporaryDirectory(dir=os.environ['TMPDIR']) as directory:
             root = Path(directory)
             (root / 'Resources').mkdir()
@@ -318,7 +318,8 @@ class MetadataTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     meta.metadata(root, tag)
             for invalid in [notes.replace('Faster', 'TODO'), notes.replace('Faster', 'x' * 4001),
-                            notes.replace('## zh-Hans', '## fr-FR'), notes.replace('- Faster.', ''),
+                            notes.replace('## en-US', '## fr-FR'),
+                            notes + '\n## fr-FR\n\n- Faster.\n', notes.replace('- Faster.', ''),
                             notes.replace('Faster.', '[Read](https://example.com)')]:
                 path.write_text(invalid)
                 with self.assertRaises(ValueError):

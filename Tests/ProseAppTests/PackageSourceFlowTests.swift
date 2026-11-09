@@ -131,9 +131,6 @@ extension WritingFlowTests {
     }
 
     @Test func packageToolbarShowsFileNameAndReadOnlyBadgeAcrossAppearances() async throws {
-        let language = L10n.language
-        defer { L10n.setLanguage(language) }
-        L10n.setLanguage(.simplifiedChinese)
         let app = try WritingFixture(text: "= Root", startService: false)
         defer { app.close() }
         app.window.orderFront(nil)

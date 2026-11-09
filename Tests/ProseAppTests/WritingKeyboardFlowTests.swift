@@ -738,7 +738,6 @@ private func freshEngine(_ app: WritingFixture, _ text: String) async throws -> 
         root: app.document.deletingLastPathComponent(),
         main: app.document,
         packageDirectories: BlockRenderer.defaultPackageDirectories(),
-        fontDirectories: BlockRenderer.defaultFontDirectories,
     )
     try await engine.setText(text, of: app.document)
     _ = await engine.refresh()

@@ -22,12 +22,6 @@ rendering, together with the parser bridge above. It embeds the Typst assets
 dependency notices of the engine, parser included, are in
 TypstEngine-LICENSES.txt.
 
-Noto Sans SC variable font (SIL Open Font License 1.1)
-https://github.com/google/fonts/tree/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosanssc
-Portable Chinese fallback; existing fonts stay first in template font lists.
-Font and original license are bundled in ProseCore Resources/Fonts.
-SHA-256: a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da
-
 Phosphor Icons Regular (MIT)
 https://github.com/phosphor-icons/core/tree/2b75f3ad12b420c9504ef05df8d2564a28f8500e
 SVG source icons converted to vector PDF using librsvg for AppKit.

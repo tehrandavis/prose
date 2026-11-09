@@ -1,7 +1,7 @@
 [
   {
     "id": "dimensional-drawing",
-    "title": "Dimensional drawings / 工业尺寸图",
+    "title": "Dimensional drawings",
     "summary": "Turn a component, product reference, or concept brief into a monochrome drawing sheet with views, variable dimensions, details, and traceable assumptions.",
     "version": "1.0.0",
     "keywords": [
@@ -13,13 +13,7 @@
       "component",
       "card",
       "dialog",
-      "product",
-      "工业",
-      "尺寸",
-      "图纸",
-      "工程图",
-      "结构图",
-      "工业设计"
+      "product"
     ],
     "files": [
       {
@@ -48,7 +42,7 @@
   },
   {
     "id": "xiaohei-illustrations",
-    "title": "Xiaohei explanatory illustrations / 小黑风格配图",
+    "title": "Xiaohei explanatory illustrations",
     "summary": "Translate a paragraph or presentation claim into one white-background 16:9 explanatory scene with an active black character, restrained annotations, and editable Typst geometry.",
     "version": "1.0.0",
     "keywords": [
@@ -60,15 +54,7 @@
       "metaphor",
       "presentation",
       "slide",
-      "ppt",
-      "小黑",
-      "手绘",
-      "配图",
-      "正文",
-      "隐喻",
-      "演示",
-      "幻灯片",
-      "观点"
+      "ppt"
     ],
     "files": [
       {
@@ -97,7 +83,7 @@
   },
   {
     "id": "general-authoring",
-    "title": "General Typst authoring / 通用创作与包调研",
+    "title": "General Typst authoring",
     "summary": "Fallback when no specialized guide fits: form a brief, research official Typst Universe packages and versioned examples, prove a small experiment, then compile, render and adapt.",
     "version": "1.0.0",
     "fallback": true,
@@ -109,13 +95,7 @@
       "package",
       "template",
       "research",
-      "example",
-      "通用",
-      "兜底",
-      "包",
-      "模板",
-      "调研",
-      "示例"
+      "example"
     ],
     "files": [
       {

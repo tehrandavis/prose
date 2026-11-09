@@ -7,16 +7,12 @@ struct BuiltInTemplateCard: View {
     var compact = false
     let create: () -> Void
 
-    @ObservedObject private var localization = AppLocalization.shared
-    @MainActor private static let thumbnails =
-        Dictionary(uniqueKeysWithValues: [AppLanguage.english, .simplifiedChinese].compactMap { language in
-            WelcomeDocument.thumbnailURL(language: language).flatMap(NSImage.init(contentsOf:)).map { (language, $0) }
-        })
+    @MainActor private static let thumbnail = WelcomeDocument.thumbnailURL.flatMap(NSImage.init(contentsOf:))
 
     var body: some View {
         Button(action: create) {
             HStack(spacing: 18) {
-                if template == .welcome, let image = Self.thumbnails[AppLanguage.resolve(L10n.language)] {
+                if template == .welcome, let image = Self.thumbnail {
                     Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
                         .frame(width: compact ? 72 : 92, height: compact ? 112 : 130)
                         .clipShape(RoundedRectangle(cornerRadius: 3))

@@ -5,7 +5,6 @@ import SwiftUI
 /// Metadata and previews load before selection; package code is requested only
 /// when the writer explicitly creates a document or inserts an import.
 struct UniverseBrowser: View {
-    @ObservedObject private var localization = AppLocalization.shared
     private let onImport: (UniversePackage) throws -> Void
     private let onCreate: ((UniversePackage) async throws -> Void)?
     private let onCreateBuiltIn: ((BuiltInTemplate) async throws -> Void)?

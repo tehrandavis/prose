@@ -78,7 +78,7 @@ extension WritingFlowTests {
         app.window.sendEvent(app.key("\u{f702}", code: 123))
         #expect(app.workspace.selectedCommandIndex == 0)
         app.workspace.searchMode = true
-        for query in ["", "表格", "no-match", "page", ""] {
+        for query in ["", "table", "no-match", "page", ""] {
             app.workspace.query = query
             await app.layout()
             #expect(scroll.convert(scroll.bounds, to: nil) == dockFrame)

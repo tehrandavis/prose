@@ -20,8 +20,6 @@ final class WindowToolbar: NSObject, NSToolbarDelegate {
             .receive(on: RunLoop.main).sink { [weak self] _ in self?.resizeTitle() }.store(in: &subscriptions)
         NotificationCenter.default.publisher(for: NSWindow.didResizeNotification, object: workspace.window)
             .sink { [weak self] _ in self?.resizeTitle() }.store(in: &subscriptions)
-        NotificationCenter.default.publisher(for: .proseLanguageChanged)
-            .sink { [weak self] _ in self?.resizeTitle() }.store(in: &subscriptions)
         resizeTitle()
     }
 
@@ -98,7 +96,6 @@ private struct AdaptiveDocumentTitle: View {
 
 private struct DocumentTitle: View {
     @ObservedObject var workspace: Workspace
-    @ObservedObject private var localization = AppLocalization.shared
     var body: some View {
         HStack(spacing: 8) {
             QuietButton(
@@ -174,7 +171,6 @@ struct ReadOnlyPackageBadge: View {
 
 private struct WritingActions: View {
     @ObservedObject var workspace: Workspace
-    @ObservedObject private var localization = AppLocalization.shared
     var body: some View {
         HStack(spacing: 6) {
             ModeControl(workspace: workspace)
@@ -244,7 +240,6 @@ extension EditorMode {
 /// The breadcrumb of headings around the caret, then the compile status dot.
 private struct TitleLocation: View {
     @ObservedObject var workspace: Workspace
-    @ObservedObject private var localization = AppLocalization.shared
     var body: some View {
         HStack(spacing: 6) {
             let trail = workspace.breadcrumb

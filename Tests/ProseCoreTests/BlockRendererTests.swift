@@ -319,7 +319,7 @@ private func sourcesFallInside(_ rendered: RenderedBlock, _ block: RenderBlock) 
     #expect(stats.misses == work.count && stats.hits == work.count)
 }
 
-@Test func blockRendererDefaultDirectoriesIncludeBundledPackagesAndFonts() throws {
+@Test func blockRendererDefaultDirectoriesIncludeBundledPackages() throws {
     let cache = URL(fileURLWithPath: "/tmp/prose-package-cache")
     let packages = BlockRenderer.defaultPackageDirectories(packageCache: cache)
     #expect(packages.contains(cache))
@@ -327,10 +327,25 @@ private func sourcesFallInside(_ rendered: RenderedBlock, _ block: RenderBlock) 
     let bundled = try #require(packages.first)
     #expect(FileManager.default.fileExists(atPath: bundled.appendingPathComponent("preview/cetz").path))
     #expect(!BlockRenderer.defaultPackageDirectories().contains(cache))
-    let fonts = BlockRenderer.defaultFontDirectories
-    #expect(fonts.count == 1)
-    #expect(fonts
-        .allSatisfy { FileManager.default.fileExists(atPath: $0.appendingPathComponent("NotoSansSC.ttf").path) })
+}
+
+/// Prose bundles no CJK font. Typst's fallback finds one among the system fonts,
+/// so two different characters draw two different shapes. Without fallback the
+/// document font has neither, and both draw the same missing-glyph box.
+@Test func blockRendererDrawsCJKTextWithSystemFontsAlone() async throws {
+    let thesis = try ThesisCopy()
+    let renderer = try await thesis.renderer()
+    let draft = thesis.root.appendingPathComponent("cjk.typ")
+    func svg(_ source: String) async throws -> Data {
+        try await renderer.setText(source, of: draft)
+        let block = try #require(try await renderer.blocks(in: draft).first)
+        let rendered = try await renderer.render(block.range, in: draft, width: 300).get()
+        #expect(rendered.ink.width > 0)
+        #expect(rendered.glyphs.count == 2)
+        return rendered.svg
+    }
+    #expect(try await svg("中文") != svg("中中"))
+    #expect(try await svg("#text(fallback: false)[中文]") == svg("#text(fallback: false)[中中]"))
 }
 
 @Test func blockRendererKindsIncludeContextIncludeRawListAndComment() async throws {

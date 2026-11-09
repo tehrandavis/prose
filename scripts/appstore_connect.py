@@ -252,7 +252,7 @@ class Release:
             localizations = self.client.list(f'/v1/appStoreVersions/{identifier}/appStoreVersionLocalizations')
             by_locale = {item['attributes']['locale']: item for item in localizations}
             if not all(locale in by_locale for locale in self.metadata['notes']):
-                raise RuntimeError('Expected inherited English and Chinese storefront metadata; set up missing locales first')
+                raise RuntimeError('Expected the English storefront metadata; set up the missing locale first')
             for locale, notes in self.metadata['notes'].items():
                 self.client.patch('appStoreVersionLocalizations', by_locale[locale]['id'], {'whatsNew': notes})
             self.client.patch('appStoreVersions', identifier, {'releaseType': 'AFTER_APPROVAL'})

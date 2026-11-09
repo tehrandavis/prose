@@ -21,9 +21,9 @@ extension WritingFlowTests {
         let suite = "Prose.appearance.test." + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        // Keep this test independent of the user's app language and preferences.
+        // Keep this test independent of the user's preferences.
         try defaults.set(
-            JSONEncoder().encode(SyncedPreferences(language: L10n.language.rawValue)),
+            JSONEncoder().encode(SyncedPreferences()),
             forKey: LibraryPreferences.storageKey,
         )
         let source = "= A quiet page\n\n#let value = 42\n\nKeep 中文😀 intact.\n"

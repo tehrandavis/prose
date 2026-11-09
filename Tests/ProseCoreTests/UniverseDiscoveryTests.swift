@@ -47,12 +47,12 @@ private func discoveryDirectory() throws -> URL {
     ]
     let catalog = UniverseCatalogSnapshot(packages: packages, fetchedAt: Date(), source: .cache)
     #expect(catalog.discover("", mode: .templates).map(\.name) == ["charged-ieee", "basic-resume"])
-    #expect(catalog.discover("简历", mode: .templates).map(\.name) == ["basic-resume"])
+    #expect(catalog.discover("cv", mode: .templates).map(\.name) == ["basic-resume"])
     #expect(catalog.discover("", mode: .templates, group: "research").map(\.name) == ["charged-ieee"])
-    #expect(catalog.discover("论文", mode: .templates).map(\.name) == ["charged-ieee"])
-    #expect(catalog.discover("流程图", mode: .packages, compilerVersion: "0.15.1").map(\.name) == ["fletcher"])
+    #expect(catalog.discover("academic", mode: .templates).map(\.name) == ["charged-ieee"])
+    #expect(catalog.discover("flowcharts", mode: .packages, compilerVersion: "0.15.1").map(\.name) == ["fletcher"])
     #expect(catalog.discover("code", mode: .packages, group: "code").map(\.name) == ["codly"])
-    #expect(catalog.discover("代码块", mode: .packages).map(\.name) == ["codly"])
+    #expect(catalog.discover("syntax", mode: .packages).map(\.name) == ["codly"])
     #expect(catalog.discover("resume", mode: .packages).isEmpty)
     #expect(catalog.discover("", mode: .templates, group: "invalid").isEmpty)
     #expect(packages[0].thumbnailURL?
@@ -64,7 +64,7 @@ private func discoveryDirectory() throws -> URL {
     #expect(roundTrip == packages[0])
 }
 
-@Test func universeDiscoveryIndexDoesNotDependOnCurrentLanguageAndRanksNames() throws {
+@Test func universeDiscoveryIndexFoldsCaseAndAccentsAndRanksNames() throws {
     let packages = try [
         discoveryPackage([
             "name": "mention",
@@ -88,8 +88,8 @@ private func discoveryDirectory() throws -> URL {
     let catalog = UniverseCatalogSnapshot(packages: packages, fetchedAt: Date(), source: .cache)
     #expect(catalog.discover("CETZ", mode: .packages).map(\.name) == ["cetz", "cetz-plus", "mention"])
     #expect(catalog.discover("cafe", mode: .packages).map(\.name) == ["cetz"])
-    #expect(catalog.discover("绘图", mode: .packages, group: "draw").count == 2)
-    #expect(catalog.search("文字").map(\.name) == ["mention"])
+    #expect(catalog.discover("canvas", mode: .packages, group: "draw").count == 2)
+    #expect(catalog.search("text").map(\.name) == ["mention"])
 }
 
 @Test func universeTemplateMetadataRejectsInvalidPathsAndToleratesMissingMetadata() throws {
@@ -236,7 +236,7 @@ func officialUniverseTemplateCreatesRenderableManagedDocument() async throws {
     let catalog = UniverseCatalogSnapshot(packages: packages, fetchedAt: Date(), source: .cache)
     let start = ContinuousClock.now
     for _ in 0 ..< 30 {
-        #expect(catalog.discover("流程图", mode: .packages, group: "draw").count == 2000)
+        #expect(catalog.discover("flowcharts", mode: .packages, group: "draw").count == 2000)
         #expect(catalog.discover("package-1999", mode: .packages).first?.name == "package-1999")
     }
     // Generous CI budget. Guards against normalizing every field on every UI query again.

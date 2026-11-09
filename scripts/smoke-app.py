@@ -55,8 +55,7 @@ def main():
         try:
             with (artifacts / 'process.log').open('wb') as output:
                 process = subprocess.Popen(
-                    [str(relocated / 'Contents/MacOS/Prose'), '-appLanguage', 'zh-Hans',
-                     '-SUEnableAutomaticChecks', 'NO'],
+                    [str(relocated / 'Contents/MacOS/Prose'), '-SUEnableAutomaticChecks', 'NO'],
                     cwd=root, env={**os.environ, 'PROSE_STATE_DIR': str(state)},
                     stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT,
                     start_new_session=True,
@@ -75,10 +74,10 @@ def main():
                                 pass  # A live append may not be complete yet.
                     ready = any(event.get('event') == 'service.ready' for event in events)
                     icon_loaded = any(event.get('event') == 'application.iconLoaded' for event in events)
-                    localized = any('用 Typst 写作' in source.read_text()
-                                    for source in (state / 'Library/Documents').glob('*/main.typ'))
+                    welcomed = any('= Write in Typst' in source.read_text()
+                                   for source in (state / 'Library/Documents').glob('*/main.typ'))
                     descriptor = state / 'MCP/connection.json'
-                    if ready and localized and icon_loaded and descriptor.exists():
+                    if ready and welcomed and icon_loaded and descriptor.exists():
                         verify_running_app(relocated, process.pid)
                         if hurl:
                             connection = json.loads(descriptor.read_text())
@@ -97,12 +96,12 @@ def main():
                                 raise RuntimeError('Packaged MCP authoring contract failed; see mcp-hurl.log')
                         if process.poll() is not None:
                             raise RuntimeError(f'Relocated app exited during MCP checks: {process.returncode}')
-                        print('PASS: relocated app launched, app icon and Chinese resources loaded, '
+                        print('PASS: relocated app launched, app icon and bundled welcome document loaded, '
                               'library created, Tinymist ready, saved MCP access resumed.' +
                               (' Authoring Hurl contract passed.' if hurl else ''))
                         return
                     time.sleep(0.1)
-                raise RuntimeError('App did not reach a localized library, ready typesetting service '
+                raise RuntimeError('App did not reach a welcome library, ready typesetting service '
                                    'and resumed MCP connection in 30 seconds')
         finally:
             if process is not None:

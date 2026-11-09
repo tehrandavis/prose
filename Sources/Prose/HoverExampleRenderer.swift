@@ -50,9 +50,6 @@ final class HoverExampleRenderer {
             process.arguments = ["compile", "--root", root.path, "--pages", "1",
                                  "--package-path", root.appendingPathComponent("local-packages").path,
                                  "--package-cache-path", packageCache.path, input.path, output.path]
-            if let font = TinymistClient.bundledFontURL {
-                process.arguments?.insert(contentsOf: ["--font-path", font.deletingLastPathComponent().path], at: 1)
-            }
             // Examples can use cached packages, but hovering must not start downloads.
             var environment = ProcessInfo.processInfo.environment
             for key in ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"] {

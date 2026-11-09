@@ -125,9 +125,6 @@ extension WritingFlowTests {
         defer { app.close() }
         try await app.ready()
         let editor = try #require(app.workspace.editor)
-        let previousLanguage = L10n.language
-        defer { L10n.setLanguage(previousLanguage) }
-        L10n.setLanguage(.simplifiedChinese)
         for appearance in [NSAppearance.Name.aqua, .darkAqua] {
             app.window.appearance = NSAppearance(named: appearance)
             await app.layout()

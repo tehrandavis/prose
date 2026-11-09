@@ -37,7 +37,6 @@ private final class PreferenceFixtureCloud: PreferenceCloudStore {
     #expect(preferences.syncState == .local)
     #expect(LibraryPreferences(defaults: defaults, cloud: cloud).values.fontSize == 19)
     let remote = SyncedPreferences(
-        language: "zh-Hans",
         commandKey: "k",
         fontSize: 22,
         previewDark: true,
@@ -92,8 +91,14 @@ private final class PreferenceFixtureCloud: PreferenceCloudStore {
     #expect(unavailable.syncState == .unavailable)
     #expect(unavailable.values.fontSize == 25)
     #expect(states.contains(.waiting))
-    #expect(SyncedPreferences(language: "unknown", commandKey: "escape", fontSize: .infinity)
-        .validated == SyncedPreferences())
+    #expect(SyncedPreferences(commandKey: "escape", fontSize: .infinity).validated == SyncedPreferences())
+    // Preferences saved by builds with an interface language picker still load.
+    let saved = Data(#"{"language":"zh-Hans","commandKey":"k","fontSize":18,"previewDark":false,"styledSource":true}"#
+        .utf8)
+    #expect(try JSONDecoder().decode(SyncedPreferences.self, from: saved) == SyncedPreferences(
+        commandKey: "k",
+        fontSize: 18,
+    ))
     #expect(SyncedPreferences(fontSize: 50).validated.fontSize == 32)
     #expect(SyncedPreferences(fontSize: 2).validated.fontSize == 10)
     #expect(SyncedPreferences(documentTemplate: "codeNotes").validated.documentTemplate == "codeNotes")

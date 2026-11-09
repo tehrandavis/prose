@@ -122,10 +122,6 @@ public struct UniverseCategory: Identifiable, Sendable {
         L10n.text(titleKey)
     }
 
-    public var searchTerms: String {
-        L10n.searchTerms(titleKey)
-    }
-
     public static let all: [Self] = [
         .init(id: "", titleKey: "All Packages"), .init(id: "visualization", titleKey: "Drawing & Visualization"),
         .init(id: "components", titleKey: "Components"), .init(id: "text", titleKey: "Text"),

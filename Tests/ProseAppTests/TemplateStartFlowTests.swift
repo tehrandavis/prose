@@ -97,7 +97,7 @@ extension WritingFlowTests {
         #expect(app.workspace.discoveryMode == .templates)
         #expect(app.workspace.fileURL == app.document)
         #expect(!WritingCommand.all.contains { $0.id == "newCodeNotes" })
-        #expect(WritingCommand.search("模板").contains { $0.id == "new" })
+        #expect(WritingCommand.search("template").contains { $0.id == "new" })
 
         // A saved legacy preference must not turn the explicit blank choice into code notes.
         app.workspace.documentTemplate = .codeNotes
@@ -115,46 +115,35 @@ extension WritingFlowTests {
         )
     }
 
-    @Test func welcomeCreationCompilesBothLanguagesAndPreservesExistingWriting() async throws {
+    @Test func welcomeCreationCompilesAndPreservesExistingWriting() async throws {
         let app = try WritingFixture(text: "= My own words\n", startService: false)
         defer { app.close() }
-        let language = L10n.language
-        defer { L10n.setLanguage(language) }
-        var previousID: UUID?
-        for language in [AppLanguage.english, .simplifiedChinese] {
-            L10n.setLanguage(language)
-            try await app.workspace.library.create(builtIn: .welcome)
-            let id = try #require(app.workspace.managedDocumentID)
-            #expect(id != previousID)
-            previousID = id
-            #expect(app.workspace.text == WelcomeDocument.source(language: language))
-            let sourceURL = try #require(app.workspace.fileURL)
-            let originalMark = try WelcomeDocument.assets()[WelcomeDocument.markFilename]
-            #expect(try Data(contentsOf: sourceURL.deletingLastPathComponent()
-                    .appendingPathComponent(WelcomeDocument.markFilename)) == originalMark)
-            let exported = app.root.appendingPathComponent("welcome-project-\(language.rawValue)")
-            try await app.workspace.library.store.exportProject(id, to: exported)
-            #expect(
-                try Data(contentsOf: exported.appendingPathComponent(WelcomeDocument.markFilename)) == originalMark,
-                "Source export must retain the document's logo asset",
-            )
-            try await app.ready()
-            let pdf = app.root.appendingPathComponent("welcome-\(language.rawValue).pdf")
-            try await app.workspace.exportPDF(to: pdf)
-            let result = try #require(PDFDocument(url: pdf))
-            #expect(result.pageCount == 2)
-            #expect(result.string?.contains(language == .english ? "Follow the thread" : "顺着思路写下去") == true)
-            #expect(result.string?.contains("observations") == true)
-            #expect(!app.workspace.diagnostics.contains { $0.severity == 1 })
-        }
+        try await app.workspace.library.create(builtIn: .welcome)
+        let id = try #require(app.workspace.managedDocumentID)
+        #expect(app.workspace.text == WelcomeDocument.source())
+        let sourceURL = try #require(app.workspace.fileURL)
+        let originalMark = try WelcomeDocument.assets()[WelcomeDocument.markFilename]
+        #expect(try Data(contentsOf: sourceURL.deletingLastPathComponent()
+                .appendingPathComponent(WelcomeDocument.markFilename)) == originalMark)
+        let exported = app.root.appendingPathComponent("welcome-project")
+        try await app.workspace.library.store.exportProject(id, to: exported)
+        #expect(
+            try Data(contentsOf: exported.appendingPathComponent(WelcomeDocument.markFilename)) == originalMark,
+            "Source export must retain the document's logo asset",
+        )
+        try await app.ready()
+        let pdf = app.root.appendingPathComponent("welcome.pdf")
+        try await app.workspace.exportPDF(to: pdf)
+        let result = try #require(PDFDocument(url: pdf))
+        #expect(result.pageCount == 2)
+        #expect(result.string?.contains("Follow the thread") == true)
+        #expect(result.string?.contains("observations") == true)
+        #expect(!app.workspace.diagnostics.contains { $0.severity == 1 })
         #expect(try String(contentsOf: app.document, encoding: .utf8) == "= My own words\n")
-        let saved = app.workspace.text
-        L10n.setLanguage(.english)
-        #expect(app.workspace.text == saved, "Interface language changes never replace writing")
-        #expect(try await app.workspace.library.store.list().count == 2)
+        #expect(try await app.workspace.library.store.list().count == 1)
         let fresh = Workspace(stateDirectory: app.root.appendingPathComponent("Fresh"))
         defer { fresh.shutdown() }
-        #expect(fresh.text == WelcomeDocument.source(language: .english))
+        #expect(fresh.text == WelcomeDocument.source())
         #expect(fresh.layout == .split)
         #expect(fresh.text.contains("@preview/cetz:0.5.2"))
         #expect(FileManager.default

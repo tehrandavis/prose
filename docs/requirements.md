@@ -54,7 +54,7 @@ Users can switch between writing, side-by-side preview and full preview. Unsaved
 - Toggle the panel with `⌘J`; use `Esc` to return through levels and restore editor focus on dismissal.
 - Include Insert, Text Style, Page Setup, Workspace, Documents and command search.
 - Show available keys and localized names; support keyboard and pointer navigation.
-- Search English and Chinese names and keywords, regardless of the interface language.
+- Search English names and keywords. The interface is English only (2026-11-09).
 - Insert headings, lists, links, images, code blocks, inline/display equations, tables, labels, references and footnotes.
 - Wrap selected text or insert editable examples when nothing is selected.
 - Validate concise forms such as table dimensions and image paths.

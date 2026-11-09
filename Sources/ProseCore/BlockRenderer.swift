@@ -254,12 +254,6 @@ public actor BlockRenderer {
         return [bundled, packageCache].compactMap(\.self) + user
     }
 
-    /// The folder of the app's bundled fonts (the CJK fallback, NotoSansSC).
-    public static var defaultFontDirectories: [URL] {
-        CoreResources.bundle.url(forResource: "NotoSansSC", withExtension: "ttf")
-            .map { [$0.deletingLastPathComponent()] } ?? []
-    }
-
     /// Replaces a file's text in memory with the editor's buffer. The file need
     /// not exist on disk. Cheap.
     public func setText(_ text: String, of file: URL) throws {

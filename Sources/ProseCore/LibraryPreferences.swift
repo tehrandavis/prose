@@ -4,7 +4,6 @@ public enum AppAppearance: String, Codable, CaseIterable, Sendable { case system
 
 /// Only these small UI preferences may leave the device. Paths, document text and logs never enter KVS.
 public struct SyncedPreferences: Codable, Equatable, Sendable {
-    public var language: String
     public var commandKey: String
     public var fontSize: Double
     public var previewDark: Bool
@@ -14,7 +13,6 @@ public struct SyncedPreferences: Codable, Equatable, Sendable {
     public var appearance: String?
 
     public init(
-        language: String = "system",
         commandKey: String = "j",
         fontSize: Double = 16,
         previewDark: Bool = false,
@@ -23,7 +21,6 @@ public struct SyncedPreferences: Codable, Equatable, Sendable {
         historyInterval: String? = nil,
         appearance: String? = nil,
     ) {
-        self.language = language
         self.commandKey = commandKey
         self.fontSize = fontSize
         self.previewDark = previewDark
@@ -35,7 +32,6 @@ public struct SyncedPreferences: Codable, Equatable, Sendable {
 
     public var validated: Self {
         Self(
-            language: ["system", "en", "zh-Hans"].contains(language) ? language : "system",
             commandKey: ["j", "k"].contains(commandKey) ? commandKey : "j",
             fontSize: fontSize.isFinite ? min(32, max(10, fontSize)) : 16,
             previewDark: previewDark,
@@ -106,10 +102,7 @@ public final class LibraryPreferences {
         ) {
             values = saved.validated
         } else {
-            values = SyncedPreferences(
-                language: defaults.string(forKey: L10n.preferenceKey) ?? "system",
-                commandKey: defaults.string(forKey: "commandKey") ?? "j",
-            ).validated
+            values = SyncedPreferences(commandKey: defaults.string(forKey: "commandKey") ?? "j").validated
         }
         observer = PreferenceObservation(NotificationCenter.default.addObserver(
             forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
@@ -200,7 +193,6 @@ public final class LibraryPreferences {
             values[keyPath: key] == base[keyPath: key] ? remote[keyPath: key] : values[keyPath: key]
         }
         values = SyncedPreferences(
-            language: merge(\.language),
             commandKey: merge(\.commandKey),
             fontSize: merge(\.fontSize),
             previewDark: merge(\.previewDark),
@@ -221,7 +213,6 @@ public final class LibraryPreferences {
         if let data = try? JSONEncoder().encode(values) {
             defaults.set(data, forKey: Self.storageKey)
         }
-        defaults.set(values.language, forKey: L10n.preferenceKey)
         defaults.set(values.commandKey, forKey: "commandKey")
     }
 

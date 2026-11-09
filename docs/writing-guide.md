@@ -4,13 +4,13 @@ Prose is a development preview for Macs with an Apple M-series chip, running mac
 
 Open Prose from your Applications folder. The app includes its typesetting service; no separate installation of Typst, Rust or Homebrew is needed to use it. Try the [welcome document](../Examples/Welcome.typ).
 
-The app supports English and Simplified Chinese, with the localized name **Prose** and tagline **用 Typst 写作**. Choose **Settings → App Language** to follow your system or use either language immediately. Changing the interface language never translates or rewrites your documents.
+The interface is in English. Your documents can be in any language: Prose draws Chinese, Japanese, Korean and other scripts with the fonts that come with macOS.
 
 | Action | Shortcut |
 |---|---|
 | Discover commands | `⌘J`, configurable as `⌘K` |
 | Browse categories | `i` Insert, `s` Text Style, `p` Page Setup, `m` Mathematics, `l` Typesetting, `r` References, `c` Editing & Code, `v` Workspace, `f` Documents |
-| Search commands | `/` inside the command panel; English and Chinese queries work in either interface language |
+| Search commands | `/` inside the command panel |
 | Go back or dismiss | `Esc` |
 | Move between inserted placeholders | `Tab` / `⇧Tab`; `Esc` to finish |
 | Code / Writing / Focus mode | `⌘1` / `⌘2` / `⌘3` (Focus arrives in a later version) |

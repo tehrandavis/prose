@@ -1,4 +1,4 @@
-/* Prose app strings. English source keys; keep placeholders identical across languages. */
+/* Prose app strings. English only: keys are the English text, values may reword it. */
 "%@ commands" = "%@ commands";
 "%@ packages · Local index %@" = "%@ packages · Local index %@";
 "%@ packages · Updated %@" = "%@ packages · Updated %@";
@@ -26,7 +26,6 @@
 "Alignment · left / center / right" = "Alignment · left / center / right";
 "All Packages" = "All Packages";
 "Another app changed this file. Your work is safe; reload from disk or save a copy." = "Another app changed this file. Your work is safe; reload from disk or save a copy.";
-"App Language" = "App Language";
 "Apply Settings" = "Apply Settings";
 "Arrange content in two or more columns." = "Arrange content in two or more columns.";
 "Arrange content side by side in a grid. Use a table for data." = "Arrange content side by side in a grid. Use a table for data.";
