@@ -87,6 +87,10 @@ scripts/benchmark-books.sh
 
 The second script reuses the instrumented test binary. It runs on each PR in CI
 and uploads `build/benchmarks` plus a job summary. No fixture download is required.
+It runs each book twice: in Code mode (`war-and-peace.json`, `sicp.json`) and,
+with `PROSE_WRITING_MODE=1`, in Prose's Writing mode (`war-and-peace-writing.json`,
+`sicp-writing.json`), under the same gates; see the "Step H benchmark" section of
+the [Phase 3 note](plans/2026-11-08-phase-3-writing-mode.md).
 Each scenario uses production Workspace, NSTextView and real Tinymist:
 
 1. Open a complete source and wait for semantic highlighting; assert a known

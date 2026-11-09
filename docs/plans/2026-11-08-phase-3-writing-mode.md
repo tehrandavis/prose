@@ -324,3 +324,44 @@ Test block: a paragraph of three source lines starting at offset 17 (lines start
 - Test harness: `editor.string as NSString` can be the storage's live string and changes with later edits; tests snapshot with `NSString(string:)`. `firstRect` answers a zero rectangle for marked text scrolled out of view; test 10 checks the candidate window only while it is in view.
 - Results: 241 core and 174 app tests pass, coverage 88.50 percent (main-session rerun) (`WritingAccessibility.swift` 92.6 percent, `WritingLayout.swift` 99.4 percent); lint and the release build pass.
 - Open for step H: no test drives a real input method or the accessibility server in the running app. AXVisibleCharacterRange, AXStyleRangeForIndex and AXRTFForRange answer from the source as before and were not changed. `firstRect` for a range that starts in a rendered block reports only its first drawn line, so a lookup panel over a multi-line range follows that line. A composition over a pointer selection that spans several blocks opens each block it edits, but only a selection inside one block is tested.
+
+## Step H benchmark (2026-11-09)
+
+- Acceptance test 14 passes. `LargeDocumentBenchmark` runs in Writing mode when `PROSE_WRITING_MODE=1` is set: it sets `WritingModeEnabled` for the run, enters Writing mode after Tinymist settles, and waits for the engine, the viewport's renders and the first full compile. `scripts/benchmark-books.sh` runs both books in both modes and writes `sicp-writing.json` and `war-and-peace-writing.json` beside the Code mode reports; `summary.md` has a row for each run and a memory and CPU table. The Code mode runs are unchanged, except that both modes now record peak memory and CPU and wait at least 4 s after typing for both engines to go idle.
+- Every jump, and the jump before typing, lands in a block that is rendered when it starts. Before timing, the run scrolls each target into view without moving the caret, so its block renders, then returns to the line that was at the top. A block keeps its rendered role and height after its image is evicted, so the jump swaps it to source. SICP's targets at 90, 99 and 75 percent were in blocks that never render (the index and raw blocks); they move to the first line of the nearest rendered block. War and Peace keeps all six.
+- The run checks that it measured Writing mode: the mode is on at the end, each jump swaps at least once and opens its block, the scroll and the typing jump swap, rendered fragments with images drew, and the storage holds only source. Between scroll frames (untimed) the run lets the new viewport's renders arrive and swap, so the drift check covers swaps.
+- Defect found in the benchmark, not in Writing mode: the first version returned to the old clip-view `y` after the targets. Heights had changed where blocks rendered, so that `y` showed SICP's index, and TextKit built about 4,950 paragraphs while it replaced estimated heights there (5,958 in all, over the gate). The run now returns by the top line (`writingAnchor`, `restoreWritingAnchor`). With 5,958 paragraphs built, typing in Writing mode took 16.5 ms median against 3.1 ms in Code mode: TextKit reads `layoutFragmentFrame` of every fragment built after the edit, and each read asks the model for the role (`WritingLayout.role(forParagraph:)`, a binary search over entries that the debug build copies). At 1,076 to 1,503 paragraphs built the typing median is 0.15 to 0.4 ms above Code mode. No production code changed.
+
+| Gate | War and Peace Code | War and Peace Writing | SICP Code | SICP Writing |
+|-|-|-|-|-|
+| Typing p95 < 100 ms | 7.95 | 7.37 | 4.44 | 5.93 |
+| Typing max < 250 ms | 18.99 | 31.05 | 5.40 | 9.64 |
+| Typing main-thread CPU max < 100 ms | 13.58 | 14.14 | 5.14 | 9.57 |
+| Jump + draw max < 200 ms | 32.56 | 11.99 | 33.64 | 16.50 |
+| Paragraphs built < 5,000 | 1,254 | 1,503 | 968 | 1,076 |
+| Jumps on target, hit error 0 | 6/6, 0 | 6/6, 0 | 6/6, 0 | 6/6, 0 |
+| Scroll drift < 0.5 pt | 0.0 | -0.26 | 0.0 | 0.0 |
+| Export > 400 pages | | | 448 | 448 |
+
+- Typing median: 5.75 Code, 6.14 Writing (War and Peace); 4.02 Code, 4.17 Writing (SICP). Jump median about 11.5 ms in all four. Scroll and draw p95 rises from 2.9 to 21.9 ms (War and Peace) and from 2.8 to 9.6 ms (SICP), because frames draw bitmaps; there is no gate on it.
+- Swaps: 375 in War and Peace (46 in the jumps, 72 while scrolling, 26 for the typing jump), 208 in SICP. Rendered fragments with images drew 677 times (34 fragments) and 110 times (7 fragments; SICP's view is mostly raw code).
+- Entry: 1.83 s (War and Peace, ran out of the 100 ms entry budget and drew source first) and 1.28 s (SICP, drew renders at once), mostly the first full compile on engine threads: 1.72 and 4.06 s of process CPU.
+
+| Measure | War and Peace Code | War and Peace Writing | SICP Code | SICP Writing |
+|-|-|-|-|-|
+| Peak footprint of the app process (MiB) | 239 | 990 | 250 | 1,022 |
+| Engine share: footprint after entry minus before (MiB) | | 660 | | 708 |
+| Tinymist peak footprint (MiB) | 1,187 | 1,191 | 1,066 | 1,066 |
+| Typing, 2.5 to 2.7 s: main thread / process / Tinymist CPU (s) | 1.04 / 1.28 / 0.00 | 1.20 / 1.42 / 0.00 | 0.90 / 1.03 / 0.00 | 1.13 / 1.26 / 0.00 |
+| After typing, about 4.4 s: main thread / process / Tinymist CPU (s) | 0.61 / 3.01 / 0.37 | 0.64 / 2.62 / 0.39 | 0.46 / 2.53 / 0.34 | 0.50 / 2.64 / 0.42 |
+
+- Memory is the cost of Writing mode: the engine adds 660 to 710 MiB to the app process and the app peaks near 1 GB, as the "Risks" section expected. The engine's share is a footprint difference, not an allocator count. Tinymist's footprint does not change. Bitmaps held at the end: 17 and 13 MiB.
+- CPU: while typing neither engine compiles (Tinymist waits for a pause, Writing mode's 150 ms settle never ends), so the extra main-thread CPU is 0.16 to 0.23 s over 80 keys. After typing, Tinymist's compile costs 0.37 to 0.42 s in both modes. The block engine's sync, render and refresh after 1.5 s fall inside the window; the process total is within run-to-run noise of Code mode (2.62 against 3.01 s, 2.64 against 2.53 s).
+- Open: role lookups during the TextKit walk after an edit scale with paragraphs built (above); caching the role per fragment or keeping span starts in a plain array would cut it. Scrolling the clip view to a distant `y` after heights changed can lay out thousands of paragraphs; the app scrolls by reveal and anchors, but a scroller drag to such a place is not measured.
+
+## Gate runs (2026-11-09)
+
+- The main session ran lint and the release build once, then `PROSE_DISTRIBUTION=preview scripts/test.sh` followed by `scripts/benchmark-books.sh` three times in a row, with no change in between. All three runs passed: 241 core and 174 app tests each time (acceptance tests 1 to 13 among them), coverage 88.48, 88.54 and 88.51 percent, and every benchmark scenario in both modes (acceptance test 14). No stray `WritingModeEnabled` key was left before any run.
+- Worst Writing-mode values over the three runs: typing p95 12.67 ms, typing max 14.08 ms, jump and draw max 33.87 ms, 1,503 paragraphs built, scroll drift -0.3 pt. Peak app footprint 986 to 1,039 MiB, engine share 647 to 660 MiB in the third run.
+- Scroll and draw p95 in War and Peace's Writing mode reached 43.5 ms (Code mode 2.5 to 4.5 ms). There is no gate on it, but it is above one 60 Hz frame; record it for Phase 4.
+- The kill switch is not needed. The hidden default is removed in the next commit.
