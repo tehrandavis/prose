@@ -118,6 +118,15 @@ final class Workspace: ObservableObject {
     /// Opens a file Prose does not edit, such as a PDF or an image. Tests replace it.
     var previewFile: (URL) -> Void = { QuickLookPreview.shared.show($0) }
     var projectWatcher: ProjectWatcher?
+    /// Writing mode's engine for the open project, created the first time
+    /// Writing mode is used (decision 10 of the Phase 3 note).
+    var writingEngine: (key: WritingEngineKey, renderer: BlockRenderer)?
+    var writingEngineTask: Task<Void, Never>?
+    var writingEngineRequest: WritingEngineKey?
+    var writingEngineGeneration = 0
+    /// Engines created, and texts passed in from disk, for tests.
+    var writingEnginesCreated = 0
+    var writingDiskUpdates = 0
 
     @Published var checksOpen = false {
         didSet { recordOperation("checks.visibility", ["open": String(checksOpen)]) }
@@ -406,6 +415,7 @@ final class Workspace: ObservableObject {
     /// within the same compilation entry (and therefore the same root). Restarting
     /// would discard Tinymist's compile cache and preview, recompiling a whole book.
     func startService(reusingEngine: Bool = false) {
+        updateWritingMode()
         guard !isLibraryHome else {
             return
         }
@@ -1866,6 +1876,7 @@ final class Workspace: ObservableObject {
         syntaxTask?.cancel()
         library.stop()
         engine = nil
+        freeWritingEngine()
         client.stop()
     }
 

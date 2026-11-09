@@ -93,6 +93,11 @@ public struct WritingRendering: Sendable {
         drawnRect.height * scale
     }
 
+    /// The appearance the block was rendered for: its column width and colour.
+    public var appearance: WritingAppearance {
+        key.appearance
+    }
+
     /// The UTF-16 offset of a glyph's character now that the block starts at
     /// `location`; nil for generated text.
     public func offset(of glyph: RenderedGlyph, blockAt location: Int) -> Int? {

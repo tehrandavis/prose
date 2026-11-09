@@ -196,7 +196,8 @@ private struct WritingActions: View {
     }
 }
 
-/// Code, Writing and Focus. Writing and Focus arrive in later phases.
+/// Code, Writing and Focus. Writing works behind a hidden default; Focus
+/// arrives in Phase 4.
 struct ModeControl: View {
     @ObservedObject var workspace: Workspace
     var body: some View {
@@ -205,7 +206,7 @@ struct ModeControl: View {
                 let selected = workspace.editorMode == mode
                 Button { workspace.setMode(mode) } label: {
                     Text(L10n.text(mode.title)).font(.system(size: 11, weight: selected ? .semibold : .regular))
-                        .foregroundStyle(selected ? Theme.text : Theme.secondary.opacity(mode == .code ? 1 : 0.55))
+                        .foregroundStyle(selected ? Theme.text : Theme.secondary.opacity(mode.isAvailable ? 1 : 0.55))
                         .padding(.horizontal, 10).frame(minWidth: 26).frame(height: 26)
                         .background(selected ? Theme.editor : .clear, in: RoundedRectangle(cornerRadius: 6))
                         .contentShape(Rectangle())
@@ -216,7 +217,7 @@ struct ModeControl: View {
                     .learningHelp(
                         L10n.text(mode.title),
                         shortcut: "⌘\((EditorMode.allCases.firstIndex(of: mode) ?? 0) + 1)",
-                        detail: mode == .code ? nil : L10n.text("Arrives in a later version"),
+                        detail: mode.isAvailable ? nil : L10n.text("Arrives in a later version"),
                     )
             }
         }.padding(2).background(Theme.border.opacity(0.45), in: RoundedRectangle(cornerRadius: 8)).frame(height: 30)
@@ -224,6 +225,15 @@ struct ModeControl: View {
 }
 
 extension EditorMode {
+    /// Writing needs the hidden default until step H of Phase 3.
+    var isAvailable: Bool {
+        switch self {
+        case .code: true
+        case .writing: WritingController.isEnabled
+        case .focus: false
+        }
+    }
+
     var title: String {
         switch self {
         case .code: "Code"

@@ -276,7 +276,10 @@ extension Workspace {
         }
         projectWatcher?.stop()
         projectWatcher = root.map { root in
-            ProjectWatcher(root: root) { [weak self] in self?.projectRevision += 1 }
+            ProjectWatcher(root: root) { [weak self] files in
+                self?.projectRevision += 1
+                self?.projectFilesChanged(files)
+            }
         }
     }
 }
@@ -292,14 +295,15 @@ enum ProjectActionError: LocalizedError {
     }
 }
 
-/// Reports changes anywhere under a folder through FSEvents. The stream runs on
-/// the main queue, so callbacks are on the main actor; `stop()` is main-only.
+/// Reports changes anywhere under a folder through FSEvents, with the paths
+/// that changed. The stream runs on the main queue, so callbacks are on the
+/// main actor; `stop()` is main-only.
 final class ProjectWatcher: @unchecked Sendable {
     let root: URL
     private var stream: FSEventStreamRef?
-    private let onChange: @MainActor @Sendable () -> Void
+    private let onChange: @MainActor @Sendable ([URL]) -> Void
 
-    init(root: URL, onChange: @escaping @MainActor @Sendable () -> Void) {
+    init(root: URL, onChange: @escaping @MainActor @Sendable ([URL]) -> Void) {
         self.root = root
         self.onChange = onChange
         var context = FSEventStreamContext(
@@ -309,12 +313,15 @@ final class ProjectWatcher: @unchecked Sendable {
             release: nil,
             copyDescription: nil,
         )
-        let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
+        let callback: FSEventStreamCallback = { _, info, _, paths, _, _ in
             guard let info else {
                 return
             }
             let watcher = Unmanaged<ProjectWatcher>.fromOpaque(info).takeUnretainedValue()
-            MainActor.assumeIsolated { watcher.onChange() }
+            // With kFSEventStreamCreateFlagUseCFTypes the paths are a CFArray of CFString.
+            let files = (Unmanaged<CFArray>.fromOpaque(paths).takeUnretainedValue() as? [String] ?? [])
+                .map { URL(fileURLWithPath: $0) }
+            MainActor.assumeIsolated { watcher.onChange(files) }
         }
         stream = FSEventStreamCreate(
             nil,
@@ -323,7 +330,10 @@ final class ProjectWatcher: @unchecked Sendable {
             [root.path] as CFArray,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
             0.3,
-            FSEventStreamCreateFlags(kFSEventStreamCreateFlagNoDefer),
+            FSEventStreamCreateFlags(
+                kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagUseCFTypes |
+                    kFSEventStreamCreateFlagFileEvents,
+            ),
         )
         if let stream {
             FSEventStreamSetDispatchQueue(stream, .main)

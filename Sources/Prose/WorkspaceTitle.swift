@@ -29,12 +29,18 @@ extension Workspace {
         layout = layout == .writing ? .split : .writing
     }
 
+    /// Code, or Writing behind the hidden default `WritingModeEnabled` until
+    /// its acceptance tests pass (decision 11). Focus arrives in Phase 4.
     func setMode(_ mode: EditorMode) {
-        guard mode == .code else {
+        guard mode.isAvailable else {
             showMessage(L10n.text("Writing and Focus modes arrive in a later version of Prose."))
             return
         }
         recordOperation("mode.changed", ["mode": mode.rawValue])
+        guard mode != editorMode else {
+            return
+        }
         editorMode = mode
+        updateWritingMode()
     }
 }

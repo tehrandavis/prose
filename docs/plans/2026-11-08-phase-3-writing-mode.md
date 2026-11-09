@@ -283,3 +283,11 @@ Test block: a paragraph of three source lines starting at offset 17 (lines start
 - `WritingLayout` (`Sources/ProseCore/WritingLayout.swift`, `WritingLayoutTypes.swift`): a main-actor model behind the `WritingRenderer` protocol, which `BlockRenderer` conforms to. The view forwards edits, the caret, marked text, the visible range and the appearance. The layout delegate asks `role(forParagraph:)` and gets `source`, `rendered`, `collapsed` or `pill`; `onChange` names the ranges whose roles changed, and nothing is reported while text is marked.
 - Timing is injected through `WritingTiming` (settle 150 ms, refresh pause 1.5 s); tests await `idle()`.
 - Results: 236 core and 149 app tests pass; coverage 88.12 percent overall, `WritingLayout.swift` 99.2 percent, `WritingLayoutTypes.swift` 92.5 percent. Lint and the release build pass.
+
+## Step D outcome (2026-11-08)
+
+- Writing mode draws in the editor when the hidden default `WritingModeEnabled` is set. `WritingFragments.swift` holds the layout manager delegate and one fragment class that reads its paragraph's role on every frame read and draw; `invalidateLayout(for:)` swaps changed ranges. On first entry, TextKit's existing fragments are replaced once with `recordEditAction(in:newTextRange:)` over the whole text, which changes no characters.
+- `WritingController` (`WritingMode.swift`) forwards edits, the caret's moving end (the selection end that is not its anchor), marked text, the visible range and the appearance, and keeps the top line or the caret line in place across swaps.
+- `WorkspaceWriting.swift` keeps one `BlockRenderer` per project root and main entry, created on first entry. `ProjectWatcher` now reports changed paths, and changed project files reach the engine through `setText`.
+- Results: 236 core and 156 app tests pass, coverage 88.22 percent; lint and the release build pass. Drawing was checked with `cacheDisplay`, because the test window's display pass draws no fragments.
+- Open for steps E to H: NSTextView still draws its own selection and caret inside rendered blocks; clicks map through source layout; live-resize centering has no test; an external file change does not trigger a refresh.

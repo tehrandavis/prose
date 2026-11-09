@@ -83,6 +83,7 @@ struct ManuscriptView: NSViewRepresentable {
             }
             workspace.edited(editor.string, change: editor.takeCharacterEdit())
             editor.workspaceRevision = workspace.revision
+            editor.writing.editDidEnd()
             editor.scheduleTypingAssistance()
         }
 
@@ -189,6 +190,24 @@ final class ManuscriptTextView: NSTextView {
         // source text.
         needsDisplay = true
         enclosingScrollView?.needsDisplay = true
+        // Writing mode renders again with the dark or light text colour.
+        writing.appearanceDidChange()
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        writing.appearanceDidChange()
+    }
+
+    override func viewDidEndLiveResize() {
+        super.viewDidEndLiveResize()
+        writing.appearanceDidChange()
+    }
+
+    override func unmarkText() {
+        super.unmarkText()
+        // Swaps and renders that waited for the composition apply now.
+        writing.selectionDidChange()
     }
 
     weak var workspace: Workspace?
@@ -213,7 +232,9 @@ final class ManuscriptTextView: NSTextView {
     var styler: SourceStyler?
     private weak var observedUndoManager: UndoManager?
     var workspaceRevision = -1
-    private var loading = false
+    private(set) var loading = false
+    /// Writing mode's layout model and fragments.
+    lazy var writing = WritingController(editor: self)
     private var characterEditCount = 0
     private var characterEdit: TextReplacement?
 
@@ -256,6 +277,7 @@ final class ManuscriptTextView: NSTextView {
             }
             viewportTask = nil
             updateOutlineForViewport()
+            writing.viewportDidChange()
         }
     }
 
@@ -274,6 +296,7 @@ final class ManuscriptTextView: NSTextView {
             return
         }
         styler?.textDidChange(edited: range, delta: delta)
+        writing.textDidChange(in: storage, edited: range, delta: delta)
         characterEditCount += 1
         guard characterEditCount == 1, range.length - delta >= 0,
               NSMaxRange(range) <= storage.length
@@ -364,7 +387,8 @@ final class ManuscriptTextView: NSTextView {
         // viewport by laying out every paragraph above it (all 80,000 of a long
         // document; each later edit then walks them). Keep the top line in
         // place by location instead, which also keeps the reader's place.
-        let anchor = newSize.width != frame.width ? resizeAnchor ?? topLine() : nil
+        let widened = newSize.width != frame.width
+        let anchor = widened ? resizeAnchor ?? topLine() : nil
         super.setFrameSize(newSize)
         let inset = NSSize(width: ManuscriptLayout.horizontalInset(for: newSize.width), height: 42)
         if textContainerInset != inset {
@@ -373,6 +397,9 @@ final class ManuscriptTextView: NSTextView {
         if let anchor {
             resizeAnchor = anchor
             keepAtTop(anchor)
+        }
+        if widened {
+            writing.appearanceDidChange(coalesced: true)
         }
     }
 
@@ -469,6 +496,8 @@ final class ManuscriptTextView: NSTextView {
 
     func load(_ content: String, selection: NSRange) {
         dismissTypingAssistance()
+        // After `loading` is false again: Writing mode lays out the new text.
+        defer { workspace?.updateWritingMode(reload: true) }
         loading = true
         defer { loading = false
             _ = takeCharacterEdit()
@@ -497,6 +526,7 @@ final class ManuscriptTextView: NSTextView {
     func selectionChanged() {
         if !selectingWithMouse {
             styler?.selectionDidChange()
+            writing.selectionDidChange()
         }
     }
 
