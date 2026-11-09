@@ -60,6 +60,9 @@ extension Workspace {
         writingEngineTask?.cancel()
         writingEngineTask = nil
         writingEngineRequest = nil
+        projectChangeTask?.cancel()
+        projectChangeTask = nil
+        pendingProjectChanges = []
         if writingEngine != nil {
             recordOperation("writing.engineFreed")
         }
@@ -114,30 +117,51 @@ extension Workspace {
         }
     }
 
-    /// Files of the project changed on disk. The engine reads files it was not
-    /// given from disk once, so it gets their new text; the open file's text
-    /// is the editor's.
+    /// Files of the project changed on disk. A burst of changes is passed on
+    /// once it pauses for `projectChangeDelay` (citations note, decision 1):
+    /// Typst files other than the open one go to the engine as text, as the
+    /// editor's buffers do, and every changed file is reported to it, so it
+    /// reads bibliographies, data and images again. When the document read any
+    /// of them, Writing mode compiles it again and re-renders the blocks in view;
+    /// the engine's cache compiles only those whose result can have changed.
+    /// The open file's text is the editor's.
     func projectFilesChanged(_ files: [URL]) {
         guard let engine = writingEngine else {
             return
         }
-        let open = documentURL.standardizedFileURL
-        var changed: [URL] = []
-        for file in files where file.pathExtension.lowercased() == "typ" {
+        for file in files {
             guard let relative = try? ProjectTree.relativePath(of: file, in: engine.key.root) else {
                 continue
             }
             let url = engine.key.root.appendingPathComponent(relative).standardizedFileURL
-            if url != open, !changed.contains(url) {
-                changed.append(url)
+            if !pendingProjectChanges.contains(url) {
+                pendingProjectChanges.append(url)
             }
         }
-        guard !changed.isEmpty else {
+        guard !pendingProjectChanges.isEmpty else {
             return
         }
-        let renderer = engine.renderer
+        projectChangeTask?.cancel()
+        let delay = projectChangeDelay
+        projectChangeTask = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else {
+                return
+            }
+            self?.applyProjectChanges()
+        }
+    }
+
+    private func applyProjectChanges() {
+        projectChangeTask = nil
+        let open = documentURL.standardizedFileURL
+        let changed = pendingProjectChanges.filter { $0 != open }
+        pendingProjectChanges = []
+        guard let renderer = writingEngine?.renderer, !changed.isEmpty else {
+            return
+        }
         Task {
-            for url in changed {
+            for url in changed where url.pathExtension.lowercased() == "typ" {
                 let text = await Task.detached { try? DocumentStorage.read(url).0 }.value
                 guard let text, writingEngine?.renderer === renderer else {
                     continue
@@ -145,6 +169,17 @@ extension Workspace {
                 try? await renderer.setText(text, of: url)
                 writingDiskUpdates += 1
             }
+            guard writingEngine?.renderer === renderer else {
+                return
+            }
+            let read = await renderer.filesChanged(changed)
+            writingChangeReports += 1
+            recordOperation("writing.filesChanged", ["files": String(changed.count), "read": String(read)])
+            guard read > 0, writingEngine?.renderer === renderer else {
+                return
+            }
+            writingExternalRefreshes += 1
+            editor?.writing.filesChangedOnDisk()
         }
     }
 }

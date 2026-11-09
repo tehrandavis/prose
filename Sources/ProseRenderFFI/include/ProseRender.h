@@ -23,7 +23,7 @@
 #pragma clang assume_nonnull begin
 
 // Increment whenever PRRenderAPI or any struct below changes.
-#define PR_RENDER_ABI_VERSION 2u
+#define PR_RENDER_ABI_VERSION 3u
 // PRGlyphBox.source for generated text: numbers, reference text, text from
 // other files.
 #define PR_NO_SOURCE (-1)
@@ -133,6 +133,11 @@ typedef struct {
     uint32_t bitmap_height;
     // Whether the vector result came from the cache.
     bool cached;
+    // The plain text of the block's text runs, separated by spaces, UTF-8, not
+    // NUL-terminated: what the block shows, generated text included. For tests
+    // and measurement.
+    const uint8_t *_Nullable text;
+    size_t text_length;
 } PRRenderResult;
 
 // What the last refresh found. headings, equations and references describe
@@ -208,6 +213,16 @@ typedef struct {
     // or NULL if there was none. Release with string_free.
     char *_Nullable (*_Nonnull last_error)(PREngine *_Nullable engine);
     void (*_Nonnull string_free)(char *_Nullable string);
+    // Files changed on disk: bibliographies, data, images, Typst files that
+    // are not editor buffers. paths are absolute or relative to the root;
+    // paths outside the project are ignored. Every file loaded from disk is
+    // read again on its next use, and each changed file gets a new version,
+    // so cached renders that read it compile again; editor buffers (set_text)
+    // keep their text. Cheap: nothing is read or compiled here. Returns how
+    // many of the files the main file, the last refresh or any render read;
+    // when 0, nothing shown can have changed and no refresh is needed.
+    size_t (*_Nonnull files_changed)(PREngine *_Nullable engine, const char *_Nullable const *_Nullable paths,
+                                     size_t count);
 } PRRenderAPI;
 
 // The renderer's only exported symbol. The same library also exports

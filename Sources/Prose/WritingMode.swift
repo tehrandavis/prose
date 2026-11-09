@@ -186,6 +186,12 @@ final class WritingController: NSObject {
         verticalGoal = nil
     }
 
+    /// Files the document reads changed on disk and the engine has read them
+    /// again: compile the document again and re-render the blocks in view.
+    func filesChangedOnDisk() {
+        model?.filesChangedOnDisk()
+    }
+
     /// Stops and lets go of the engine.
     func detach() {
         stop()

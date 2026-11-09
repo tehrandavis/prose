@@ -154,9 +154,18 @@ final class Workspace: ObservableObject {
     var writingEngineTask: Task<Void, Never>?
     var writingEngineRequest: WritingEngineKey?
     var writingEngineGeneration = 0
-    /// Engines created, and texts passed in from disk, for tests.
+    /// Engines created, texts passed in from disk, bursts of changes on disk
+    /// reported to the engine, and refreshes they caused, for tests.
     var writingEnginesCreated = 0
     var writingDiskUpdates = 0
+    var writingChangeReports = 0
+    var writingExternalRefreshes = 0
+    /// Project files changed on disk, waiting for the burst to end.
+    var pendingProjectChanges: [URL] = []
+    var projectChangeTask: Task<Void, Never>?
+    /// How long a burst of changes on disk must pause before the engine reads
+    /// them (citations note, decision 1). Tests shorten it.
+    var projectChangeDelay: Duration = .milliseconds(300)
 
     @Published var checksOpen = false {
         didSet { recordOperation("checks.visibility", ["open": String(checksOpen)]) }

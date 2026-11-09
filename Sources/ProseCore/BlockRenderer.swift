@@ -151,6 +151,9 @@ public struct RenderedBlock: Equatable, Sendable {
     public let bitmap: CGImage?
     /// Whether the vector result came from the engine's cache.
     public let cached: Bool
+    /// The plain text of the block's text runs, separated by spaces: what it
+    /// shows, numbers and citations included. For tests and measurement.
+    public let text: String
 }
 
 /// The engine's result cache, for tests and tuning. Sizes are in bytes.
@@ -266,6 +269,20 @@ public actor BlockRenderer {
         }
     }
 
+    /// Files changed on disk (bibliographies, data, images, Typst files the
+    /// editor did not give it). The engine reads every file from disk again on
+    /// its next use, and renders that read a changed file compile again; text
+    /// set with `setText` stays. Files outside the project are ignored. Cheap:
+    /// nothing is read or compiled here. Returns how many of the files the
+    /// document read (the main file, the last full compile, any render): when
+    /// none, nothing shown can have changed and no refresh is needed.
+    @discardableResult
+    public func filesChanged(_ urls: [URL]) -> Int {
+        withCStrings(urls.map(\.path)) { paths, count in
+            engine.api.pointee.files_changed(engine.pointer, paths, count)
+        }
+    }
+
     /// Compiles the whole document and keeps its counters and reference texts
     /// for later renders. Slow: up to a few seconds on a book. A failed compile
     /// keeps the previous context.
@@ -369,7 +386,16 @@ public actor BlockRenderer {
             glyphs: glyphs,
             bitmap: Self.image(result),
             cached: result.cached,
+            text: Self.text(result),
         ))
+    }
+
+    /// The result's plain text.
+    private static func text(_ result: PRRenderResult) -> String {
+        guard let text = result.text else {
+            return ""
+        }
+        return String(decoding: UnsafeBufferPointer(start: text, count: result.text_length), as: UTF8.self)
     }
 
     /// The result's bitmap as an image that owns a copy of its pixels.

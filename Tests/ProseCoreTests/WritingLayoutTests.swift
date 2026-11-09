@@ -936,6 +936,7 @@ private func expectOrdered(_ blocks: [RenderBlock], within length: Int) {
             glyphs: [],
             bitmap: bitmap,
             cached: false,
+            text: "",
         )
     }
     await gate.script("Huge block.", .success(scripted(ink: CGRect(x: 0, y: 0, width: 5, height: 5), bitmap: nil)))
@@ -1038,4 +1039,73 @@ private func expectOrdered(_ blocks: [RenderBlock], within length: Int) {
     other.start(file: draft.file, text: text as String)
     #expect(other.roleRevision != layout.roleRevision)
     other.stop()
+}
+
+// MARK: - Files changed on disk
+
+@Test @MainActor func writingLayoutRefreshesAndRerendersAfterFilesChangeOnDisk() async throws {
+    let draft = try Draft()
+    let source = "See @a here.\n\nNo citation.\n\n#bibliography(\"refs.bib\")\n"
+    try source.write(to: draft.main, atomically: true, encoding: .utf8)
+    let bibliography = draft.root.appendingPathComponent("refs.bib")
+    func entry(_ title: String) -> Data {
+        Data("@book{a, title={\(title)}, author={Writer, Ann}, year={2020}}\n".utf8)
+    }
+    try entry("Old Title").write(to: bibliography)
+    let inner = try await BlockRenderer(root: draft.root, main: draft.main)
+    let gate = GatedRenderer(inner)
+    let layout = WritingLayout(renderer: gate, timing: fast)
+    layout.setAppearance(appearance)
+    layout.setVisibleRange(NSRange(location: 0, length: (source as NSString).length))
+    layout.start(file: draft.main, text: source)
+    await layout.idle()
+    try #require(layout.blocks.count == 3)
+    func shown(_ index: Int) -> String {
+        layout.state(ofBlockAt: index).rendering?.text ?? ""
+    }
+    #expect(shown(0).contains("[1]"))
+    #expect(shown(2).contains("Old Title"))
+    let refreshes = await gate.refreshes
+    #expect(layout.refreshReplies == refreshes)
+
+    // The engine is told, then the model compiles again and re-renders.
+    try entry("New Title").write(to: bibliography)
+    #expect(await inner.filesChanged([bibliography]) == 1)
+    let stats = await inner.cacheStats()
+    layout.filesChangedOnDisk()
+    await layout.idle()
+    #expect(await gate.refreshes == refreshes + 1)
+    #expect(layout.refreshReplies == refreshes + 1)
+    #expect(shown(2).contains("New Title"))
+    #expect(shown(0).contains("[1]"))
+    // Blocks that read the bibliography compiled again; the plain one hit.
+    let after = await inner.cacheStats()
+    #expect(after.misses - stats.misses == 2)
+    #expect(after.hits - stats.hits == 1)
+
+    // A failed refresh still re-renders: renders that read a changed file
+    // are out of date whatever the full compile found.
+    await gate.failRefresh(RenderRefresh(
+        succeeded: false,
+        errors: 1,
+        warnings: 0,
+        pages: 0,
+        headings: 0,
+        equations: 0,
+        references: 0,
+        message: "scripted",
+    ))
+    try entry("Newest Title").write(to: bibliography)
+    #expect(await inner.filesChanged([bibliography]) == 1)
+    layout.filesChangedOnDisk()
+    await layout.idle()
+    #expect(shown(2).contains("Newest Title"))
+    #expect(layout.stale)
+
+    // Stopped, it does nothing.
+    layout.stop()
+    let stopped = await gate.refreshes
+    layout.filesChangedOnDisk()
+    await layout.idle()
+    #expect(await gate.refreshes == stopped)
 }

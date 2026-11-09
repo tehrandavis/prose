@@ -17,7 +17,9 @@ use crate::raster::Bitmap;
 /// `PR_RENDER_ABI_VERSION`. Increment whenever the table or a struct changes.
 /// Version 2 (Phase 3): blocks cover the whole file with four more kinds,
 /// `render` takes options, and results carry the drawn area and a bitmap.
-pub const ABI_VERSION: u32 = 2;
+/// Version 3 (Phase 5 step A): `files_changed`, and results carry the
+/// block's plain text.
+pub const ABI_VERSION: u32 = 3;
 
 /// An engine, opaque to C.
 pub struct PREngine {
@@ -75,6 +77,8 @@ pub struct PRRenderResult {
     pub bitmap_width: u32,
     pub bitmap_height: u32,
     pub cached: bool,
+    pub text: *const u8,
+    pub text_length: usize,
 }
 
 /// The result handed to C, with what keeps its pointers alive. The C struct
@@ -125,6 +129,7 @@ pub struct PRRenderAPI {
     pub cache_stats: unsafe extern "C" fn(*mut PREngine) -> CacheStats,
     pub last_error: unsafe extern "C" fn(*mut PREngine) -> *mut c_char,
     pub string_free: unsafe extern "C" fn(*mut c_char),
+    pub files_changed: unsafe extern "C" fn(*mut PREngine, *const *const c_char, usize) -> usize,
 }
 
 fn guarded<T>(fallback: impl FnOnce() -> T, body: impl FnOnce() -> T) -> T {
@@ -365,6 +370,8 @@ fn error_result(message: &str) -> ResultBox {
             bitmap_width: 0,
             bitmap_height: 0,
             cached: false,
+            text: std::ptr::null(),
+            text_length: 0,
         },
         rendered: None,
         glyphs: Vec::new(),
@@ -444,6 +451,8 @@ unsafe extern "C" fn render(
                             bitmap_width: width,
                             bitmap_height: height,
                             cached: render.cached,
+                            text: r.text.as_ptr(),
+                            text_length: r.text.len(),
                         },
                         rendered: Some(render.rendered.clone()),
                         glyphs: render.glyphs,
@@ -497,6 +506,27 @@ unsafe extern "C" fn string_free(text: *mut c_char) {
     }
 }
 
+/// # Safety
+/// `engine` must be null or live; `paths` null or `count` NUL-terminated strings.
+unsafe extern "C" fn files_changed(
+    engine: *mut PREngine,
+    paths: *const *const c_char,
+    count: usize,
+) -> usize {
+    guarded(
+        || 0,
+        || {
+            // SAFETY: forwarded caller contract.
+            let (Some(engine), Some(paths)) = (unsafe { self::engine(engine) }, unsafe {
+                c_paths(paths, count)
+            }) else {
+                return 0;
+            };
+            engine.files_changed(&paths)
+        },
+    )
+}
+
 static API: PRRenderAPI = PRRenderAPI {
     abi_version: ABI_VERSION,
     block_size: std::mem::size_of::<PRBlock>() as u32,
@@ -516,6 +546,7 @@ static API: PRRenderAPI = PRRenderAPI {
     cache_stats,
     last_error,
     string_free,
+    files_changed,
 };
 
 /// The render engine's C function table.

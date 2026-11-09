@@ -83,6 +83,8 @@ public struct WritingRendering: Sendable {
     let serial: Int
     var key: WritingRenderKey
     let fingerprint: Int
+    /// What the block shows as plain text (`RenderedBlock.text`).
+    public internal(set) var text = ""
 
     /// `drawnRect`'s size in points.
     public var size: CGSize {

@@ -481,3 +481,36 @@ private func pixels(of image: CGImage) throws -> [UInt8] {
     #expect(clamped.bytes == (0, 255, 0, 128))
     #expect(RenderColor(red: 0, green: 0, blue: 0) == RenderColor(red: 0, green: 0, blue: 0, alpha: 1))
 }
+
+@Test func blockRendererReadsFilesChangedOnDiskAndShowsCitations() async throws {
+    let root = TestPaths.temporaryDirectory.appendingPathComponent("block-renderer-bib-" + UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let main = root.appendingPathComponent("main.typ")
+    let bibliography = root.appendingPathComponent("refs.bib")
+    let text = "See @a here.\n\n#bibliography(\"refs.bib\")\n"
+    try Data(text.utf8).write(to: main)
+    try Data("@book{a, title={Old Title}, author={Writer, Ann}, year={2020}}\n".utf8).write(to: bibliography)
+    let renderer = try await BlockRenderer(root: root, main: main)
+    #expect(await renderer.refresh().succeeded)
+    let blocks = try await renderer.blocks(in: main)
+    try #require(blocks.count == 2)
+    func shown(_ index: Int) async throws -> RenderedBlock {
+        try await renderer.render(blocks[index].range, in: main, width: 400).get()
+    }
+    #expect(try await shown(0).text.contains("[1]"))
+    #expect(try await shown(1).text.contains("Old Title"))
+
+    try Data("@book{a, title={New Title}, author={Writer, Ann}, year={2020}}\n".utf8).write(to: bibliography)
+    // Until told, the engine keeps the file it read.
+    #expect(await renderer.refresh().succeeded)
+    #expect(try await shown(1).text.contains("Old Title"))
+    let unrelated = root.appendingPathComponent("notes.txt")
+    let outside = TestPaths.temporaryDirectory.appendingPathComponent("outside.bib")
+    #expect(await renderer.filesChanged([unrelated, outside]) == 0)
+    #expect(await renderer.filesChanged([bibliography, unrelated]) == 1)
+    #expect(await renderer.refresh().succeeded)
+    let changed = try await shown(1)
+    #expect(changed.text.contains("New Title") && !changed.cached)
+    #expect(await renderer.filesChanged([]) == 0)
+}

@@ -329,7 +329,9 @@ final class ProjectWatcher: @unchecked Sendable {
             &context,
             [root.path] as CFArray,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
-            0.3,
+            // Short, so a burst of writes reaches `projectFilesChanged` as
+            // callbacks closer together than its 300 ms pause.
+            0.1,
             FSEventStreamCreateFlags(
                 kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagUseCFTypes |
                     kFSEventStreamCreateFlagFileEvents,

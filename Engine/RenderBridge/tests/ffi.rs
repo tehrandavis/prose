@@ -53,7 +53,8 @@ fn the_table_reports_its_version_and_sizes() {
     assert_eq!(std::mem::size_of::<Rect>(), 32);
     assert_eq!(std::mem::size_of::<PRRefreshInfo>(), 28);
     assert_eq!(std::mem::size_of::<CacheStats>(), 40);
-    assert_eq!(std::mem::size_of::<PRRenderResult>(), 168);
+    assert_eq!(std::mem::size_of::<PRRenderResult>(), 184);
+    assert_eq!(std::mem::offset_of!(PRRenderResult, text), 168);
     assert_eq!(std::mem::offset_of!(PRRenderResult, ink), 48);
     assert_eq!(std::mem::offset_of!(PRRenderResult, drawn), 80);
     assert_eq!(std::mem::offset_of!(PRRenderResult, glyphs), 112);
@@ -65,7 +66,8 @@ fn the_table_reports_its_version_and_sizes() {
     assert_eq!(std::mem::offset_of!(PRRenderOptions, bitmap_scale), 8);
     assert_eq!(std::mem::offset_of!(PRRenderAPI, options_size), 24);
     assert_eq!(std::mem::offset_of!(PRRenderAPI, engine_create), 32);
-    assert_eq!(std::mem::size_of::<PRRenderAPI>(), 120);
+    assert_eq!(std::mem::offset_of!(PRRenderAPI, files_changed), 120);
+    assert_eq!(std::mem::size_of::<PRRenderAPI>(), 128);
 }
 
 #[test]
@@ -141,6 +143,8 @@ fn a_round_trip_through_the_c_abi() {
         assert!(!r.cached);
         let svg = std::str::from_utf8(std::slice::from_raw_parts(r.svg, r.svg_length)).unwrap();
         assert!(svg.starts_with("<svg"));
+        let shown = std::str::from_utf8(std::slice::from_raw_parts(r.text, r.text_length)).unwrap();
+        assert!(shown.contains("漢字"), "{shown:?}");
         assert_eq!(r.width, 300.0);
         assert!(r.height > 0.0 && r.baseline > 0.0 && r.baseline < r.height);
         assert!(r.ink.width > 0.0 && r.ink.height > 0.0);
@@ -206,9 +210,21 @@ fn a_round_trip_through_the_c_abi() {
         let bad = (api.render)(engine, path.as_ptr(), 5, 2, 300.0, std::ptr::null());
         assert!(!(*bad).error.is_null());
         assert!((*bad).svg.is_null() && (*bad).glyph_count == 0);
+        assert!((*bad).text.is_null() && (*bad).text_length == 0);
         let message = CStr::from_ptr((*bad).error).to_string_lossy().into_owned();
         (api.result_free)(bad);
         assert_eq!(take_string(api, (api.last_error)(engine)), Some(message));
+
+        // A file changed on disk: the main file always counts; a path
+        // outside the project and a null array count for nothing.
+        let changed = [
+            CString::new(project.path("main.typ").to_str().unwrap()).unwrap(),
+            CString::new("/nonexistent/outside.bib").unwrap(),
+        ];
+        let changed_ptrs: Vec<_> = changed.iter().map(|p| p.as_ptr()).collect();
+        assert_eq!((api.files_changed)(engine, changed_ptrs.as_ptr(), 2), 1);
+        assert_eq!((api.files_changed)(engine, std::ptr::null(), 0), 0);
+        assert_eq!((api.files_changed)(engine, std::ptr::null(), 2), 0);
 
         let missing = CString::new("missing.typ").unwrap();
         let mut count = 7usize;
@@ -262,6 +278,7 @@ fn null_and_invalid_arguments_fail_safely() {
         (api.result_free)(result);
         assert_eq!((api.cache_stats)(null), CacheStats::default());
         assert!((api.last_error)(null).is_null());
+        assert_eq!((api.files_changed)(null, std::ptr::null(), 0), 0);
         (api.engine_free)(null);
         (api.blocks_free)(std::ptr::null_mut(), 0);
         (api.result_free)(std::ptr::null_mut());

@@ -10,7 +10,8 @@ _Static_assert(sizeof(PRRect) == 32, "PRRect layout is part of the ABI");
 _Static_assert(sizeof(PRRenderOptions) == 16, "PRRenderOptions layout is part of the ABI");
 _Static_assert(offsetof(PRRenderOptions, text_color) == 1, "PRRenderOptions layout is part of the ABI");
 _Static_assert(offsetof(PRRenderOptions, bitmap_scale) == 8, "PRRenderOptions layout is part of the ABI");
-_Static_assert(sizeof(PRRenderResult) == 168, "PRRenderResult layout is part of the ABI");
+_Static_assert(offsetof(PRRenderResult, text) == 168, "PRRenderResult layout is part of the ABI");
+_Static_assert(sizeof(PRRenderResult) == 184, "PRRenderResult layout is part of the ABI");
 _Static_assert(offsetof(PRRenderResult, ink) == 48, "PRRenderResult layout is part of the ABI");
 _Static_assert(offsetof(PRRenderResult, drawn) == 80, "PRRenderResult layout is part of the ABI");
 _Static_assert(offsetof(PRRenderResult, glyphs) == 112, "PRRenderResult layout is part of the ABI");
@@ -22,4 +23,5 @@ _Static_assert(sizeof(PRCacheStats) == 40, "PRCacheStats layout is part of the A
 _Static_assert(offsetof(PRRenderAPI, options_size) == 24, "PRRenderAPI layout is part of the ABI");
 _Static_assert(offsetof(PRRenderAPI, engine_create) == 32, "PRRenderAPI layout is part of the ABI");
 _Static_assert(offsetof(PRRenderAPI, string_free) == 112, "PRRenderAPI layout is part of the ABI");
-_Static_assert(sizeof(PRRenderAPI) == 120, "PRRenderAPI layout is part of the ABI");
+_Static_assert(offsetof(PRRenderAPI, files_changed) == 120, "PRRenderAPI layout is part of the ABI");
+_Static_assert(sizeof(PRRenderAPI) == 128, "PRRenderAPI layout is part of the ABI");

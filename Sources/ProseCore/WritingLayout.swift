@@ -76,6 +76,8 @@ public final class WritingLayout {
     private var settleTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
     private var refreshDue = false
+    /// Files the document reads changed on disk since the last refresh began.
+    private var filesChanged = false
     /// Replies that waited for a composition to end.
     private var deferredBlocks: (revision: Int, blocks: [RenderBlock])?
     private var deferredRenders: [(request: RenderRequest, result: Result<RenderedBlock, BlockRendererError>)] = []
@@ -86,6 +88,7 @@ public final class WritingLayout {
     /// Replies received, for tests.
     public private(set) var syncReplies = 0
     public private(set) var renderReplies = 0
+    public private(set) var refreshReplies = 0
 
     private struct RenderRequest {
         let id: Int
@@ -97,7 +100,7 @@ public final class WritingLayout {
     private enum Job {
         case sync(text: String, revision: Int)
         case render(RenderRequest)
-        case refresh
+        case refresh(filesChanged: Bool)
     }
 
     public init(renderer: any WritingRenderer, timing: WritingTiming = .standard) {
@@ -152,6 +155,7 @@ public final class WritingLayout {
         engineRevision = -1
         failedRevision = -1
         refreshDue = false
+        filesChanged = false
         deferredBlocks = nil
         deferredRenders = []
         restateWaits = false
@@ -278,6 +282,21 @@ public final class WritingLayout {
     private func changedRoles() {
         Self.roleRevisions &+= 1
         roleRevision = Self.roleRevisions
+    }
+
+    /// Files the document reads changed on disk, and the engine was told
+    /// (`BlockRenderer.filesChanged`). Compiles the whole document again at
+    /// once; then every block in view asks for its render again, as after any
+    /// refresh, whether or not the compile succeeded, since renders that read a
+    /// changed file are out of date. The engine's cache answers for the blocks
+    /// whose result cannot have changed.
+    public func filesChangedOnDisk() {
+        guard isRunning else {
+            return
+        }
+        filesChanged = true
+        refreshDue = true
+        pump()
     }
 
     // MARK: - Queries
@@ -661,7 +680,7 @@ public final class WritingLayout {
         if let request = nextRender() {
             return .render(request)
         }
-        return refreshDue ? .refresh : nil
+        return refreshDue ? .refresh(filesChanged: filesChanged) : nil
     }
 
     /// Starts the next engine call unless one is running.
@@ -683,6 +702,7 @@ public final class WritingLayout {
         let generation = generation, renderer = renderer
         if case .refresh = job {
             refreshDue = false
+            filesChanged = false
         }
         Task {
             switch job {
@@ -703,9 +723,9 @@ public final class WritingLayout {
                 let width = request.key.appearance.renderWidth
                 let result = await renderer.render(request.range, in: file, width: width, options: options)
                 received(result, for: request, generation: generation)
-            case .refresh:
+            case let .refresh(filesChanged):
                 let result = await renderer.refresh()
-                received(result, generation: generation)
+                received(result, filesChanged: filesChanged, generation: generation)
             }
             working = false
             pump()
@@ -754,12 +774,14 @@ public final class WritingLayout {
         flush()
     }
 
-    private func received(_ refresh: RenderRefresh, generation: Int) {
+    private func received(_ refresh: RenderRefresh, filesChanged: Bool, generation: Int) {
         guard generation == self.generation else {
             return
         }
-        if refresh.succeeded {
-            // Numbers and references may have changed.
+        refreshReplies += 1
+        if refresh.succeeded || filesChanged {
+            // Numbers, references and citations may have changed; after a
+            // change on disk, so may anything a render read.
             epoch += 1
         }
         if stale != !refresh.succeeded {
@@ -792,6 +814,7 @@ public final class WritingLayout {
                 serial: nextSerial,
                 key: request.key,
                 fingerprint: block.svg.hashValue,
+                text: block.text,
             )
             if var old = entries[index].rendering, old.image != nil || old.blank, old.draws(like: rendering) {
                 // The same picture: keep the one the view holds.

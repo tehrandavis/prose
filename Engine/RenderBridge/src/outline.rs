@@ -333,3 +333,19 @@ pub(crate) fn labels(text: &str) -> (Vec<LabelUse>, Vec<String>) {
     walk(&root, true, &mut uses, &mut defined);
     (uses, defined)
 }
+
+/// Whether `text` calls the function `name` anywhere (`#name(...)`, or
+/// `name(...)` in code).
+pub(crate) fn calls(text: &str, name: &str) -> bool {
+    fn walk(node: &SyntaxNode, name: &str) -> bool {
+        if node.kind() == SyntaxKind::FuncCall
+            && node.children().next().is_some_and(|callee| {
+                callee.kind() == SyntaxKind::Ident && callee.leaf_text() == name
+            })
+        {
+            return true;
+        }
+        node.children().any(|child| walk(child, name))
+    }
+    walk(&typst::syntax::parse(text), name)
+}

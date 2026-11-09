@@ -13,7 +13,8 @@ struct RenderBridgeLinkTests {
         #expect(Int(api.refresh_size) == MemoryLayout<PRRefreshInfo>.size)
         #expect(Int(api.stats_size) == MemoryLayout<PRCacheStats>.size)
         #expect(Int(api.options_size) == MemoryLayout<PRRenderOptions>.size)
-        #expect(MemoryLayout<PRRenderResult>.size == 168 && MemoryLayout<PRRenderOptions>.size == 16)
+        #expect(MemoryLayout<PRRenderResult>.size == 184 && MemoryLayout<PRRenderOptions>.size == 16)
+        #expect(MemoryLayout<PRRenderAPI>.size == 128)
     }
 
     @Test func callsWithoutAnEngineFailSafely() throws {
@@ -27,5 +28,7 @@ struct RenderBridgeLinkTests {
         let error = try #require(result.pointee.error)
         #expect(!String(cString: error).isEmpty)
         #expect(result.pointee.svg == nil && result.pointee.glyph_count == 0 && result.pointee.bitmap == nil)
+        #expect(result.pointee.text == nil && result.pointee.text_length == 0)
+        #expect(api.files_changed(nil, nil, 0) == 0)
     }
 }

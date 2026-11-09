@@ -16,7 +16,9 @@ use typst_kit::packages::FsPackages;
 use typst_layout::{Page, PagedDocument};
 
 use crate::cache::{Cache, CacheStats, Dependencies};
-use crate::context::{block_document, reference_texts, BlockInputs, Counters, Shift, PROBE};
+use crate::context::{
+    block_document, reference_texts, BlockInputs, Citations, Counters, Shift, PROBE,
+};
 use crate::geometry::{first_baseline, walk, GlyphBounds, GlyphBox, Rect};
 use crate::outline::{split_tree, BlockKind, Outline};
 use crate::raster::{drawn_page, frame_bytes, rasterize, Bitmap};
@@ -205,6 +207,7 @@ impl Render {
 struct Context {
     counters: Counters,
     references: HashMap<String, String>,
+    citations: Citations,
     snapshots: HashMap<FileId, Source>,
 }
 
@@ -212,8 +215,14 @@ struct State {
     shared: Shared,
     root: PathBuf,
     main: FileId,
-    /// Edit versions of the files in `shared.texts`. Files on disk are 0.
+    /// Versions of files: bumped by every edit of a file in `shared.texts`
+    /// and every change on disk reported to `files_changed`. Files never
+    /// changed are 0.
     versions: HashMap<FileId, u64>,
+    /// Files the last refresh read, and files any render read since the
+    /// engine started: what a change on disk can affect.
+    refresh_reads: HashSet<FileId>,
+    render_reads: HashSet<FileId>,
     /// Paths already resolved, so a render does not touch the file system.
     ids: HashMap<PathBuf, FileId>,
     next_version: u64,
@@ -339,6 +348,8 @@ impl Engine {
                 root,
                 main,
                 versions: HashMap::new(),
+                refresh_reads: HashSet::new(),
+                render_reads: HashSet::new(),
                 ids: HashMap::new(),
                 next_version: 1,
                 outlines: HashMap::new(),
@@ -403,6 +414,17 @@ impl Engine {
         let mut state = self.lock();
         let result = state.id(path).map(|id| state.set_text(id, text));
         Self::noted(&mut state, result)
+    }
+
+    /// Files changed on disk (bibliographies, data, images, Typst files that
+    /// are not editor buffers). Every file loaded from disk is read again on
+    /// its next use, and each changed file gets a new version, so cached
+    /// renders that read it compile again. Editor buffers keep their text.
+    /// Paths outside the project are ignored. Returns how many of the files
+    /// the last refresh or any render read: when none, nothing shown can have
+    /// changed and no refresh is needed.
+    pub fn files_changed(&self, paths: &[PathBuf]) -> usize {
+        self.lock().files_changed(paths)
     }
 
     /// Compiles the whole document with the counter probe and keeps its
@@ -495,6 +517,33 @@ impl Engine {
 }
 
 impl State {
+    fn files_changed(&mut self, paths: &[PathBuf]) -> usize {
+        let ids: Vec<FileId> = paths
+            .iter()
+            .filter_map(|path| Engine::id_in(&self.root, path).ok())
+            .collect();
+        if ids.is_empty() {
+            return 0;
+        }
+        self.shared.files.reset();
+        let mut read = 0;
+        for id in ids {
+            if id == self.main
+                || self.refresh_reads.contains(&id)
+                || self.render_reads.contains(&id)
+            {
+                read += 1;
+            }
+            // An editor buffer wins over the disk; its version moves with
+            // its edits.
+            if !self.shared.texts.contains_key(&id) {
+                self.versions.insert(id, self.next_version);
+                self.next_version += 1;
+            }
+        }
+        read
+    }
+
     fn id(&mut self, path: &Path) -> Result<FileId, String> {
         if let Some(id) = self.ids.get(path) {
             return Ok(*id);
@@ -579,6 +628,7 @@ impl State {
                 Ok(document) => {
                     let counters = Counters::read(&view, &document);
                     let references = reference_texts(&document);
+                    let citations = Citations::read(&view, &document);
                     let files: HashSet<FileId> = counters
                         .headings
                         .iter()
@@ -600,6 +650,7 @@ impl State {
                         Context {
                             counters,
                             references,
+                            citations,
                             snapshots,
                         },
                         document.pages().len(),
@@ -607,6 +658,9 @@ impl State {
                 }
                 Err(errors) => Err((errors.len(), first_message(&errors))),
             };
+            // Whether or not it compiled, the document now depends on what
+            // it read.
+            self.refresh_reads = view.files_read().into_iter().collect();
             (outcome, warnings.len())
         };
         let info = match outcome {
@@ -695,6 +749,12 @@ impl State {
             None
         };
         let at = self.shift(id, &source).map(range.start);
+        let bibliography_here = self
+            .context
+            .citations
+            .bibliography
+            .as_ref()
+            .is_some_and(|(file, _)| file.vpath().parent() == id.vpath().parent());
         let (doc, prefix) = block_document(&BlockInputs {
             file_text: source.text(),
             outline: &outline,
@@ -705,6 +765,8 @@ impl State {
             heading: Counters::before(&self.context.counters.headings, id, at),
             equation: Counters::before(&self.context.counters.equations, id, at),
             references: &self.context.references,
+            citations: &self.context.citations,
+            bibliography_here,
             width_pt,
             text_color,
         });
@@ -793,6 +855,8 @@ impl State {
             .map(|file| (file, Self::version(&self.versions, file)))
             .collect();
         drop(view);
+        self.render_reads
+            .extend(dependencies.iter().map(|(file, _)| *file));
         self.cache.insert(key, rendered.clone(), dependencies);
         Ok(Render::new(rendered, start16, false))
     }

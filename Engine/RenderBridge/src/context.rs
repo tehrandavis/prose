@@ -8,12 +8,12 @@ use typst::foundations::{Label, NativeElement, Selector, Value};
 use typst::introspection::{Introspector, Location, MetadataElem};
 use typst::layout::{Frame, FrameItem, Point, Transform};
 use typst::math::EquationElem;
-use typst::model::{Destination, HeadingElem};
+use typst::model::{BibliographyElem, CiteElem, Destination, HeadingElem};
 use typst::syntax::{FileId, Span};
 use typst::utils::PicoStr;
 use typst_layout::PagedDocument;
 
-use crate::outline::{labels, Outline};
+use crate::outline::{calls, labels, Outline};
 use crate::world::View;
 
 /// Appended to the main file for the full compile, so it records every
@@ -115,6 +115,45 @@ impl Counters {
                 .unwrap_or(0)
         });
         list[..end].last().map(|(_, _, value)| value.clone())
+    }
+}
+
+/// The citations of the full document: every cited key in the order of its
+/// first citation, and the document's bibliography call. A block that cites
+/// renders with a hidden copy of both, so its citations show what they show
+/// in the whole document and the bibliography block lists every cited entry.
+#[derive(Debug, Default, Clone)]
+pub struct Citations {
+    pub keys: Vec<String>,
+    pub key_set: HashSet<String>,
+    /// The first `bibliography(...)` call's text and the file it is in.
+    pub bibliography: Option<(FileId, String)>,
+}
+
+impl Citations {
+    pub(crate) fn read(view: &View, document: &PagedDocument) -> Self {
+        let introspector = document.introspector();
+        let mut citations = Self::default();
+        for elem in introspector.query(&Selector::Elem(CiteElem::ELEM, None)) {
+            let Some(cite) = elem.to_packed::<CiteElem>() else {
+                continue;
+            };
+            let key = cite.key.resolve().to_string();
+            if citations.key_set.insert(key.clone()) {
+                citations.keys.push(key);
+            }
+        }
+        citations.bibliography = introspector
+            .query(&Selector::Elem(BibliographyElem::ELEM, None))
+            .first()
+            .and_then(|elem| {
+                let (id, range) = view.locate(elem.span())?;
+                let source = typst::World::source(view, id).ok()?;
+                let text = source.text().get(range)?;
+                text.starts_with("bibliography(")
+                    .then(|| (id, text.to_string()))
+            });
+        citations
     }
 }
 
@@ -241,6 +280,10 @@ pub(crate) struct BlockInputs<'a> {
     pub(crate) heading: Option<Vec<i64>>,
     pub(crate) equation: Option<Vec<i64>>,
     pub(crate) references: &'a HashMap<String, String>,
+    /// The document's citations, and whether its bibliography call resolves
+    /// its paths as it does in the block's file (the same folder).
+    pub(crate) citations: &'a Citations,
+    pub(crate) bibliography_here: bool,
     pub(crate) width_pt: f64,
     /// A default text colour (straight RGBA), set before the document's own
     /// context lines so a document that sets its own colour keeps it.
@@ -291,10 +334,37 @@ pub(crate) fn block_document(inputs: &BlockInputs) -> (String, usize) {
     // text they have in the full document.
     let block_text = &inputs.file_text[inputs.range.clone()];
     let (uses, defined) = labels(block_text);
+    // Citations: the block cites, or holds the bibliography. Typst resolves
+    // them itself, given every cited key in document order (so numbers and
+    // disambiguation match the whole document) and the bibliography, hidden.
+    let citations = inputs.citations;
+    let holds_bibliography = calls(block_text, "bibliography");
+    let cites = uses
+        .iter()
+        .any(|label| citations.key_set.contains(&label.name));
+    let cited_here = !citations.keys.is_empty()
+        && (holds_bibliography
+            || (cites && inputs.bibliography_here && citations.bibliography.is_some()));
+    if cited_here {
+        doc.push_str("#place(hide[\n#set bibliography(title: none)\n");
+        for key in &citations.keys {
+            let quoted = key.replace('\\', "\\\\").replace('"', "\\\"");
+            doc.push_str(&format!("#cite(label(\"{quoted}\"))\n"));
+        }
+        if !holds_bibliography {
+            if let Some((_, call)) = &citations.bibliography {
+                doc.push_str(&format!("#{call}\n"));
+            }
+        }
+        doc.push_str("])\n");
+    }
     let mut stubbed = HashSet::new();
     let mut shown_refs = HashSet::new();
     for label in uses {
         if label.name.is_empty() || defined.contains(&label.name) {
+            continue;
+        }
+        if cited_here && citations.key_set.contains(&label.name) {
             continue;
         }
         let name = &label.name;
