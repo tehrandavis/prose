@@ -264,12 +264,28 @@ final class ManuscriptTextView: NSTextView {
     func observeViewport(_ clip: NSClipView) {
         hoverViewportBounds = clip.bounds
         clip.postsBoundsChangedNotifications = true
+        clip.postsFrameChangedNotifications = true
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(viewportChanged),
             name: NSView.boundsDidChangeNotification,
             object: clip,
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(viewportResized),
+            name: NSView.frameDidChangeNotification,
+            object: clip,
+        )
+    }
+
+    /// The visible area changed size: Focus mode's typewriter space follows
+    /// its height.
+    @objc private func viewportResized(_: Notification) {
+        guard focusColumn else {
+            return
+        }
+        applyColumnInset()
     }
 
     @objc private func viewportChanged(_ notification: Notification) {
@@ -426,20 +442,41 @@ final class ManuscriptTextView: NSTextView {
             guard focusColumn != oldValue else {
                 return
             }
-            let anchor = resizeAnchor ?? topLine()
-            guard updateColumnInset(), let anchor else {
-                return
-            }
-            resizeAnchor = anchor
-            keepAtTop(anchor)
+            applyColumnInset()
         }
     }
 
-    /// Sets the margins beside the column for the view's width and mode.
+    /// Applies the margins for the view's width and mode, keeping the top
+    /// line in place when they change.
+    private func applyColumnInset() {
+        let anchor = resizeAnchor ?? topLine()
+        guard updateColumnInset(), let anchor else {
+            return
+        }
+        resizeAnchor = anchor
+        keepAtTop(anchor)
+    }
+
+    /// The space above and below the text: 42 pt, and in Focus mode 60
+    /// percent of the visible height, so the first and last lines can reach
+    /// the typewriter line (decision 5 of the Phase 4 note). It moves the
+    /// container, not its width, so no block renders again.
+    var verticalInset: CGFloat {
+        guard focusColumn else {
+            return ManuscriptLayout.verticalInset
+        }
+        let visible = enclosingScrollView?.contentView.bounds.height ?? visibleRect.height
+        return max(ManuscriptLayout.verticalInset, (visible * ManuscriptLayout.focusVerticalFraction).rounded())
+    }
+
+    /// Sets the margins around the column for the view's size and mode.
     /// Returns whether they changed.
     @discardableResult
     private func updateColumnInset() -> Bool {
-        let inset = NSSize(width: ManuscriptLayout.horizontalInset(for: frame.width, focus: focusColumn), height: 42)
+        let inset = NSSize(
+            width: ManuscriptLayout.horizontalInset(for: frame.width, focus: focusColumn),
+            height: verticalInset,
+        )
         guard textContainerInset != inset else {
             return false
         }

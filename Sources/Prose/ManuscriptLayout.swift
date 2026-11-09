@@ -3,6 +3,11 @@ import AppKit
 enum ManuscriptLayout {
     /// The smallest margin on each side of the column.
     static let minimumInset: CGFloat = 36
+    /// The space above and below the text.
+    static let verticalInset: CGFloat = 42
+    /// In Focus mode, the space above and below the text as a fraction of
+    /// the visible height (decision 5 of the Phase 4 note).
+    static let focusVerticalFraction: CGFloat = 0.6
 
     /// The margin on each side of the column in a pane `paneWidth` wide. In
     /// Focus mode the column is `focusColumnWidth`, never wider than the pane

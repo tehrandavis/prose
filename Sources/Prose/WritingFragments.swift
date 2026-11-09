@@ -105,20 +105,60 @@ final class WritingFragment: NSTextLayoutFragment {
         switch role {
         case .source:
             count("source")
-            super.draw(at: point, in: context)
+            dimming(layer: super.renderingSurfaceBounds, at: point, in: context) {
+                super.draw(at: point, in: context)
+            }
         case let .rendered(rendering, _):
             count("rendered")
-            drawRendered(rendering, at: point, in: context)
+            dimming(layer: nil, at: point, in: context) {
+                drawRendered(rendering, at: point, in: context)
+            }
         case .collapsed:
             count("collapsed")
         case let .pill(pill):
             count("pill")
-            drawPill(pill, at: point, in: context)
+            dimming(layer: renderingSurfaceBounds, at: point, in: context) {
+                drawPill(pill, at: point, in: context)
+            }
         }
     }
 
     private func count(_ role: String) {
         draws[role, default: 0] += 1
+    }
+
+    /// Whether Focus mode draws this paragraph dimmed: outside the focus
+    /// blocks (decision 4 of the Phase 4 note).
+    var dimmed: Bool {
+        guard let controller, let offset else {
+            return false
+        }
+        return MainActor.assumeIsolated { controller.dims(paragraphAt: offset) }
+    }
+
+    /// Runs `draw` at `WritingFocus.dimmedAlpha` opacity while the paragraph
+    /// is dimmed. A rendered block's image and stale bar are separate single
+    /// draws, so the alpha applies to each (`layer` nil). Source text and a
+    /// pill draw overlapping marks (glyphs over backgrounds, a label over its
+    /// fill), so they draw into a transparency layer over `layer` (from the
+    /// fragment's origin) that is composited at that alpha as one, keeping
+    /// exactly 45 percent of their contrast.
+    private func dimming(layer: CGRect?, at point: CGPoint, in context: CGContext, _ draw: () -> Void) {
+        guard dimmed else {
+            draw()
+            return
+        }
+        draws["dimmed", default: 0] += 1
+        context.saveGState()
+        context.setAlpha(WritingFocus.dimmedAlpha)
+        if let layer {
+            context.beginTransparencyLayer(in: layer.offsetBy(dx: point.x, dy: point.y), auxiliaryInfo: nil)
+            draw()
+            context.endTransparencyLayer()
+        } else {
+            draw()
+        }
+        context.restoreGState()
     }
 
     /// The text container's width: the column blocks render for.

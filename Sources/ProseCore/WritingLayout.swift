@@ -285,17 +285,31 @@ public final class WritingLayout {
     /// and pills) and that shares characters with `range`, in order. NSTextView
     /// draws no selection there; the view draws it from the glyph boxes.
     public func drawnSpans(intersecting range: NSRange) -> [NSRange] {
-        var spans: [NSRange] = []
+        entries(intersecting: range).filter { !entries[$0].shown.isSource }.map { entries[$0].span }
+    }
+
+    /// The paragraphs of every block that shares characters with `range`, in
+    /// order, whatever it draws: Focus mode's focus blocks for a selection.
+    public func spans(intersecting range: NSRange) -> [NSRange] {
+        entries(intersecting: range).map { entries[$0].span }
+    }
+
+    /// The paragraphs of block `index`.
+    public func span(ofBlockAt index: Int) -> NSRange {
+        entries[index].span
+    }
+
+    private func entries(intersecting range: NSRange) -> [Int] {
+        var indices: [Int] = []
         var index = firstEntry(spanEndAtLeast: range.location)
         let end = NSMaxRange(range)
         while index < entries.count, entries[index].span.location < end {
-            let span = entries[index].span
-            if !entries[index].shown.isSource, NSIntersectionRange(span, range).length > 0 {
-                spans.append(span)
+            if NSIntersectionRange(entries[index].span, range).length > 0 {
+                indices.append(index)
             }
             index += 1
         }
-        return spans
+        return indices
     }
 
     /// The range of the block whose paragraphs hold `offset`.

@@ -55,6 +55,20 @@ final class WritingController: NSObject {
     /// Focus mode: blocks render at `WritingMetrics.focusScale` for the
     /// editor's Focus column (decision 3 of the Phase 4 note).
     private(set) var focused = false
+    /// Focus mode's focus blocks, as the fragments last drew them: sorted,
+    /// merged paragraph ranges, nil outside Focus (decision 4).
+    var focusSpans: [NSRange]?
+    /// A typewriter scroll the last caret change asked for, made once the
+    /// change and its swaps are laid out (decision 5).
+    var typewriter: TypewriterScroll?
+    /// The caret line's middle in the viewport before the model changed
+    /// roles, in Focus mode.
+    var focusCaretLine: (offset: Int, y: CGFloat)?
+    /// The click's animated typewriter scroll, while it runs.
+    var typewriterAnimation: Timer?
+    /// For tests: the paragraphs the last change of the focus blocks laid
+    /// out again.
+    var refocused: [NSRange] = []
 
     init(editor: ManuscriptTextView) {
         self.editor = editor
@@ -109,11 +123,16 @@ final class WritingController: NSObject {
             return
         }
         focused = on
+        typewriter = nil
+        stopTypewriterAnimation()
         guard isRunning else {
+            focusSpans = nil
             return
         }
         beginEntry(keepingHeld: true)
         sendAppearance()
+        // Every paragraph in view changes contrast.
+        flush()
     }
 
     /// Holds swaps until the blocks in view have their renders, for at most
@@ -127,7 +146,7 @@ final class WritingController: NSObject {
             held = []
         }
         viewportDidChange()
-        selectionDidChange()
+        selectionDidChange(scrolls: false)
         entryTask = Task { [weak self] in
             try? await Task.sleep(for: Self.entryBudget)
             guard !Task.isCancelled else {
@@ -145,9 +164,13 @@ final class WritingController: NSObject {
         held = []
         appearanceTask?.cancel()
         appearanceTask = nil
+        typewriter = nil
+        stopTypewriterAnimation()
         guard let model, model.isRunning else {
+            focusSpans = nil
             return
         }
+        // The flush in `restart` also draws dimmed paragraphs at full contrast.
         restart { $0.stop() }
         stale = false
         caret = nil
@@ -232,13 +255,18 @@ final class WritingController: NSObject {
             return
         }
         editing = true
+        if let spans = focusSpans {
+            let original = NSRange(location: edited.location, length: edited.length - delta)
+            focusSpans = spans.map { SourceStyling.rebase($0, editing: original, delta: delta) }
+        }
         model.textDidChange(edited: edited, delta: delta, in: storage.string as NSString)
         editing = false
     }
 
-    /// The edit is over; swaps it caused can be laid out.
+    /// The edit is over; swaps it caused can be laid out. In Focus mode the
+    /// focus blocks and the typewriter line follow it.
     func editDidEnd() {
-        if flushScheduled {
+        if flushScheduled || focused {
             flush()
         }
     }
@@ -252,11 +280,23 @@ final class WritingController: NSObject {
     /// pointer does not move (decision 6); `anchor` is its fixed end when known.
     /// Later calls for the same selection leave it so, and so does the
     /// keyboard extending it (`keyboardDestination`, `page`).
-    func selectionDidChange(byPointer: Bool = false, anchor: Int? = nil) {
+    ///
+    /// In Focus mode an empty selection asks for a typewriter scroll unless
+    /// `scrolls` is false (entering), animated when the pointer made it; the
+    /// focus blocks follow the selection.
+    func selectionDidChange(byPointer: Bool = false, anchor: Int? = nil, scrolls: Bool = true) {
         guard let model, model.isRunning, let editor, !editor.loading else {
             return
         }
         let selection = editor.selectedRange()
+        if focused {
+            if selection.length > 0 {
+                typewriter = nil
+            } else if scrolls {
+                typewriter = byPointer ? .animated : .immediate
+            }
+        }
+        defer { settleFocus() }
         let extended = pointerExtension
         pointerExtension = nil
         if !byPointer, selection.length > 0, let extended, extended.range == selection {
@@ -277,8 +317,12 @@ final class WritingController: NSObject {
         let caret = movingEnd(of: selection)
         self.caret = caret
         caretLine = line(of: caret)
+        if focused, selection.length == 0 {
+            focusCaretLine = caretMiddleInView(caret).map { (caret, $0) }
+        }
         model.selectionDidChange(caret: caret)
         caretLine = nil
+        focusCaretLine = nil
     }
 
     /// The end of `selection` a shift-click at `offset` keeps: the end away
@@ -512,6 +556,21 @@ final class WritingController: NSObject {
         flush()
     }
 
+    /// In Focus mode, after a selection change: lays out the paragraphs whose
+    /// contrast changed and makes the typewriter scroll now, or once the
+    /// edit in progress is over (`editDidEnd`, or the run loop's next pass
+    /// in the same event).
+    func settleFocus() {
+        guard focused, let editor else {
+            return
+        }
+        if editing || editor.textStorage?.editedMask.isEmpty == false {
+            scheduleFlush()
+        } else {
+            flush()
+        }
+    }
+
     /// Swaps after the storage has finished processing an edit.
     private func scheduleFlush() {
         guard !flushScheduled else {
@@ -528,11 +587,19 @@ final class WritingController: NSObject {
     }
 
     /// Lays out the changed paragraphs again, keeping the top line, or the
-    /// caret's line when the caret's block opened, where it was.
+    /// caret's line when the caret's block opened, where it was. In Focus
+    /// mode it also lays out the paragraphs whose contrast changed, keeps the
+    /// caret's line in place instead of the top line, and makes the
+    /// typewriter scroll the last caret change asked for.
     func flush() {
         flushScheduled = false
-        guard !pending.isEmpty, let editor, let manager = editor.textLayoutManager else {
+        guard let editor, let manager = editor.textLayoutManager else {
             pending = []
+            return
+        }
+        pending += refocus()
+        let typewriter = takeTypewriter()
+        guard !pending.isEmpty || typewriter != nil else {
             return
         }
         let length = (editor.string as NSString).length
@@ -547,6 +614,24 @@ final class WritingController: NSObject {
             }
         }
         pending = []
+        let line = focusLine(changing: ranges)
+        if let caret = typewriter?.offset ?? line?.offset {
+            for range in ranges {
+                if let textRange = TextKit2Geometry.textRange(range, in: manager) {
+                    manager.invalidateLayout(for: textRange)
+                }
+            }
+            if !ranges.isEmpty {
+                // The swapped paragraphs move the caret only once laid out.
+                TextKit2Geometry.layOutContext(around: caret, in: manager)
+                manager.textViewportLayoutController.layoutViewport()
+            }
+            placeFocusLine(caret, keeping: line?.y, scroll: typewriter?.scroll)
+            if !ranges.isEmpty {
+                swapCount += 1
+            }
+            return
+        }
         let anchor: WritingAnchor? = if let caretLine,
                                         ranges.contains(where: { NSLocationInRange(caretLine.offset, $0) }),
                                         opened(caretLine.offset)

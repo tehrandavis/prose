@@ -611,6 +611,17 @@ private func expectOrdered(_ blocks: [RenderBlock], within length: Int) {
     #expect(layout.drawnSpans(intersecting: layout.blocks[3].range).isEmpty)
     #expect(layout.blockRange(holding: paragraph.location + 30) == paragraph)
     #expect(layout.blockRange(holding: NSMaxRange(paragraph) + 1) == nil)
+
+    // Focus mode's focus blocks: every block a range touches, whatever it draws.
+    let all = layout.blocks.indices.map { layout.span(ofBlockAt: $0) }
+    #expect(all == layout.blocks.map { text.paragraphRange(for: $0.range) })
+    #expect(layout.spans(intersecting: whole) == all)
+    let fromParagraphToRaw = NSRange(
+        location: paragraph.location + 3,
+        length: NSMaxRange(layout.blocks[3].range) - paragraph.location - 5,
+    )
+    #expect(layout.spans(intersecting: fromParagraphToRaw) == Array(all[1 ... 3]))
+    #expect(layout.spans(intersecting: NSRange(location: NSMaxRange(all[1]), length: 0)).isEmpty)
 }
 
 @Test @MainActor func writingLayoutKeepsBlocksThatShareALineAsSource() async throws {
