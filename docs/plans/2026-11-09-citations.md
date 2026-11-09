@@ -194,3 +194,28 @@ UI tests are `extension WritingFlowTests`. Each one checks that the storage equa
 - Open items. If either pointer or input test above fails again, look at it under load. It is not known whether this step caused it: the step changes `WritingLayout` job order only after a citation is inserted. The picker's `setText` of the open file makes it an engine buffer in Code mode. Later Code-mode edits reach the engine only at the next picker open or Writing mode entry, so an included file edited in Code mode can render stale in Writing mode until it is opened there. Before this step the same gap existed after a Writing-mode session. The offer for a non-main open file (edit the main file without opening it) is left for step F or later. No real Zotero export was measured.
 - Main-session rerun: lint (0 violations) and the release build pass; 282 core and 200 app tests pass with no failure, coverage 89.57 percent. The two tests that failed once in the subagent's first run (load average 25) passed.
 - **Question for Tehran.** The `#bibliography` call the picker offers comes from the inherited `bibliography` command, which writes `style: "ieee"`. IEEE is Typst's default anyway. Options: give the command a style field with APA as the default, or write the bare call and let the writer choose. Not changed in step C.
+
+## Step D outcome: Zotero spike (2026-11-09)
+
+Run by the main session against Tehran's real library on this Mac, read-only (Zotero 10.0.8, Better BibTeX 9.0.77; 2,845 items, 54 collections). The probe script is not in the repository.
+
+| Question | Answer |
+|-|-|
+| Does each source answer? | Yes. Better BibTeX's JSON-RPC at `http://127.0.0.1:23119/better-bibtex/json-rpc` (`api.ready` reports both versions) and Zotero's local API at `http://127.0.0.1:23119/api/` (it was already enabled) |
+| Search | `item.search` with one string returns CSL-JSON items with `citekey`, title, authors, `issued`, `container-title`, DOI. It matches the string as one phrase: `Furmanek` finds 1 item, `Furmanek 2019` finds none. A structured search (`[["title","contains","Coordination"]]`) works. 140 to 220 ms per narrow query; `the` returns all 2,845 items, 3.1 MB, in 425 ms |
+| Export | `item.export([keys], "Better BibLaTeX")` returns the BibLaTeX entry with the same key the auto-export writes (`Furmanek_2019_Coordination`), in 12 to 207 ms |
+| Key agreement | Yes. Zotero's own local API BibTeX export also writes `Furmanek_2019_Coordination`, because Zotero now stores the citation key itself |
+| Collections | `item.collections([keys])` names an item's collections. The local API lists collections (`/users/0/collections`, 54 in 44 ms) and searches inside one (`/collections/{key}/items/top?q=`, 110 ms) |
+| Local API speed | About 500 to 570 ms per search, three times slower than Better BibTeX |
+| Auto-export list | Not available: Better BibTeX has no `autoexport.list` method, and its `~/Zotero/better-bibtex/read-only.json` holds nothing. Prose cannot detect which file is an auto-export |
+| Adding an item to a collection | Not available: Better BibTeX offers no such method and the local API is read-only |
+| JSON | Better BibTeX's responses contain raw control characters inside strings (from abstracts), which strict JSON parsers reject. Prose's decoder must escape them first |
+| Sandboxed access | Not tested: no sandboxed build was made. The App Store entitlements already include `com.apple.security.network.client` |
+
+### What this changes for step E (decision 5)
+
+1. **Search.** Prose searches through Better BibTeX: it sends the longest word of the query (at least 3 characters, after a 250 ms pause) and filters the results locally by every word across author, title, year and key, showing at most 50. A query of one or two characters searches only the project's own entries.
+2. **The link is chosen by the writer, per project.** Detection is not possible, so the picker's Zotero tab has a "Link to Zotero…" control: the writer chooses the project's auto-exported `.bib` file and the Zotero collection behind it (from the local API's collection list). Prose stores both in `recent.json`, never in the project folder. With a link, results from the linked collection come first (using the local API's collection search in parallel), and Prose never writes into the linked file.
+3. **An item outside the linked collection.** Prose cannot add it to the collection. It inserts the citation, writes the entry into `references-prose.bib` (added to the `#bibliography` call), and offers "Show in Zotero" (`zotero://select/library/items/<key>`), so the writer can drag it into the collection. When the next auto-export brings the key into the linked file, Prose removes it from `references-prose.bib`, as decision 5 planned.
+4. **Decoding.** One decoder escapes control characters before JSON decoding, with a test built from a captured response.
+5. **Sandbox.** Step E checks that the release build's entitlements still include `network.client`; a run of the sandboxed App Store build stays an open item until signing exists.
