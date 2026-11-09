@@ -36,7 +36,8 @@ Colours, type, radius and spacing come from Intent (`~/dev/Cadence/Cadence/Theme
 | 2 | `Engine/RenderBridge` Rust crate: per-block render with document context, cache, SVG with glyph rectangles | Done 2026-11-08 |
 | 3 | Writing mode in the editor, with selection, undo, IME and VoiceOver acceptance tests before it is on by default | Done 2026-11-09 |
 | 4 | Focus mode, floating toolbar, syntax-aware spell check | Done 2026-11-09 |
-| 5 | Info popover, export sheet, per-document mode memory, screenshots, writing guide | Not started |
+| 5 | Citations: `.bib` reload from disk, citation picker, Zotero via Better BibTeX (linked auto-export per project) | Started 2026-11-09 (`docs/plans/2026-11-09-citations.md`) |
+| 6 | Info popover, export sheet, per-document mode memory, screenshots, writing guide | Not started |
 
 Phase 3 shipped editable: all 14 acceptance tests passed three full runs in a row, so the kill switch was not used. Writing mode costs about 650 to 710 MiB for the block engine on a book. The outcome and the open items are at the end of `docs/plans/2026-11-08-phase-3-writing-mode.md`.
 

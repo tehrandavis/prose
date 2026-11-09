@@ -57,7 +57,7 @@ The segmented control at the top right switches the center column. In Code and W
 | Writing | Rendered blocks. Headings, paragraphs, lists, equations, figures and tables are drawn as typeset fragments from the real engine. The block that holds the caret shows its source. | New: Section 5 |
 | Focus | Writing mode with the sidebar and preview hidden, a narrower column at a larger scale, the current block at full contrast and other blocks dimmed, and typewriter scrolling | Writing mode plus view state: Section 6 |
 
-Shortcuts: `⌘1` Code, `⌘2` Writing, `⌘3` Focus. `⌘⇧P` toggles the preview pane, and `⌘⌥P` fills the window with the preview for reading. `⌘0` toggles the sidebar. `⌘J` keeps command discovery. The mode is saved per document. (Until Phase 5, every document opens in Code mode. LeftBlank's `⌘4` outline pin is gone, because the sidebar holds the outline.)
+Shortcuts: `⌘1` Code, `⌘2` Writing, `⌘3` Focus. `⌘⇧P` toggles the preview pane, and `⌘⌥P` fills the window with the preview for reading. `⌘0` toggles the sidebar. `⌘J` keeps command discovery. The mode is saved per document. (Until Phase 6, every document opens in Code mode. LeftBlank's `⌘4` outline pin is gone, because the sidebar holds the outline.)
 
 ### 3.3 Window anatomy
 
@@ -187,7 +187,7 @@ The hard part is not rendering. It is keeping native selection, undo, IME and ac
 - IME: while text is marked, no block swaps and no render result is applied; results wait until the composition ends. One exception: a block whose text the composition itself changes opens at once and stays active until the composition ends. This covers a composition that replaces a pointer selection inside a rendered block. The candidate window rectangle lies on the caret's line.
 - Accessibility: the editor's value, its strings for ranges, its lines and its insertion point are the source, as in Code mode. VoiceOver reads the source, which is readable Typst. An accessibility line is a line of the source layout, so line numbers do not change when a block swaps. The frame of a range in a rendered block is the union of its glyph boxes, and a point maps to a character through the glyph boxes, as a click does.
 - One block engine (`BlockRenderer`) serves each open project. It is created the first time Writing mode is used, for the project root and main entry, and the open file's buffer goes in through `setText`, so an included chapter renders with the main file's rules and numbers. Switching files in the project keeps it; switching projects or closing the window frees it. Project files that change on disk reach it through `setText`.
-- Writing mode is available to everyone from 2026-11-09. A document opens in Code mode; per-document mode memory is Phase 5.
+- Writing mode is available to everyone from 2026-11-09. A document opens in Code mode; per-document mode memory is Phase 6.
 
 Spell check (built in Phase 4) uses `NSSpellChecker` on the source text and works in every mode. NSTextView's own spell checking stays off, because it would check code and math.
 
@@ -243,7 +243,8 @@ Each phase ends with the app usable and the coverage gate green.
 | 2. Engine | `Engine/RenderBridge` crate: world, per-block render with context, cache, SVG with glyph rectangles. Command-line test harness renders the SICP and War and Peace fixtures | Medium. Typst crate API changes between versions |
 | 3. Writing mode | Custom layout fragments, caret-entry swap, click mapping, selection, copy, IME and VoiceOver acceptance tests before the mode is enabled by default | High. This is where LeftBlank's first attempt failed |
 | 4. Focus mode and toolbar | Focus view state, floating toolbar bound to the command registry, spell check with syntax-aware skipping | Low |
-| 5. Polish | Info popover, export sheet, per-document mode memory, screenshots, writing guide update | Low |
+| 5. Citations | Bibliography files reload from disk in both engines, a citation picker over the project's entries, Zotero through Better BibTeX with a linked auto-export per project (`docs/plans/2026-11-09-citations.md`) | Medium. Zotero endpoints unconfirmed until the spike |
+| 6. Polish | Info popover, export sheet, per-document mode memory, screenshots, writing guide update | Low |
 
 Phase 3 has a kill switch: if the acceptance tests for selection, undo, IME or VoiceOver cannot pass, Writing mode ships as a read-only rendered view (click to jump to the source in Code mode) and the floating toolbar still works. That is still more than Edist offers, and it is honest.
 

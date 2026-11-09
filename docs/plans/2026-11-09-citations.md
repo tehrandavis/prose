@@ -1,8 +1,8 @@
 # Citations: bibliography files, a citation picker and Zotero
 
 Date: 2026-11-09
-Status: proposed, awaiting Tehran's acceptance. Choices that need his decision are marked **Choice** or **Question**.
-Proposed place in the roadmap: a new Phase 5, before the polish work, which becomes Phase 6. The polish phase's screenshots and writing-guide update then cover citations too.
+Status: accepted 2026-11-09 as Phase 5 (answers at the end). Choices still open to review are marked **Choice**.
+Place in the roadmap: Phase 5, before the polish work, which becomes Phase 6. The polish phase's screenshots and writing-guide update then cover citations too.
 Spec: `docs/prose-spec.md` Sections 3.3, 5 and 7. Builds on Phases 3 and 4 (`docs/plans/2026-11-08-phase-3-writing-mode.md`, `docs/plans/2026-11-09-phase-4-focus-toolbar-spellcheck.md`).
 
 ## Goal
@@ -82,7 +82,8 @@ All citation data lives in project files. The picker reads them. The Zotero sour
 - **Choice:** prefer Better BibTeX when it answers. Its keys are the same keys its auto-export writes, so a citation inserted from Zotero matches the exported file. Use the local API otherwise.
 - Zotero must be running. If it is not, the Zotero tab says so and the project tab still works.
 - The App Store edition is sandboxed, but its entitlements already include `com.apple.security.network.client`. The spike still checks a loopback request from a sandboxed build.
-- **Where a Zotero entry is written. Question for Tehran.** If the target `.bib` is a Better BibTeX auto-export, anything Prose appends is lost at the next export. The proposal:
+- **Linked export, per project (Tehran's answer, 2026-11-09).** Tehran uses Better BibTeX with an auto-exported `.bib`. Each project can link one of its bibliography files as a Better BibTeX auto-export, with the Zotero collection behind it when the spike finds a way to read it. Prose stores the link with the project's other settings in `Application Support/Prose/Projects/recent.json`, never in the project folder (spec Section 3.4). Prose proposes the link itself when a project `.bib` is a Better BibTeX export (step D finds how to tell: the file's header, or Better BibTeX's own list of auto-exports). With a link, the Zotero tab searches that collection first and the rest of the library after it, and Prose never writes into the linked file.
+- **Where a Zotero entry is written.** If the target `.bib` is a Better BibTeX auto-export, anything Prose appends is lost at the next export. The proposal:
   - When the item's key is already in a project bibliography file, Prose inserts the citation only.
   - Otherwise Prose appends the entry to a Prose-owned file, `references-prose.bib`, and adds that file to the `#bibliography` call (Typst accepts an array of files).
   - Whenever another bibliography file gains a key that `references-prose.bib` also has (the next auto-export picked it up), Prose removes the duplicate from its own file, because Typst rejects a key defined twice.
@@ -139,8 +140,8 @@ UI tests are `extension WritingFlowTests`. Each one checks that the storage equa
 - **Zotero endpoints.** The method names and paths in decision 5 come from memory and are not confirmed. The spike exists to confirm them before any product code depends on them.
 - **Key mismatch.** Zotero's own BibTeX export makes keys differently from Better BibTeX. A citation inserted with one kind of key will not match a file exported with the other. Preferring Better BibTeX avoids this when it is installed.
 
-## Questions for Tehran
+## Answers (2026-11-09)
 
-1. Should Citations become Phase 5, with polish moving to Phase 6?
-2. Do you use Better BibTeX, and do you keep an auto-exported `.bib` in your writing projects? This decides decision 5.
-3. May the Zotero spike read your real Zotero library on this Mac? It would search it and time the search, read-only.
+1. Citations is Phase 5; polish moves to Phase 6.
+2. Tehran uses Better BibTeX with an auto-exported `.bib`. Decision 5 now links that file per project and never writes into it. The spike also checks whether Better BibTeX can add an item to the exported collection; if it can, choosing an item outside the collection adds it there and waits for the export, and `references-prose.bib` is only the fallback.
+3. The step D spike may search Tehran's real Zotero library on this Mac, read-only.
