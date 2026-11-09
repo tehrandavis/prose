@@ -277,3 +277,9 @@ Test block: a paragraph of three source lines starting at offset 17 (lines start
 - `render` takes options: a default text colour and a bitmap scale. Bitmaps are premultiplied RGBA8, built from the cached vector result after the engine lock is released, and are not cached in the engine; the editor keeps the images it draws. Pages are transparent, and the drawn area covers hanging punctuation.
 - SICP: 3,651 blocks, 0 failures. Rasterizing at scale 2.6 takes 0.69 ms median, 4.2 ms p95 and 84 ms at most (the index table). The executable grew by 1.6 MB.
 - Known limits for step D: the text colour does not change default strokes (table rules stay black in dark appearance), and selection drawing should use the union of the drawn area and the glyph boxes.
+
+## Step C outcome (2026-11-08)
+
+- `WritingLayout` (`Sources/ProseCore/WritingLayout.swift`, `WritingLayoutTypes.swift`): a main-actor model behind the `WritingRenderer` protocol, which `BlockRenderer` conforms to. The view forwards edits, the caret, marked text, the visible range and the appearance. The layout delegate asks `role(forParagraph:)` and gets `source`, `rendered`, `collapsed` or `pill`; `onChange` names the ranges whose roles changed, and nothing is reported while text is marked.
+- Timing is injected through `WritingTiming` (settle 150 ms, refresh pause 1.5 s); tests await `idle()`.
+- Results: 236 core and 149 app tests pass; coverage 88.12 percent overall, `WritingLayout.swift` 99.2 percent, `WritingLayoutTypes.swift` 92.5 percent. Lint and the release build pass.
