@@ -1203,7 +1203,7 @@ public struct WritingCommand: Identifiable, Sendable {
             "view",
             "2",
             "Writing Mode",
-            "See your text as typeset blocks. Arrives in a later version.",
+            "See your text as typeset blocks.",
             "writing rendered mode 写作 模式",
         ),
         .init(

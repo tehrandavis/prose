@@ -12,12 +12,6 @@ import ProseCore
 /// caret's line, when the caret's own block opens) kept where it was.
 @MainActor
 final class WritingController: NSObject {
-    nonisolated static let defaultsKey = "WritingModeEnabled"
-    /// The hidden default that turns Writing mode on until step H.
-    nonisolated static var isEnabled: Bool {
-        UserDefaults.standard.bool(forKey: defaultsKey)
-    }
-
     /// The engine's default text colour in dark appearance (spec Section 4.1).
     static let darkTextColor = RenderColor(red: 0xE8 / 255, green: 0xE4 / 255, blue: 0xDE / 255)
     /// How long entering waits for the viewport's renders before drawing what

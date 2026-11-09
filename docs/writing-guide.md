@@ -13,7 +13,7 @@ The app supports English and Simplified Chinese, with the localized name **Prose
 | Search commands | `/` inside the command panel; English and Chinese queries work in either interface language |
 | Go back or dismiss | `Esc` |
 | Move between inserted placeholders | `Tab` / `⇧Tab`; `Esc` to finish |
-| Code / Writing / Focus mode | `⌘1` / `⌘2` / `⌘3` (Writing and Focus arrive in a later version) |
+| Code / Writing / Focus mode | `⌘1` / `⌘2` / `⌘3` (Focus arrives in a later version) |
 | Show or hide the preview / read the preview | `⇧⌘P` / `⌥⌘P` |
 | Sidebar / document checks | `⌘0` / `⌘5` |
 | New / library / save | `⌘N` / `⌘O` / `⌘S` |

@@ -15,8 +15,6 @@ extension WritingFlowTests {
     // MARK: - Input methods
 
     @Test func writingModeAcceptance9MarkedTextHoldsRendersAndSwapsUntilItIsCommitted() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
@@ -103,8 +101,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeAcceptance9ACompositionOverAPointerSelectionOpensTheBlockItEdits() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
@@ -149,8 +145,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeAcceptance10MarkedTextAtTheViewportEdgeSurvivesAScroll() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
@@ -230,8 +224,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeAcceptance11TheCandidateWindowLiesOnTheCaretsLine() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
@@ -311,8 +303,6 @@ extension WritingFlowTests {
     // MARK: - VoiceOver
 
     @Test func writingModeAcceptance12AccessibilityValueIsTheSourceAndFramesLieOnTheGlyphs() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
@@ -417,8 +407,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeAcceptance13ReadingByLineThroughARenderedBlockReadsItsSourceLines() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         // A paragraph of four source lines, one of which wraps in the source
         // layout, between a heading and a paragraph.
         let long = (1 ... 40).map { "word\($0)" }.joined(separator: " ")

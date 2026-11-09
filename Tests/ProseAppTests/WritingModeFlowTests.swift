@@ -6,13 +6,10 @@ import ProseTestSupport
 import Testing
 
 /// Phase 3 step D: Writing mode drawn in the editor's layout layer, on the
-/// real window, editor and engine. Each test turns on the hidden default
-/// `WritingModeEnabled` and restores it. Pictures of the editor go to
+/// real window, editor and engine. Pictures of the editor go to
 /// `PROSE_WRITING_OUTPUT`, or a folder in the test temporary directory.
 extension WritingFlowTests {
     @Test func writingModeEntryAndExitLeaveTheStorageSelectionAndUndoUntouched() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: writingSource, startService: false)
         defer { app.close() }
         app.window.orderFront(nil)
@@ -77,8 +74,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeRenderedHeightsFollowTheEngine() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: writingSource, startService: false)
         defer { app.close() }
         app.window.orderFront(nil)
@@ -125,8 +120,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeDrawsRendersPillsAndSource() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let source = writingSource.replacingOccurrences(
             of: "Plain paragraph after the code.",
             with: "Plain paragraph after the code.\n\n#this-function-does-not-exist()",
@@ -238,8 +231,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeOpensTheCaretsBlockAtOnceAndClosesItAfterARender() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: writingSource, startService: false)
         defer { app.close() }
         app.window.appearance = NSAppearance(named: .aqua)
@@ -332,8 +323,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeRendersAgainInDarkAppearance() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: writingSource, startService: false)
         defer { app.close() }
         app.window.orderFront(nil)
@@ -377,32 +366,55 @@ extension WritingFlowTests {
         expectPlainStorage(editor)
     }
 
-    @Test func writingModeStaysOffWithoutTheHiddenDefault() throws {
-        let restore = writingModeDefault(false)
-        defer { restore() }
+    /// Decision 11: with no default set, a newly opened document starts in
+    /// Code mode, the Writing segment switches to Writing mode, and Focus
+    /// still refuses with its message (Phase 4).
+    @Test func newDocumentStartsInCodeAndTheWritingSegmentWorksWithoutADefault() async throws {
+        #expect(
+            UserDefaults.standard.object(forKey: "WritingModeEnabled") == nil,
+            "The removed hidden default is still set",
+        )
         let app = try WritingFixture(text: writingSource, startService: false)
         defer { app.close() }
+        app.window.orderFront(nil)
+        await app.layout()
         let editor = try #require(app.workspace.editor)
-        #expect(!EditorMode.writing.isAvailable && EditorMode.code.isAvailable && !EditorMode.focus.isAvailable)
-        app.workspace.message = nil
-        app.workspace.setMode(.writing)
         #expect(app.workspace.editorMode == .code)
-        #expect(app.workspace.message == L10n.text("Writing and Focus modes arrive in a later version of Prose."))
         #expect(!editor.writing.isRunning)
         #expect(app.workspace.writingEngine == nil && app.workspace.writingEngineRequest == nil)
         #expect(editor.textLayoutManager?.delegate == nil)
+        #expect(EditorMode.code.isAvailable && EditorMode.writing.isAvailable && !EditorMode.focus.isAvailable)
 
-        // With the default, Writing works and Focus stays refused.
-        UserDefaults.standard.set(true, forKey: WritingController.defaultsKey)
-        #expect(EditorMode.writing.isAvailable)
+        // The Focus segment refuses and names only Focus.
         app.workspace.message = nil
         app.workspace.setMode(.focus)
-        #expect(app.workspace.editorMode == .code && app.workspace.message != nil)
+        #expect(app.workspace.editorMode == .code)
+        #expect(app.workspace.message == L10n.text("Focus mode arrives in a later version of Prose."))
+        #expect(!editor.writing.isRunning)
+
+        // The Writing segment works with no default set.
+        app.workspace.message = nil
+        let model = try await enterWritingMode(app)
+        #expect(app.workspace.message == nil)
+        #expect(editor.writing.isRunning && model.isRunning)
+        let manager = try #require(editor.textLayoutManager)
+        #expect(manager.delegate === editor.writing)
+        let anyRendered = writingFragments(manager).contains(where: \.isRendered)
+        #expect(anyRendered, "No block was drawn rendered")
+
+        // Focus still refuses while Writing runs, and Writing stays on.
+        app.workspace.setMode(.focus)
+        #expect(app.workspace.editorMode == .writing)
+        #expect(app.workspace.message == L10n.text("Focus mode arrives in a later version of Prose."))
+        #expect(editor.writing.isRunning)
+        expectPlainStorage(editor)
+
+        app.workspace.setMode(.code)
+        #expect(app.workspace.editorMode == .code && !editor.writing.isRunning)
+        #expect(UserDefaults.standard.object(forKey: "WritingModeEnabled") == nil)
     }
 
     @Test func writingModeKeepsTheEngineWithinAProjectAndReplacesItForAnother() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: "= Loose file\n", startService: false)
         defer { app.close() }
         app.window.orderFront(nil)
@@ -492,20 +504,6 @@ Plain paragraph after the code.
 \(writingFiller)The last paragraph.
 
 """
-
-/// Sets the hidden default and returns a closure that restores it.
-func writingModeDefault(_ enabled: Bool) -> () -> Void {
-    let defaults = UserDefaults.standard
-    let previous = defaults.object(forKey: WritingController.defaultsKey)
-    defaults.set(enabled, forKey: WritingController.defaultsKey)
-    return {
-        if let previous {
-            defaults.set(previous, forKey: WritingController.defaultsKey)
-        } else {
-            defaults.removeObject(forKey: WritingController.defaultsKey)
-        }
-    }
-}
 
 /// Enters Writing mode and waits for the engine, the first renders and the
 /// end of the entry window. The helpers from here on are shared with

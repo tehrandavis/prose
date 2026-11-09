@@ -196,8 +196,7 @@ private struct WritingActions: View {
     }
 }
 
-/// Code, Writing and Focus. Writing works behind a hidden default; Focus
-/// arrives in Phase 4.
+/// Code, Writing and Focus. Focus arrives in Phase 4.
 struct ModeControl: View {
     @ObservedObject var workspace: Workspace
     var body: some View {
@@ -225,11 +224,10 @@ struct ModeControl: View {
 }
 
 extension EditorMode {
-    /// Writing needs the hidden default until step H of Phase 3.
+    /// Focus arrives in Phase 4.
     var isAvailable: Bool {
         switch self {
-        case .code: true
-        case .writing: WritingController.isEnabled
+        case .code, .writing: true
         case .focus: false
         }
     }

@@ -73,3 +73,19 @@ Open items:
 - Steps F (keyboard and undo), G (input methods and VoiceOver) and H (book benchmark, gate, documents) remain; acceptance tests 6 to 14 are not written.
 - Inactive-window selection colour in rendered blocks; table rules stay black in dark appearance; an external file change does not trigger a refresh.
 - Tehran asked about the inherited Chinese interface; the proposal to remove `zh-Hans` and the 17 MB NotoSansSC font after Phase 3 awaits his answer.
+
+## 2026-11-09: Phase 3, steps F to H; Phase 3 done
+
+- Built by Opus subagents one step at a time; the main session reviewed each diff, reran lint, the release build and the full suite, and committed.
+- Step F (`d115a61`): keys from a caret already land where Code mode puts them (12,996 moves compared, 0 differences). Keyboard extensions of pointer selections step through drawn lines and open no block; page up and down move by drawn content; the rendered-block highlight follows NSTextView's selection colour rule, found by disassembling `-[NSTextView _selectionBackgroundColor]`. Acceptance tests 6 to 8 pass.
+- Step G (`9b0a81c`): accessibility frames, ranges for points and the candidate window map through glyph boxes; the value, strings and lines stay the source. NSTextView answers AXBoundsForRange and AXRangeForPosition through private selectors, which the editor overrides; test 12 goes through the public entry point, so a rename would fail it. Decision change: a composition that edits a rendered block opens it. Acceptance tests 9 to 13 pass.
+- Step H (`8a582e7`): the book benchmark runs in Writing mode; acceptance test 14 passes on SICP and War and Peace. Three full runs of the suite and the benchmark passed in a row (coverage 88.48, 88.54, 88.51 percent).
+- Step H, enabling: the hidden default `WritingModeEnabled` is removed; the Writing segment works for everyone, and documents still open in Code mode. Spec Sections 3.2, 5.3, 5.4 and 8, `docs/architecture.md`, `docs/visual-editing.md`, the writing guide and the design note's Phase 3 outcome are updated.
+- Costs: the app peaks near 1 GB on a book in Writing mode (block engine 650 to 710 MiB, against about 250 MB in Code mode); typing main-thread CPU 15 to 25 percent higher; scroll and draw p95 up to 43.5 ms in War and Peace (no gate); entering Writing mode on a book takes up to 1.8 s.
+
+Open items (full list in the design note's Phase 3 outcome):
+
+- Engine memory; scroll draw time; role lookups per fragment read grow with paragraphs built.
+- Table rules stay black in dark appearance; an external file change triggers no refresh; undo does not bring the caret back to the changed block.
+- Real key, mouse, input method and VoiceOver events in the running app are untested; live-resize centering is untested.
+- One preview test (`previewClicksOnFunctionTextJumpToTheCallArgument`) timed out once under load and passed on rerun.

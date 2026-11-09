@@ -11,6 +11,7 @@ A native macOS Typst writing app with three views of one source file: Code, Writ
 - The Preview channel has no Sparkle key yet. Generate one before publishing a Preview build.
 - Build and test with `scripts/build.sh release` and `PROSE_DISTRIBUTION=preview scripts/test.sh` (the coverage gate needs the Preview distribution). Run `scripts/build-render.sh` once before a plain `swift build`. Xcode 26 or later (verified on Xcode 27.0 beta, Swift 6.4), Rust 1.92.0 through rustup. The first build compiles Tinymist and takes about 15 minutes.
 - Coverage gate is 80 percent of production Swift lines. Keep it.
+- Book benchmark: `scripts/benchmark-books.sh` after `scripts/test.sh`. It runs SICP and War and Peace in Code and Writing mode (`PROSE_WRITING_MODE=1`) and writes `build/benchmarks/summary.md`.
 - Native UI tests extend `WritingFlowTests` (the serialized suite). A new `@Suite` runs in parallel with the windows and menus and makes preview tests flaky.
 
 - Prose is Mac only (decided 2026-11-08). The inherited iPad code (`iPad/`, `Engine/TinymistBridge`, `Sources/Package.swift`, the iPad scripts and CI jobs) was removed on 2026-11-08.
@@ -33,11 +34,11 @@ Colours, type, radius and spacing come from Intent (`~/dev/Cadence/Cadence/Theme
 | 0 | Rename bundle and module to Prose, replace icon and brand assets, swap Nano palette for Intent tokens | Done 2026-11-08 |
 | 1 | Project model, sidebar tree with nested outline, title row with breadcrumb and status dot, mode control (Code only), preview page cards | Done 2026-11-08 |
 | 2 | `Engine/RenderBridge` Rust crate: per-block render with document context, cache, SVG with glyph rectangles | Done 2026-11-08 |
-| 3 | Writing mode in the editor, with selection, undo, IME and VoiceOver acceptance tests before it is on by default | Not started |
+| 3 | Writing mode in the editor, with selection, undo, IME and VoiceOver acceptance tests before it is on by default | Done 2026-11-09 |
 | 4 | Focus mode, floating toolbar, syntax-aware spell check | Not started |
 | 5 | Info popover, export sheet, per-document mode memory, screenshots, writing guide | Not started |
 
-Phase 3 has a kill switch: if the acceptance tests cannot pass, Writing mode ships read-only.
+Phase 3 shipped editable: all 14 acceptance tests passed three full runs in a row, so the kill switch was not used. Writing mode costs about 650 to 710 MiB for the block engine on a book. The outcome and the open items are at the end of `docs/plans/2026-11-08-phase-3-writing-mode.md`.
 
 ## Working agreements
 

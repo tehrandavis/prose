@@ -13,8 +13,6 @@ extension WritingFlowTests {
     // MARK: - Keys with an empty selection
 
     @Test func writingModeKeysWithACaretLandWhereTheyLandInCodeMode() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         app.window.appearance = NSAppearance(named: .aqua)
@@ -76,8 +74,6 @@ extension WritingFlowTests {
     // MARK: - Keys extending a selection the pointer made
 
     @Test func writingModeShiftKeysExtendAPointerSelectionThroughDrawnLines() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
@@ -202,8 +198,6 @@ extension WritingFlowTests {
     // MARK: - Page up and down
 
     @Test func writingModePageKeysMoveTheCaretAboutOneViewportAndScrollWithIt() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
@@ -279,8 +273,6 @@ extension WritingFlowTests {
     // MARK: - Undo across swaps
 
     @Test func writingModeAcceptance6UndoAfterTheEditedBlockRenderedRestoresItsText() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         app.window.appearance = NSAppearance(named: .aqua)
@@ -372,8 +364,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeAcceptance7SwapsModeSwitchesAndRendersAddNoUndoRecords() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
@@ -434,8 +424,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeAcceptance8UndoThatMergesTwoBlocksMatchesTheEnginesList() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let source = """
         = Merging
 
@@ -495,8 +483,6 @@ extension WritingFlowTests {
     // MARK: - Selection colour
 
     @Test func writingModeSelectionHighlightUsesTheNativeColourInEachKeyState() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, _) = try await openSelectionDocument(app)

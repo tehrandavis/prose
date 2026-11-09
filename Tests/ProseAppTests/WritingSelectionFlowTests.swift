@@ -18,8 +18,6 @@ import Testing
 /// selection navigation calls its tracking makes, as the spike did.
 extension WritingFlowTests {
     @Test func writingModeClickPutsTheCaretAtEveryGlyphsSourceAndOpensTheBlock() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
@@ -60,8 +58,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeShiftSelectionsAcrossRenderedBlocksKeepThemRenderedAndHighlighted() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
@@ -171,8 +167,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeDragsExtendThroughGlyphBoxesFromRenderedAndSourceBlocks() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
@@ -274,8 +268,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeCopyCutAndDragWriteTheSourceOfTheSelection() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
@@ -337,8 +329,6 @@ extension WritingFlowTests {
     }
 
     @Test func writingModeDoubleClickSelectsTheWordAndTripleClickTheBlock() async throws {
-        let restore = writingModeDefault(true)
-        defer { restore() }
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)

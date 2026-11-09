@@ -15,8 +15,6 @@ extension WritingFlowTests {
     func realMultiMegabyteDocumentNavigationScrollingAndTyping() async throws {
         let path = try #require(ProcessInfo.processInfo.environment["PROSE_LARGE_FIXTURE"])
         let writingMode = ProcessInfo.processInfo.environment["PROSE_WRITING_MODE"] == "1"
-        let restoreDefault = writingMode ? writingModeDefault(true) : {}
-        defer { restoreDefault() }
         let data = try Data(contentsOf: URL(fileURLWithPath: path))
         let source = try #require(String(data: data, encoding: .utf8))
         #expect(data.count > 1_000_000)
@@ -342,7 +340,6 @@ private final class WritingBenchmark {
     static func enter(_ app: WritingFixture, report: inout [String: Any]) async throws -> WritingBenchmark {
         let editor = try #require(app.workspace.editor)
         let manager = try #require(editor.textLayoutManager)
-        #expect(WritingController.isEnabled)
         report["memory_before_writing_mib"] = physicalFootprint()
         report["memory_peak_before_writing_mib"] = peakFootprint()
         let usage = UsageSnapshot()

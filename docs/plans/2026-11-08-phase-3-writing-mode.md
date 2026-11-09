@@ -1,7 +1,7 @@
 # Phase 3: Writing mode in the editor
 
 Date: 2026-11-08
-Status: accepted 2026-11-08. Step A (spike) done; see "Spike results" and "Changes after the spike" at the end.
+Status: Phase 3 done 2026-11-09. Writing mode works for everyone; the kill switch was not needed. See "Phase 3 outcome" at the end. (Accepted 2026-11-08.)
 Spec: `docs/prose-spec.md`, Sections 5.3, 5.4 and 8. Builds on `docs/plans/2026-11-08-phase-2-render-bridge.md`.
 
 ## Goal
@@ -365,3 +365,53 @@ Test block: a paragraph of three source lines starting at offset 17 (lines start
 - Worst Writing-mode values over the three runs: typing p95 12.67 ms, typing max 14.08 ms, jump and draw max 33.87 ms, 1,503 paragraphs built, scroll drift -0.3 pt. Peak app footprint 986 to 1,039 MiB, engine share 647 to 660 MiB in the third run.
 - Scroll and draw p95 in War and Peace's Writing mode reached 43.5 ms (Code mode 2.5 to 4.5 ms). There is no gate on it, but it is above one 60 Hz frame; record it for Phase 4.
 - The kill switch is not needed. The hidden default is removed in the next commit.
+
+## Phase 3 outcome (2026-11-09)
+
+### What shipped
+
+- Writing mode in the editor, for everyone. The hidden default `WritingModeEnabled` and its reads are gone, and the Writing segment, `⌘2`, the View menu item and the `⌘J` command all switch to Writing mode. A document opens in Code mode; per-document mode memory is Phase 5. Focus still refuses, with the message "Focus mode arrives in a later version of Prose." (Phase 4).
+- The engine (step B): `blocks` covers the whole file, and `render` returns a premultiplied bitmap through `typst-render` on a transparent page, with a default text colour for dark appearance. C ABI version 2.
+- The layout model `WritingLayout` (step C), the fragment and the layout manager delegate, `WritingController` and one engine per project (step D), pointer and selection (step E), keyboard and undo (step F), input methods and VoiceOver (step G), and the book benchmark in Writing mode (step H).
+- The storage holds the full source at all times. Every acceptance test checks it, with no attachment, and with TextKit 2 still on.
+
+### Acceptance tests
+
+All 14 pass. The main session ran the full suite and both book benchmarks three times in a row with no change in between, and all three runs passed: 241 core and 174 app tests each time, coverage 88.48, 88.54 and 88.51 percent ("Gate runs"). Tests 1 to 5 (selection) are in `WritingSelectionFlowTests.swift`, 6 to 8 (undo) in `WritingKeyboardFlowTests.swift`, 9 to 13 (input methods and VoiceOver) in `WritingInputFlowTests.swift`, and 14 is `LargeDocumentBenchmark` with `PROSE_WRITING_MODE=1`. The test `writingModeStaysOffWithoutTheHiddenDefault` was replaced, as decision 11 planned, by `newDocumentStartsInCodeAndTheWritingSegmentWorksWithoutADefault`: a newly opened document starts in Code mode, Writing mode works with no default set, and Focus refuses with its message.
+
+### Decision changes
+
+1. Bitmaps, not SVG, on the main thread: the engine rasterizes through `typst-render` at 1.3 times the backing scale (spike; step B).
+2. The engine's page is transparent, and its drawn area includes punctuation that hangs past the measure (spike; step B).
+3. A block of more than 400 source lines stays source (spike).
+4. One fragment class serves every paragraph and reads its role on each frame read and draw; `invalidateLayout(for:)` swaps it. The first entry replaces TextKit's fragments once with `recordEditAction(in:newTextRange:)` (spike; step D).
+5. A drag that starts in a rendered block runs Prose's tracking loop; a drag that starts in source stays with AppKit, through `WritingSelectionNavigation`. Per-glyph dragging works, so the whole-block fallback is not used (spike; step E).
+6. A non-empty selection made with the pointer opens no block (step E).
+7. A keyboard extension of a pointer selection opens no block either; Writing mode moves its moving end through the drawn lines (step F).
+8. Prose draws the selection highlight inside rendered blocks in `drawBackground(in:)`, not in the fragment, and suppresses NSTextView's there through `ManuscriptLayoutManager` (step E). Its colour follows NSTextView's active and inactive rule (step F).
+9. While text is marked, a block whose text the composition itself changes opens at once (step G).
+10. An accessibility line is a line of the source layout, as in Code mode (step G).
+
+### Costs
+
+- Memory: on a book in Writing mode the app peaks at about 1 GB (986 to 1,039 MiB over the gate runs); the engine's share is 650 to 710 MiB. Tinymist's footprint does not change.
+- Scroll and draw p95 in War and Peace reaches 43.5 ms in Writing mode, against 2.5 to 4.5 ms in Code mode. There is no gate on it, but it is above one 60 Hz frame.
+- Entry on a book takes up to 1.8 s (War and Peace 1.83 s, SICP 1.28 s), mostly the first full compile. When the 100 ms entry budget runs out, the switch draws source first.
+- CPU while typing rises by 0.16 to 0.23 s of main-thread time over 80 keys; the process total after typing is within run-to-run noise of Code mode.
+
+### Open items for later phases
+
+- Table rules and other default strokes stay black in dark appearance (step B).
+- An external change to a project file reaches the engine through `setText` but triggers no refresh, so counters and references wait for the next refresh (step D).
+- Live-resize centering has no test (step D).
+- Undo does not bring the caret back to the changed block; this is NSTextView's own behaviour, in Code mode too (step F).
+- A key-state change in a child window that does not share its parent's key state would draw a different selection colour from NSTextView's; Prose has no such window (step F).
+- Not tested: dragging a selection out of a rendered block (`dragSelection`) and autoscroll during Prose's tracking loop (step E).
+- Real key, mouse, input method and VoiceOver events in the running app are untested; tests drive the same calls directly (steps E to G).
+- AXVisibleCharacterRange, AXStyleRangeForIndex and AXRTFForRange answer from the source as before and were not changed (step G).
+- `firstRect(forCharacterRange:actualRange:)` for a range that starts in a rendered block reports only its first drawn line, so a lookup panel over a multi-line range follows that line (step G).
+- A composition over a pointer selection that spans several blocks opens each block it edits, but only a selection inside one block is tested (step G).
+- The role lookup for each fragment read (`WritingLayout.role(forParagraph:)`) scales with the paragraphs TextKit has built: at 5,958 paragraphs the typing median rose to 16.5 ms. Caching the role per fragment, or keeping span starts in a plain array, would cut it (step H).
+- A scroller drag to a distant place after heights changed can lay out thousands of paragraphs; it is not measured (step H).
+- Scroll and draw p95 of 43.5 ms in War and Peace (above).
+- The counter gap carried from Phase 2: a file whose last good compile had no headings or equations gets no counter updates until the next good refresh.

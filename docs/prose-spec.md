@@ -57,7 +57,7 @@ The segmented control at the top right switches the center column. The sidebar a
 | Writing | Rendered blocks. Headings, paragraphs, lists, equations, figures and tables are drawn as typeset fragments from the real engine. The block that holds the caret shows its source. | New: Section 5 |
 | Focus | Writing mode with the sidebar and preview hidden, a narrower measure, the current paragraph at full contrast and other paragraphs dimmed, a fixed typewriter scroll position | New, mostly view state |
 
-Shortcuts: `⌘1` Code, `⌘2` Writing, `⌘3` Focus. `⌘⇧P` toggles the preview pane, and `⌘⌥P` fills the window with the preview for reading. `⌘0` toggles the sidebar. `⌘J` keeps command discovery. The mode is saved per document. (Phase 1: Writing and Focus explain that they arrive later; LeftBlank's `⌘4` outline pin is gone, because the sidebar holds the outline.)
+Shortcuts: `⌘1` Code, `⌘2` Writing, `⌘3` Focus. `⌘⇧P` toggles the preview pane, and `⌘⌥P` fills the window with the preview for reading. `⌘0` toggles the sidebar. `⌘J` keeps command discovery. The mode is saved per document. (Until Phase 4, Focus explains that it arrives later. Until Phase 5, every document opens in Code mode. LeftBlank's `⌘4` outline pin is gone, because the sidebar holds the outline.)
 
 ### 3.3 Window anatomy
 
@@ -159,15 +159,25 @@ Failures: a block that fails to compile stays as source with LeftBlank's existin
 
 ### 5.3 Editor integration (Swift)
 
-The hard part is not rendering. It is keeping native selection, undo, IME and accessibility correct while most of the text is not drawn as text. LeftBlank's removed layer used `NSTextAttachment` and concealed text, and the post-mortem lists why that failed. The replacement:
+The hard part is not rendering. It is keeping native selection, undo, IME and accessibility correct while most of the text is not drawn as text. LeftBlank's removed layer used `NSTextAttachment` and concealed text, and the post-mortem lists why that failed. The replacement, built in Phase 3 (`docs/plans/2026-11-08-phase-3-writing-mode.md`):
 
-- The text storage stays the full source at all times. No hidden characters, no attachments, no substituted display text. This is the invariant LeftBlank keeps now.
-- Rendering happens in the TextKit 2 layout layer, not the storage. A custom `NSTextLayoutFragment` subclass draws the engine's SVG for a block and reports the engine's height. The source characters of that block still exist in the storage, so `NSRange` positions, find, undo, copy and VoiceOver's text model are unchanged.
-- The block containing the caret uses the default fragment, so it lays out as styled source exactly as Code mode does. Moving the caret out of a block swaps its fragment back to the rendered one after the engine replies. Moving the caret in swaps it to source at once.
-- Clicking inside a rendered fragment maps the click to a source offset through the glyph rectangles the engine returned, places the caret there, and the block opens as source. If the mapping has no rectangle at that point, the caret goes to the block's start.
-- Selection across rendered blocks draws the system selection colour over the fragment's bounds. Copy produces source text.
-- IME: while text is marked, the active block never swaps and no fragments are replaced.
-- Accessibility: each rendered fragment exposes the block's source as its accessibility value. VoiceOver reads the source, which is readable Typst, not SVG.
+- The text storage stays the full source at all times. No hidden characters, no attachments, no substituted display text. This is the invariant LeftBlank keeps now. Entering or leaving Writing mode, a swap and a render result change nothing in the storage, the selection or the undo stack.
+- Rendering happens in the TextKit 2 layout layer, not the storage. One `NSTextLayoutFragment` subclass serves every paragraph. It reads its paragraph's role (source, rendered, collapsed or pill) from the layout model each time TextKit reads its frame or draws. A rendered block's first paragraph draws the block's image and reports the engine's height times 1.3. The block's other paragraphs are collapsed: they take no height and draw nothing. A swap is `invalidateLayout(for:)` over the changed range, with the top line kept in place. The source characters of every block still exist in the storage, so `NSRange` positions, find, undo, copy and VoiceOver's text model are unchanged.
+- TextKit still lays out the source lines inside a rendered block. So the caret, the selection, hit testing and accessibility geometry there come from the engine's glyph boxes, never from TextKit.
+- The main thread draws only bitmaps. Blocks render at the column width divided by 1.3 and draw at 1.3 times. The engine rasterizes them through `typst-render` at 1.3 times the screen's backing scale, on a transparent page whose drawn area includes punctuation that hangs past the measure. Drawing the engine's SVG on the main thread was correct but too slow for first display (about 38 ms for one SICP viewport in the spike).
+- In dark appearance, the engine sets the default text colour `#E8E4DE` before the document's own rules, so a document that sets its own colours keeps them.
+- The active block uses the source role, so it lays out as styled source exactly as Code mode does. The active block holds the caret, or the moving end of a selection made from the caret with the keyboard. Moving the caret into a rendered block swaps it to source at once, in the same event. Moving the caret out swaps the old block back only after its render exists.
+- Entering Writing mode waits up to 100 ms for the blocks in view, so the switch does not draw source block by block. When the renders take longer, as on a book's first full compile, it draws source and swaps blocks in as results arrive.
+- Clicking inside a rendered fragment maps the click to a source offset through the glyph rectangles the engine returned, places the caret there, and the block opens as source. If the mapping has no rectangle near that point, or the nearest one is generated text such as a number, the caret goes to the block's start. Double-click selects the word under the pointer, and triple-click the block's source.
+- Dragging extends the selection glyph by glyph across rendered blocks; the whole-block fallback was not needed. A drag that starts in a rendered block runs Prose's own tracking loop. A drag that starts in source stays with AppKit, whose tracking asks a replacement `NSTextSelectionNavigation` for positions inside rendered blocks.
+- A non-empty selection made with the pointer (shift-click, drag, double-click, triple-click) opens no block, so text does not move under the pointer. When the keyboard extends such a selection, it still opens no block: up and down step through the drawn lines of rendered blocks, and line start and end use the drawn line.
+- Keys from an empty selection land where Code mode puts them, because TextKit keeps the source line fragments, and the block they land in opens. Page up and page down move the caret about one viewport of drawn content.
+- Selection across rendered blocks draws the selection colour over the selected glyph boxes, under the transparent images. NSTextView's own highlight is suppressed inside rendered blocks and pills, because it would draw the hidden source lines. The colour follows NSTextView's rule: the active colour while the window has key appearance and the editor is first responder, the system's inactive colour otherwise. Copy, cut and drag-and-drop write source.
+- Undo and redo work as in Code mode. NSTextView does not move the caret on undo, so a block whose text an undo changes draws source until its new render arrives, and opens only if the caret is in it.
+- IME: while text is marked, no block swaps and no render result is applied; results wait until the composition ends. One exception: a block whose text the composition itself changes opens at once and stays active until the composition ends. This covers a composition that replaces a pointer selection inside a rendered block. The candidate window rectangle lies on the caret's line.
+- Accessibility: the editor's value, its strings for ranges, its lines and its insertion point are the source, as in Code mode. VoiceOver reads the source, which is readable Typst. An accessibility line is a line of the source layout, so line numbers do not change when a block swaps. The frame of a range in a rendered block is the union of its glyph boxes, and a point maps to a character through the glyph boxes, as a click does.
+- One block engine (`BlockRenderer`) serves each open project. It is created the first time Writing mode is used, for the project root and main entry, and the open file's buffer goes in through `setText`, so an included chapter renders with the main file's rules and numbers. Switching files in the project keeps it; switching projects or closing the window frees it. Project files that change on disk reach it through `setText`.
+- Writing mode is available to everyone from 2026-11-09. A document opens in Code mode; per-document mode memory is Phase 5.
 
 Spell check uses `NSSpellChecker` on the source storage with the engine's glyph rectangles to draw the red underline under the rendered word. Spell check skips code, math, raw and function call ranges using the syntax tree.
 
@@ -176,7 +186,10 @@ Spell check uses `NSSpellChecker` on the source storage with the engine's glyph 
 - Tables and figures render but are edited as source. No cell editing in place.
 - No drag-to-reorder of blocks.
 - Code blocks render as source with Highlight.js colours, the same as Code mode.
-- `#set` and `#let` lines are shown as a collapsed grey pill with the first 60 characters; clicking opens them as source. They never render as blank space.
+- `#set`, `#show`, `#let`, `#import` and `#include` lines are shown as a collapsed grey pill with the first 60 characters; clicking opens them as source. They never render as blank space. A block that holds only comments, or renders with no ink, is a muted pill with its first line.
+- A block of more than 400 source lines stays source. SICP's index is one table of about 10,500 source lines; rendered, it made TextKit build every collapsed paragraph after the caret on one jump and broke the 5,000-paragraph gate.
+- A block whose render fails stays source. A failed full compile draws a thin amber bar at the left edge of every rendered block and leaves them visible.
+- In dark appearance, table rules and other default strokes stay black, because the default text colour does not change them.
 
 ## 6. Focus mode
 
@@ -213,6 +226,8 @@ Each phase ends with the app usable and the coverage gate green.
 | 5. Polish | Info popover, export sheet, per-document mode memory, screenshots, writing guide update | Low |
 
 Phase 3 has a kill switch: if the acceptance tests for selection, undo, IME or VoiceOver cannot pass, Writing mode ships as a read-only rendered view (click to jump to the source in Code mode) and the floating toolbar still works. That is still more than Edist offers, and it is honest.
+
+Phase 3 was done on 2026-11-09. All 14 acceptance tests passed three full runs in a row, so the kill switch was not needed, and Writing mode is editable and on for everyone. Its main cost is memory: on a book in Writing mode the app peaks at about 1 GB, and the block engine's share is 650 to 710 MiB; Tinymist's footprint does not change. Scroll and draw p95 rises to as much as 43.5 ms in War and Peace (no gate), and entering Writing mode on a book takes up to 1.8 s, mostly the first full compile. See "Phase 3 outcome" in `docs/plans/2026-11-08-phase-3-writing-mode.md`.
 
 ## 9. Decisions (2026-11-08)
 

@@ -67,6 +67,69 @@ attachments, incremental styles equal to a fresh styling after seeded edits, no
 selection change or undo step, and composition. `SourceStylingFlowTests` checks
 the real Mac editor.
 
+## Writing mode in Prose: the rule kept
+
+Prose's Writing mode (Phase 3, done on 2026-11-09) draws typeset blocks in
+the same editor and keeps the rule above: the text storage holds the full
+source, with no hidden characters, no attachments and no display text that
+differs from it. Entering or leaving the mode, a swap and a render result
+change nothing in the storage, the selection or the undo stack. It differs
+from the removed layer in three ways:
+
+- **One renderer.** The real Typst engine (`Engine/RenderBridge`, the same
+  Typst 0.15.1 as Tinymist) sets each block with the document's own rules,
+  counters and references. There is no second, approximate renderer, so a
+  construct does not render in one place and not in another.
+- **The layout layer only.** Rendering is an `NSTextLayoutFragment` subclass
+  that the layout manager delegate returns. A rendered block's first
+  paragraph draws the block's bitmap and takes its height; its other
+  paragraphs take no height and draw nothing. There are no attachments, so
+  AppKit has no placeholder icon to draw.
+- **Tests before release.** Writing mode stayed behind a hidden default until
+  13 acceptance tests for selection, undo, input methods and VoiceOver, and
+  the book benchmark, passed three full runs in a row. Every test checks that
+  the storage equals the source, holds no attachment, and that TextKit 2 is
+  still on.
+
+What the spike and the build steps found (details in
+`docs/plans/2026-11-08-phase-3-writing-mode.md`):
+
+- A fragment subclass can report a height other than its laid-out lines'.
+  TextKit stacks the next fragment at the bottom of `layoutFragmentFrame`,
+  and `usageBoundsForTextContainer`, the view frame and the scroller follow
+  it to within 1 pt.
+- `invalidateLayout(for:)` never asks the delegate again; it lays out the
+  same fragment objects. So every paragraph gets one fragment class that
+  reads its role each time TextKit reads its frame or draws, and
+  `invalidateLayout(for:)` swaps it. The first entry replaces TextKit's own
+  fragments once with `recordEditAction(in:newTextRange:)` over the whole
+  text, which changes no characters.
+- TextKit still lays out the source lines inside a rendered block. The caret,
+  the selection segments, hit tests, `firstRect` and accessibility frames
+  there are the hidden source lines', and some lie over the next paragraph.
+  So every position inside a rendered block comes from the engine's glyph
+  boxes. A layout manager subclass drops those paragraphs from NSTextView's
+  selection segments, and the editor draws the highlight itself. NSTextView's
+  own AXBoundsForRange and AXRangeForPosition handlers are overridden too,
+  because they do not call the accessibility protocol methods.
+- `NSImage` draws Typst's SVG correctly but too slowly on the main thread
+  (about 38 ms for one SICP viewport). The engine rasterizes bitmaps through
+  `typst-render` on a transparent page that includes hanging punctuation,
+  and the main thread draws only bitmaps.
+- One block of about 10,500 source lines (SICP's index) made a jump into it
+  lay out every collapsed paragraph after the caret. Blocks of more than 400
+  source lines stay source.
+- Text that moves under the pointer is the failure a writer notices. A
+  non-empty selection the pointer makes opens no block, and neither does the
+  keyboard when it extends one.
+- `NSApp.postEvent` stops the main run loop under `swift test` and ends the
+  test process with no report. Tests drive the selection navigation calls
+  that AppKit's mouse tracking makes, and Prose's own tracking loop takes a
+  scripted event source. Real key, mouse, input method and VoiceOver events
+  in the running app are still untested.
+- The cost is memory. On a book the block engine adds 650 to 710 MiB, and the
+  app peaks near 1 GB.
+
 ## Why TextKit 2 stays
 
 The spike on draft PR #75 measured both text systems on the two books (M4 Pro,
