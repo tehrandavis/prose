@@ -57,7 +57,8 @@ extension Workspace {
 /// The title row's document title, mode control and buttons, and the status
 /// bar, while Focus mode is on: hidden, and shown while the pointer is over the
 /// title row or within `statusBarReach` of the window's bottom edge. The status
-/// bar hides `hideDelay` after the pointer leaves that strip.
+/// bar hides `hideDelay` after the pointer leaves that strip. The floating
+/// toolbar hides while the user types and shows again when the pointer moves.
 @MainActor
 final class FocusChrome: ObservableObject {
     static let statusBarReach: CGFloat = 34
@@ -67,6 +68,8 @@ final class FocusChrome: ObservableObject {
     @Published private(set) var active = false
     @Published private(set) var titleShown = false
     @Published private(set) var statusBarShown = false
+    /// Whether typing hid the floating toolbar (Focus mode only).
+    @Published private(set) var toolbarHidden = false
     private var hideTask: Task<Void, Never>?
     /// Follows the pointer while Focus mode is on.
     private(set) var tracker: FocusPointerTracker?
@@ -88,6 +91,7 @@ final class FocusChrome: ObservableObject {
         hideTask = nil
         titleShown = false
         statusBarShown = false
+        toolbarHidden = false
         tracker?.detach()
         tracker = nil
         active = on
@@ -103,6 +107,9 @@ final class FocusChrome: ObservableObject {
         guard active else {
             return
         }
+        if toolbarHidden {
+            toolbarHidden = false
+        }
         let overTitle = point.y >= contentTop
         if titleShown != overTitle {
             titleShown = overTitle
@@ -116,6 +123,15 @@ final class FocusChrome: ObservableObject {
         } else {
             statusBarLeft()
         }
+    }
+
+    /// A key reached the editor: in Focus mode the floating toolbar fades out
+    /// until the pointer moves. Command shortcuts are not typing.
+    func keyTyped(_ event: NSEvent) {
+        guard active, !toolbarHidden, !event.modifierFlags.contains(.command) else {
+            return
+        }
+        toolbarHidden = true
     }
 
     /// The pointer left the window.

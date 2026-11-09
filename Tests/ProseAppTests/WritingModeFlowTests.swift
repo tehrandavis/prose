@@ -333,6 +333,14 @@ extension WritingFlowTests {
         editor.setSelectedRange(NSRange(location: text.length, length: 0))
         app.window.appearance = NSAppearance(named: .aqua)
         let model = try await enterWritingMode(app)
+        // The paragraph in view, so that it renders in either appearance.
+        // With the caret at the end the view is at the bottom, and since step
+        // E's 64 pt below the text in Writing mode the paragraph lies just
+        // outside the blocks rendered around the viewport there.
+        writingScrollToTop(editor)
+        await app.layout()
+        await model.idle()
+        await app.layout()
         let paragraph = text.range(of: "A paragraph with inline math").location
         func rendering() -> WritingRendering? {
             if case let .rendered(rendering, _) = writingFragments(manager).first(where: { $0.offset == paragraph })?

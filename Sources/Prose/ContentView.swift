@@ -14,6 +14,8 @@ struct ContentView: View {
     private let defaults: UserDefaults
     static let sidebarWidthKey = "sidebarWidth"
     static let sidebarWidths: ClosedRange<CGFloat> = 240 ... 320
+    /// The status bar's height, its hairline included.
+    static let statusBarHeight: CGFloat = 35
 
     init(workspace: Workspace, defaults: UserDefaults = .standard) {
         self.workspace = workspace
@@ -85,6 +87,11 @@ struct ContentView: View {
                                         availableMargin: ManuscriptLayout.horizontalInset(for: editorWidth),
                                     )
                                     .padding(.leading, 6).padding(.top, 64)
+                                }
+                            }
+                            .overlay(alignment: .bottom) {
+                                if workspace.showsFloatingToolbar {
+                                    FloatingToolbar(workspace: workspace, chrome: workspace.focusChrome)
                                 }
                             }
                             .opacity(workspace.layout == .preview ? 0 : 1)
@@ -343,7 +350,7 @@ struct ContentView: View {
                 design: .monospaced,
             )).foregroundStyle(Theme.muted).frame(minWidth: 35, alignment: .trailing)
             DocumentCheckButton(workspace: workspace)
-        }.padding(.horizontal, 24).frame(height: 34)
+        }.padding(.horizontal, 24).frame(height: Self.statusBarHeight - 1)
     }
 }
 

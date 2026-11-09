@@ -107,6 +107,7 @@ final class Workspace: ObservableObject {
         didSet {
             if editorMode != oldValue {
                 focusModeChanged(from: oldValue)
+                editor?.toolbarClearance = showsToolbarMode
             }
         }
     }
@@ -1066,6 +1067,7 @@ final class Workspace: ObservableObject {
     }
 
     func enterGroup(_ id: String) {
+        recordOperation("palette.group", ["group": id])
         paletteGroup = id
         searchMode = false
         activeCommand = nil

@@ -243,6 +243,28 @@ extension WritingController {
         typewriterAnimation = timer
     }
 
+    /// The caret whose line Focus mode keeps on the typewriter line while the
+    /// visible height changes: an empty selection, no marked text, its line
+    /// in view. Nil otherwise, and the top line stays in place instead.
+    func typewriterCaretInView() -> Int? {
+        guard focused, let editor, !editor.hasMarkedText(), editor.selectedRange().length == 0 else {
+            return nil
+        }
+        let caret = editor.selectedRange().location
+        return caretMiddleInView(caret) == nil ? nil : caret
+    }
+
+    /// The visible height changed (a window resize, the command panel or the
+    /// message bar opening or closing): the caret line goes back to the
+    /// typewriter line, as after a caret change.
+    func visibleHeightChanged(caret: Int) {
+        guard focused, let editor, editor.selectedRange() == NSRange(location: caret, length: 0) else {
+            return
+        }
+        stopTypewriterAnimation()
+        placeCaretLine(caret, at: Self.typewriterFraction * editor.containerVisibleRect().height)
+    }
+
     func stopTypewriterAnimation() {
         typewriterAnimation?.invalidate()
         typewriterAnimation = nil

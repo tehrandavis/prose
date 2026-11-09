@@ -43,6 +43,7 @@ struct ManuscriptView: NSViewRepresentable {
         editor.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         editor.setAccessibilityLabel(L10n.text("Document Editor"))
         scroll.documentView = editor
+        editor.toolbarClearance = workspace.showsToolbarMode
         workspace.editor = editor
         editor.observeViewport(scroll.contentView)
         editor.load(workspace.text, selection: workspace.selection)
@@ -245,6 +246,9 @@ final class ManuscriptTextView: NSTextView {
     private(set) var appliedFontSize: CGFloat = 0
     /// The top line to keep in place until the layout pass after a re-wrap.
     private var resizeAnchor: (offset: Int, y: CGFloat)?
+    /// In Focus mode, the caret whose line goes back to the typewriter line
+    /// in the layout pass after the visible height changed.
+    private var typewriterResize: Int?
     private var appliedSyntaxRevision = -1
     /// Reading styles and syntax colours.
     var styler: SourceStyler?
@@ -280,12 +284,21 @@ final class ManuscriptTextView: NSTextView {
     }
 
     /// The visible area changed size: Focus mode's typewriter space follows
-    /// its height.
+    /// its height. With the caret's line in view it goes back to the
+    /// typewriter line, now and after the layout pass the resize starts;
+    /// otherwise the top line stays.
     @objc private func viewportResized(_: Notification) {
         guard focusColumn else {
             return
         }
-        applyColumnInset()
+        guard let caret = writing.typewriterCaretInView() else {
+            applyColumnInset()
+            return
+        }
+        updateColumnInset()
+        resizeAnchor = nil
+        typewriterResize = caret
+        writing.visibleHeightChanged(caret: caret)
     }
 
     @objc private func viewportChanged(_ notification: Notification) {
@@ -355,7 +368,11 @@ final class ManuscriptTextView: NSTextView {
         super.layout()
         // The pass after re-wrapping sizes the view from a partial estimate
         // first, and the clip view clamps the scroll to it.
-        if let anchor = resizeAnchor {
+        if let caret = typewriterResize {
+            typewriterResize = nil
+            resizeAnchor = nil
+            writing.visibleHeightChanged(caret: caret)
+        } else if let anchor = resizeAnchor {
             resizeAnchor = nil
             keepAtTop(anchor)
             // This pass is over; lay out the viewport where it now is.
@@ -457,11 +474,22 @@ final class ManuscriptTextView: NSTextView {
         keepAtTop(anchor)
     }
 
-    /// The space above and below the text: 42 pt, and in Focus mode 60
-    /// percent of the visible height, so the first and last lines can reach
-    /// the typewriter line (decision 5 of the Phase 4 note). It moves the
-    /// container, not its width, so no block renders again.
-    var verticalInset: CGFloat {
+    /// Writing and Focus mode keep room below the text for the floating
+    /// toolbar, so the last line can scroll above it (decision 6 of the
+    /// Phase 4 note). Changing it keeps the top line in place.
+    var toolbarClearance = false {
+        didSet {
+            guard toolbarClearance != oldValue else {
+                return
+            }
+            applyColumnInset()
+        }
+    }
+
+    /// The space above the text: 42 pt, and in Focus mode 60 percent of the
+    /// visible height, so the first line can reach the typewriter line
+    /// (decision 5 of the Phase 4 note).
+    var topInset: CGFloat {
         guard focusColumn else {
             return ManuscriptLayout.verticalInset
         }
@@ -469,18 +497,44 @@ final class ManuscriptTextView: NSTextView {
         return max(ManuscriptLayout.verticalInset, (visible * ManuscriptLayout.focusVerticalFraction).rounded())
     }
 
+    /// The space below the text: the same as above it, and at least
+    /// `ManuscriptLayout.toolbarClearance` while the floating toolbar can
+    /// show. Neither inset changes the container's width, so no block renders
+    /// again.
+    var bottomInset: CGFloat {
+        toolbarClearance ? max(topInset, ManuscriptLayout.toolbarClearance) : topInset
+    }
+
+    /// The container's top, applied with the insets.
+    private var appliedTopInset = ManuscriptLayout.verticalInset
+
+    /// NSTextView puts `textContainerInset.height` above and below the
+    /// container (its frame is the text's height plus twice the inset). Prose
+    /// sets that height to the mean of the two insets and moves the container
+    /// up to `topInset`, so the space below is `bottomInset`. TextKit 2's
+    /// fragment views, hit testing and Prose's geometry all read this origin.
+    override var textContainerOrigin: NSPoint {
+        NSPoint(x: super.textContainerOrigin.x, y: appliedTopInset)
+    }
+
     /// Sets the margins around the column for the view's size and mode.
     /// Returns whether they changed.
     @discardableResult
     private func updateColumnInset() -> Bool {
+        let top = topInset
         let inset = NSSize(
             width: ManuscriptLayout.horizontalInset(for: frame.width, focus: focusColumn),
-            height: verticalInset,
+            height: (top + bottomInset) / 2,
         )
-        guard textContainerInset != inset else {
+        guard textContainerInset != inset || appliedTopInset != top else {
             return false
         }
-        textContainerInset = inset
+        appliedTopInset = top
+        if textContainerInset != inset {
+            textContainerInset = inset
+        } else {
+            invalidateTextContainerOrigin()
+        }
         return true
     }
 
@@ -772,6 +826,7 @@ final class ManuscriptTextView: NSTextView {
     }
 
     override func keyDown(with event: NSEvent) {
+        workspace?.focusChrome.keyTyped(event)
         let hadHover = sourceHover.panel != nil
         sourceHover.dismiss()
         if hadHover, event.keyCode == 53, !hasMarkedText() {

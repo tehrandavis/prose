@@ -26,6 +26,8 @@ The interface is in English. Your documents can be in any language: Prose draws 
 
 For example, `⌘J → i → t` opens the table form. Choose the row and column counts, insert, then move between cells with Tab. Select text and press `⌘J → s → b` to make it bold. Each insertion is one undoable edit. You can always write Typst directly.
 
+In Writing and Focus mode a small toolbar floats at the bottom of the text: Text Style, Table, Equation, Image and Insert. Each button does what its `⌘J` path does (hover over it to see the path), at the caret or on the selected text, and the keyboard stays in the text. In Focus mode it fades while you type and comes back when you move the pointer.
+
 The command catalog has 110 discoverable commands, including 74 insertion actions. Mathematics has nested categories for basic operations, equation structures and symbols. `⌘J → m → b → f` inserts a fraction, using the appropriate syntax inside an existing equation. Commands show their purpose, example, direct shortcut, discovery path and official reference.
 
 Frequent actions have direct shortcuts as well as discoverable paths. `⌘]` / `⌘[` indent and outdent, `⌘/` toggles comments, and `⌥⇧F` formats the source. Hovering a toolbar button shows a compact action name and shortcut.

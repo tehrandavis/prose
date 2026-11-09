@@ -8,6 +8,10 @@ enum ManuscriptLayout {
     /// In Focus mode, the space above and below the text as a fraction of
     /// the visible height (decision 5 of the Phase 4 note).
     static let focusVerticalFraction: CGFloat = 0.6
+    /// The least space below the text while the floating toolbar can show
+    /// (Writing and Focus mode): the toolbar's height and its 16 pt above the
+    /// pane's bottom edge, with room to spare (decision 6 of the Phase 4 note).
+    static let toolbarClearance: CGFloat = 64
 
     /// The margin on each side of the column in a pane `paneWidth` wide. In
     /// Focus mode the column is `focusColumnWidth`, never wider than the pane

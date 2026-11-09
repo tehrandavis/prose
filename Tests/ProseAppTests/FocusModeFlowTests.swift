@@ -492,14 +492,18 @@ extension WritingFlowTests {
         #expect(checks >= 40, "\(checks) caret changes")
 
         // The space above and below the text follows the visible height,
-        // and leaving Focus restores it.
+        // the caret line stays on the typewriter line (step E), and leaving
+        // Focus restores Writing mode's space: 42 pt above the text, and
+        // 64 pt below it for the floating toolbar.
         var size = try #require(app.window.contentView?.frame.size)
         size.height -= 120
         app.window.setContentSize(size)
         await app.layout()
         #expect(editor.textContainerInset.height == (clip.bounds.height * 0.6).rounded())
+        check("the window got shorter")
         app.workspace.setMode(.writing)
-        #expect(editor.textContainerInset.height == ManuscriptLayout.verticalInset)
+        #expect(editor.textContainerOrigin.y == ManuscriptLayout.verticalInset)
+        #expect(editor.bottomInset == ManuscriptLayout.toolbarClearance)
         #expect(editor.string == app.workspace.text)
         expectPlainStorage(editor)
     }
