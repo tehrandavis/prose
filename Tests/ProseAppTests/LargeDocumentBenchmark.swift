@@ -11,10 +11,14 @@ extension WritingFlowTests {
     /// With `PROSE_WRITING_MODE=1` the same run happens in Writing mode
     /// (acceptance test 14 of the Phase 3 note): every jump, and the typing,
     /// lands in a block that is rendered when it starts, so each one swaps.
+    /// With `PROSE_FOCUS_MODE=1` it enters Writing mode, then Focus mode, runs
+    /// the same scenario there and adds the typewriter step (acceptance test
+    /// 15 of the Phase 4 note).
     @Test(.enabled(if: ProcessInfo.processInfo.environment["PROSE_LARGE_FIXTURE"] != nil))
     func realMultiMegabyteDocumentNavigationScrollingAndTyping() async throws {
         let path = try #require(ProcessInfo.processInfo.environment["PROSE_LARGE_FIXTURE"])
-        let writingMode = ProcessInfo.processInfo.environment["PROSE_WRITING_MODE"] == "1"
+        let focusMode = ProcessInfo.processInfo.environment["PROSE_FOCUS_MODE"] == "1"
+        let writingMode = focusMode || ProcessInfo.processInfo.environment["PROSE_WRITING_MODE"] == "1"
         let data = try Data(contentsOf: URL(fileURLWithPath: path))
         let source = try #require(String(data: data, encoding: .utf8))
         #expect(data.count > 1_000_000)
@@ -44,7 +48,7 @@ extension WritingFlowTests {
         var report: [String: Any] = ["bytes": data.count, "utf16": source.utf16.count, "open_seconds": openTime,
                                      "text_system": textSystem, "memory_before_mib": initialMemory,
                                      "memory_open_mib": physicalFootprint(),
-                                     "editor_mode": writingMode ? "writing" : "code"]
+                                     "editor_mode": focusMode ? "focus" : writingMode ? "writing" : "code"]
         record("open")
         let serviceStarted = ContinuousClock.now
         app.workspace.startService()
@@ -92,6 +96,10 @@ extension WritingFlowTests {
         if writingMode {
             writing = try await WritingBenchmark.enter(app, report: &report)
             record("writing")
+            if focusMode {
+                try await writing?.enterFocus(report: &report)
+                record("focus")
+            }
             offsets = await writing?.renderTargets(offsets, report: &report) ?? offsets
             record("targets")
         }
@@ -287,6 +295,11 @@ extension WritingFlowTests {
         try await childrenIdle()
         report["after_typing"] = afterTyping.usage(to: UsageSnapshot())
         report["memory_after_mib"] = physicalFootprint()
+        if focusMode, let writing {
+            try await writing.typewriterSteps(at: offsets[2], source: source, report: &report)
+            record("typewriter")
+            report["paragraphs_built"] = built
+        }
         report["preview_status"] = app.workspace.serviceStatus
         if ProcessInfo.processInfo.environment["PROSE_BENCH_EXPORT"] == "1" {
             let started = ContinuousClock.now
@@ -303,7 +316,7 @@ extension WritingFlowTests {
         report["memory_peak_mib"] = peakFootprint()
         report["children_peak_mib"] = childrenPeakFootprint()
         if let writing {
-            writing.finish(report: &report)
+            writing.finish(focus: focusMode, report: &report)
             expectPlainStorage(editor)
         }
         let json = try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
@@ -326,6 +339,8 @@ private final class WritingBenchmark {
     private var swaps: [String: Int] = [:]
     /// The most rendered draws seen for each fragment with an image in view.
     private var renderedDraws: [ObjectIdentifier: Int] = [:]
+    /// The most dimmed draws seen for each fragment in view (Focus mode).
+    private var dimmedDraws: [ObjectIdentifier: Int] = [:]
 
     private init(app: WritingFixture, editor: ManuscriptTextView, manager: NSTextLayoutManager, model: WritingLayout) {
         self.app = app
@@ -461,6 +476,10 @@ private final class WritingBenchmark {
                 let id = ObjectIdentifier(fragment)
                 renderedDraws[id] = max(renderedDraws[id] ?? 0, fragment.draws["rendered", default: 0])
             }
+            if let fragment = fragment as? WritingFragment, let dimmed = fragment.draws["dimmed"] {
+                let id = ObjectIdentifier(fragment)
+                dimmedDraws[id] = max(dimmedDraws[id] ?? 0, dimmed)
+            }
             return fragment.rangeInElement.location.compare(viewport.endLocation) == .orderedAscending
         }
     }
@@ -477,11 +496,19 @@ private final class WritingBenchmark {
         swapsAtPhase = editor.writing.swapCount
     }
 
-    /// Checks that the run measured Writing mode and reports what it did.
-    func finish(report: inout [String: Any]) {
+    /// Checks that the run measured Writing mode (or Focus mode) and reports
+    /// what it did.
+    func finish(focus: Bool, report: inout [String: Any]) {
         let drawn = renderedDraws.values.filter { $0 > 0 }
         let draws = drawn.reduce(0, +)
-        #expect(app.workspace.editorMode == .writing && editor.writing.isRunning, "The run left Writing mode")
+        let mode: EditorMode = focus ? .focus : .writing
+        #expect(
+            app.workspace.editorMode == mode && editor.writing.isRunning && editor.writing.focused == focus,
+            "The run left \(mode) mode",
+        )
+        if focus {
+            finishFocus(report: &report)
+        }
         #expect(
             swaps["jumps", default: 0] >= 6 && swaps["scroll", default: 0] > 0 && swaps["typing_jump", default: 0] > 0,
             "Swaps by phase: \(swaps)",
@@ -493,6 +520,7 @@ private final class WritingBenchmark {
             "swaps_total": editor.writing.swapCount,
             "rendered_fragments_drawn": drawn.count,
             "rendered_fragment_draws": draws,
+            "dimmed_draws": dimmedDraws.values.reduce(0, +),
             "bitmap_mib": Double(model.bytesHeld) / 1_048_576,
             "sync_replies": model.syncReplies,
             "render_replies": model.renderReplies,
@@ -501,6 +529,201 @@ private final class WritingBenchmark {
         ]
         print("PROSE WRITING swaps \(swaps), rendered draws \(draws) by \(drawn.count) fragments")
     }
+}
+
+/// Focus mode in the book benchmark (acceptance test 15 of the Phase 4 note).
+extension WritingBenchmark {
+    /// Enters Focus mode from Writing mode and waits until the entry window
+    /// ends (`entry_ms`), then until every block in view has its render at
+    /// the Focus width and scale (`ready_ms`).
+    func enterFocus(report: inout [String: Any]) async throws {
+        let before = physicalFootprint()
+        let usage = UsageSnapshot()
+        let start = ContinuousClock.now
+        app.workspace.setMode(.focus)
+        let deadline = ContinuousClock.now + .seconds(30)
+        while !(editor.writing.focused && editor.writing.enteredWithRenders != nil), deadline > .now {
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        let entry = seconds(start.duration(to: .now))
+        #expect(app.workspace.editorMode == .focus && editor.writing.focused, "Focus mode did not start")
+        report["focus_entered_with_renders"] = editor.writing.enteredWithRenders ?? NSNull()
+        await settle()
+        await settle()
+        let entryReport: [String: Any] = [
+            "entry_ms": entry * 1000,
+            "ready_ms": seconds(start.duration(to: .now)) * 1000,
+            "usage": usage.usage(to: UsageSnapshot()),
+        ]
+        report["focus_entry"] = entryReport
+        report["memory_focus_before_mib"] = before
+        report["memory_focus_entered_mib"] = physicalFootprint()
+        report["memory_peak_focus_entry_mib"] = peakFootprint()
+        phaseEnded("focus_entry")
+    }
+
+    /// Times 60 typewriter steps in rendered prose from `offset`: a Down
+    /// arrow and a Return in turn. Each step runs from the key's action to
+    /// the end of the typewriter scroll, the layout and the drawing of every
+    /// layer the step marked for display (`displayMarkedLayers`): the
+    /// fragments the scroll brought into view, the paragraphs whose role or
+    /// contrast changed, and the editor's own background. Between steps,
+    /// untimed, 50 ms pass (a fast key repeat) so renders can arrive, and
+    /// what they marked is drawn. Afterwards the Returns are undone.
+    func typewriterSteps(at offset: Int, source: String, report: inout [String: Any]) async throws {
+        let root = try #require(editor.layer)
+        app.workspace.jump(to: offset)
+        await settle()
+        _ = displayMarkedLayers(root)
+        var steps: [Double] = [], actions: [Double] = [], cpu: [Double] = [], fullViewport: [Double] = []
+        var samples: [[String: Any]] = []
+        var offLine: [String] = []
+        let bitmap = try #require(editor.bitmapImageRepForCachingDisplay(in: editor.visibleRect))
+        for index in 0 ..< 60 {
+            let returns = index % 2 == 1
+            let swapsBefore = editor.writing.swapCount
+            let cpuStart = clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID)
+            let start = ContinuousClock.now
+            if returns {
+                editor.insertNewline(nil)
+            } else {
+                editor.moveDown(nil)
+            }
+            let acted = ContinuousClock.now
+            // AppKit's display pass (layout, SwiftUI updates), then every
+            // layer the step marked, as the frame's commit draws them.
+            editor.window?.displayIfNeeded()
+            let layers = displayMarkedLayers(root)
+            let step = seconds(start.duration(to: .now))
+            steps.append(step)
+            actions.append(seconds(start.duration(to: acted)))
+            cpu.append(Double(clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID) - cpuStart) / 1e9)
+            let line = typewriterLineError()
+            if let line, abs(line) > 1 {
+                offLine.append("step \(index): \(line) pt")
+            } else if line == nil {
+                offLine.append("step \(index): no caret line")
+            }
+            // For reference, untimed: the whole viewport drawn afresh, as
+            // the scroll measurement draws it.
+            let fullStart = ContinuousClock.now
+            editor.cacheDisplay(in: editor.visibleRect, to: bitmap)
+            fullViewport.append(seconds(fullStart.duration(to: .now)))
+            recordDraws()
+            samples.append([
+                "index": index,
+                "key": returns ? "return" : "down",
+                "wall_ms": step * 1000,
+                "action_ms": (actions.last ?? 0) * 1000,
+                "thread_cpu_ms": (cpu.last ?? 0) * 1000,
+                "layers_drawn": layers,
+                "display_ms": (step - (actions.last ?? 0)) * 1000,
+                "swaps": editor.writing.swapCount - swapsBefore,
+                "line_error_pt": line.map { Double($0) } ?? NSNull(),
+            ])
+            try await Task.sleep(for: .milliseconds(50))
+            editor.window?.displayIfNeeded()
+            _ = displayMarkedLayers(root)
+        }
+        phaseEnded("typewriter")
+        #expect(offLine.isEmpty, "The caret line left the typewriter line: \(offLine.joined(separator: "; "))")
+        let failures = typewriterBudgetFailures(steps)
+        #expect(failures.isEmpty, "\(failures.joined(separator: "; "))")
+        report["typewriter_ms"] = milliseconds(steps)
+        report["typewriter_action_ms"] = milliseconds(actions)
+        report["typewriter_display_ms"] = milliseconds(zip(steps, actions).map { $0 - $1 })
+        report["typewriter_thread_cpu_ms"] = milliseconds(cpu)
+        report["typewriter_full_viewport_draw_ms"] = milliseconds(fullViewport)
+        report["typewriter_samples"] = samples
+        report["typewriter_on_line"] = steps.count - offLine.count
+        report["typewriter_steps_with_swaps"] = samples.count(where: { ($0["swaps"] as? Int ?? 0) > 0 })
+        report["typewriter_undos"] = 0
+        report["typewriter_budget_failures"] = failures
+        // Undo the Returns: each is its own undo group.
+        var undos = 0
+        while editor.string != source, editor.undoManager?.canUndo == true, undos < 60 {
+            editor.undoManager?.undo()
+            undos += 1
+        }
+        report["typewriter_undos"] = undos
+        #expect(editor.string == source, "Undoing the typewriter Returns did not restore the source")
+        #expect(app.workspace.text == source)
+        await settle()
+    }
+
+    /// The caret line's middle minus the typewriter line, in points: the
+    /// glyph line in a rendered block, TextKit's caret in source.
+    private func typewriterLineError() -> CGFloat? {
+        let caret = editor.selectedRange().location
+        let text = editor.string as NSString
+        let paragraph = text.paragraphRange(for: NSRange(location: min(caret, text.length), length: 0))
+        let middle = if model.role(forParagraph: paragraph) == .source {
+            TextKit2Geometry.caretRect(at: caret, in: manager)?.midY
+        } else {
+            editor.writing.caretMiddle(caret)
+        }
+        let visible = editor.containerVisibleRect()
+        return middle.map { $0 - (visible.minY + visible.height * WritingController.typewriterFraction) }
+    }
+
+    /// Checks the Focus column and scale, and that paragraphs drew dimmed.
+    func finishFocus(report: inout [String: Any]) {
+        let width = editor.frame.width
+        let column = min(ManuscriptLayout.focusColumnWidth, width - 2 * ManuscriptLayout.minimumInset)
+        let container = editor.textContainer?.size.width ?? 0
+        #expect(abs(container - column) < 1, "The column is \(container) pt, not Focus's \(column) pt")
+        var rendered = 0, scaled = 0
+        if let viewport = manager.textViewportLayoutController.viewportRange {
+            manager.enumerateTextLayoutFragments(from: viewport.location) { fragment in
+                if let fragment = fragment as? WritingFragment, case let .rendered(rendering, _) = fragment.role {
+                    rendered += 1
+                    scaled += rendering.scale == WritingMetrics.focusScale
+                        && rendering.appearance.columnWidth == Double(container) ? 1 : 0
+                }
+                return fragment.rangeInElement.location.compare(viewport.endLocation) == .orderedAscending
+            }
+        }
+        #expect(
+            rendered > 0 && scaled == rendered,
+            "\(scaled) of \(rendered) rendered blocks in view at the Focus scale",
+        )
+        let dimmed = dimmedDraws.values.reduce(0, +)
+        #expect(dimmed > 0, "No paragraph drew dimmed")
+        let focusReport: [String: Any] = [
+            "column_pt": container,
+            "expected_column_pt": column,
+            "scale": WritingMetrics.focusScale,
+            "rendered_in_view": rendered,
+            "rendered_at_focus_scale": scaled,
+            "dimmed_draws": dimmed,
+            "dimmed_fragments": dimmedDraws.values.filter { $0 > 0 }.count,
+        ]
+        report["focus"] = focusReport
+    }
+}
+
+/// Draws every layer under `layer` that is marked for display, as Core
+/// Animation does before it shows a frame, and returns how many drew. The
+/// test window's own display pass draws no text fragments: TextKit 2 draws
+/// each fragment in its own layer-backed view, and those layers draw when
+/// the frame is committed.
+@MainActor
+private func displayMarkedLayers(_ layer: CALayer) -> Int {
+    let marked = layer.needsDisplay()
+    layer.displayIfNeeded()
+    var drawn = marked && !layer.needsDisplay() ? 1 : 0
+    for sublayer in layer.sublayers ?? [] {
+        drawn += displayMarkedLayers(sublayer)
+    }
+    return drawn
+}
+
+/// The typewriter step gate: p95 under two 60 Hz frames.
+private func typewriterBudgetFailures(_ steps: [Double]) -> [String] {
+    guard steps.count >= 60 else {
+        return ["Expected at least 60 typewriter steps"]
+    }
+    return p95(steps.sorted()) < 0.033 ? [] : ["Typewriter step p95 must stay below 33 ms"]
 }
 
 /// Waits for Tinymist's first compile, then until its processes (this

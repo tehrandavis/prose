@@ -714,3 +714,64 @@ func writingSave(_ bitmap: NSBitmapImageRep, _ name: String) throws {
     let data = try #require(bitmap.representation(using: .png, properties: [:]))
     try data.write(to: folder.appendingPathComponent(name))
 }
+
+/// A rendered block's image draws one to one on the device's pixels when its
+/// pixel size matches the drawn rectangle there (Phase 4 step D): its
+/// top-left corner snaps to a device pixel and its pixels arrive unchanged.
+@Test func writingImageTargetSnapsMatchingImagesToDevicePixels() throws {
+    let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+    let info = CGImageAlphaInfo.premultipliedLast.rawValue
+    func context(scale: CGFloat) throws -> CGContext {
+        let context = try #require(CGContext(
+            data: nil, width: 200, height: 100, bitsPerComponent: 8, bytesPerRow: 800, space: space, bitmapInfo: info,
+        ))
+        // As TextKit draws a fragment: y pointing down, `scale` pixels a point.
+        context.translateBy(x: 0, y: 100)
+        context.scaleBy(x: scale, y: -scale)
+        return context
+    }
+    let source = try #require(CGContext(
+        data: nil, width: 100, height: 20, bitsPerComponent: 8, bytesPerRow: 400, space: space, bitmapInfo: info,
+    ))
+    for x in 0 ..< 100 {
+        for y in 0 ..< 20 where (x + 2 * y).isMultiple(of: 3) {
+            source.setFillColor(CGColor(srgbRed: Double(x) / 99, green: Double(y) / 19, blue: 0.5, alpha: 1))
+            source.fill(CGRect(x: x, y: y, width: 1, height: 1))
+        }
+    }
+    let image = try #require(source.makeImage())
+    // The engine's drawn area is 99.2 by 19.4 pixels; the image pads it.
+    let rect = CGRect(x: 10.3, y: 5.2, width: 49.6, height: 9.7)
+
+    let device = try context(scale: 2)
+    let target = WritingFragment.imageTarget(image, in: rect, context: device)
+    #expect(target.exact)
+    #expect(target.rect == CGRect(x: 10.5, y: 5, width: 50, height: 10))
+    device.interpolationQuality = .none
+    device.translateBy(x: target.rect.minX, y: target.rect.maxY)
+    device.scaleBy(x: 1, y: -1)
+    device.draw(image, in: CGRect(origin: .zero, size: target.rect.size))
+    // Every pixel arrives where it belongs, unchanged: column 21 + x, and
+    // image row y (from the top) at bitmap row 10 + y.
+    let drawn = try #require(device.data).assumingMemoryBound(to: UInt8.self)
+    let pixels = try #require(source.data).assumingMemoryBound(to: UInt8.self)
+    var differences = 0
+    for y in 0 ..< 20 {
+        for x in 0 ..< 100 {
+            for channel in 0 ..< 4 {
+                let at = (10 + y) * 800 + (21 + x) * 4 + channel
+                differences += drawn[at] == pixels[y * 400 + x * 4 + channel] ? 0 : 1
+            }
+        }
+    }
+    #expect(differences == 0, "\(differences) channel values changed")
+
+    // Another backing scale, a rectangle the image does not fit, or a
+    // rotated context resample as before.
+    #expect(try !WritingFragment.imageTarget(image, in: rect, context: context(scale: 1)).exact)
+    let squeezed = CGRect(x: 10, y: 5, width: 40, height: 9.7)
+    #expect(try WritingFragment.imageTarget(image, in: squeezed, context: context(scale: 2)) == (squeezed, false))
+    let rotated = try context(scale: 2)
+    rotated.rotate(by: .pi / 2)
+    #expect(!WritingFragment.imageTarget(image, in: rect, context: rotated).exact)
+}

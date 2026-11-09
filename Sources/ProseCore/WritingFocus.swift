@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Range arithmetic for Focus mode's dimming (decision 4 of the Phase 4
@@ -73,5 +74,68 @@ public enum WritingFocus {
             }
         }
         return merged(result)
+    }
+
+    /// A copy of `image` at `alpha` opacity, its premultiplied pixels scaled
+    /// as drawing it with that global alpha would. Core Graphics copies an
+    /// image whose pixels match the device's one to one several times faster
+    /// than it blends one with a global alpha, so Focus mode draws dimmed
+    /// blocks from such copies. Nil if no bitmap context can hold it.
+    public static func dimmed(_ image: CGImage, alpha: CGFloat = dimmedAlpha) -> CGImage? {
+        guard let space = image.colorSpace, space.model == .rgb,
+              let context = CGContext(
+                  data: nil,
+                  width: image.width,
+                  height: image.height,
+                  bitsPerComponent: 8,
+                  bytesPerRow: 0,
+                  space: space,
+                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue,
+              )
+        else {
+            return nil
+        }
+        context.interpolationQuality = .none
+        context.setAlpha(alpha)
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        return context.makeImage()
+    }
+}
+
+/// Dimmed copies (`WritingFocus.dimmed`) of the rendered images Focus mode
+/// draws, most recently used first, at most `limit` of them, so a scroll
+/// through a book does not keep a second copy of every image it passed.
+public final class DimmedImageCache {
+    public let limit: Int
+    private var entries: [(source: CGImage, dimmed: CGImage)] = []
+
+    public init(limit: Int = 32) {
+        self.limit = max(1, limit)
+    }
+
+    /// Copies held.
+    public var count: Int {
+        entries.count
+    }
+
+    /// The dimmed copy of `image`, made on first use; nil if none can be made.
+    public func dimmed(_ image: CGImage) -> CGImage? {
+        if let index = entries.firstIndex(where: { $0.source === image }) {
+            let entry = entries.remove(at: index)
+            entries.insert(entry, at: 0)
+            return entry.dimmed
+        }
+        guard let dimmed = WritingFocus.dimmed(image) else {
+            return nil
+        }
+        entries.insert((image, dimmed), at: 0)
+        if entries.count > limit {
+            entries.removeLast(entries.count - limit)
+        }
+        return dimmed
+    }
+
+    public func removeAll() {
+        entries = []
     }
 }

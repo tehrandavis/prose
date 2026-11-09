@@ -977,3 +977,65 @@ private func expectOrdered(_ blocks: [RenderBlock], within length: Int) {
     await layout.idle()
     #expect(layout.lastError == nil && layout.blocks.count == 2)
 }
+
+/// Fragments keep the role they read until `roleRevision` changes (Phase 4
+/// step D), so every change of any paragraph's role must change it.
+@Test @MainActor func writingLayoutRoleRevisionChangesWheneverARoleCan() async throws {
+    let draft = try Draft()
+    let text = NSMutableString(string: threeParagraphs)
+    let renderer = try await draft.renderer()
+    let (layout, _) = await started(text as String, renderer, draft)
+    func roles() -> [WritingRole] {
+        var result: [WritingRole] = []
+        var start = 0
+        while start < text.length {
+            let paragraph = text.paragraphRange(for: NSRange(location: start, length: 0))
+            result.append(layout.role(forParagraph: paragraph))
+            start = NSMaxRange(paragraph)
+        }
+        return result
+    }
+    var revision = layout.roleRevision
+    var seen = roles()
+    var changes = 0
+    func check(_ label: String) {
+        let now = roles()
+        if now != seen {
+            changes += 1
+            #expect(layout.roleRevision != revision, "\(label) changed a role and kept revision \(revision)")
+        }
+        revision = layout.roleRevision
+        seen = now
+    }
+    // Reading roles changes nothing.
+    _ = roles()
+    #expect(layout.roleRevision == revision)
+
+    let second = layout.blocks[1].range
+    layout.selectionDidChange(caret: second.location + 3)
+    check("Opening a block")
+    edit(text, NSRange(location: offset(after: "Second para", in: text), length: 0), "xyz", layout)
+    #expect(layout.roleRevision != revision, "An edit moves paragraph offsets")
+    check("An edit")
+    layout.selectionDidChange(caret: 0)
+    check("Leaving the edited block")
+    await layout.idle()
+    check("Its render arriving")
+    // An edit after every block still moves offsets.
+    edit(text, NSRange(location: text.length, length: 0), "Tail", layout)
+    #expect(layout.roleRevision != revision)
+    check("An edit after the blocks")
+    layout.stop()
+    #expect(layout.roleRevision != revision)
+    check("Stopping")
+    layout.start(file: draft.file, text: text as String)
+    await layout.idle()
+    check("Starting again")
+    #expect(changes >= 4)
+
+    // Revisions are unique across models.
+    let other = WritingLayout(renderer: renderer, timing: fast)
+    other.start(file: draft.file, text: text as String)
+    #expect(other.roleRevision != layout.roleRevision)
+    other.stop()
+}

@@ -53,12 +53,26 @@ final class WritingFragment: NSTextLayoutFragment {
     }
 
     /// What the paragraph draws now; source while Writing mode is off.
+    /// TextKit reads it several thousand times a frame (each frame read
+    /// asks), so the fragment keeps the role it read until the model's
+    /// `roleRevision` changes.
     var role: WritingRole {
-        guard let controller, let offset else {
+        guard let controller, let revision = MainActor.assumeIsolated({ controller.roleRevision }) else {
             return .source
         }
-        return MainActor.assumeIsolated { controller.role(ofParagraphAt: offset) }
+        if let cachedRole, cachedRole.revision == revision {
+            return cachedRole.role
+        }
+        guard let offset else {
+            return .source
+        }
+        let role = MainActor.assumeIsolated { controller.role(ofParagraphAt: offset) }
+        cachedRole = (revision, role)
+        return role
     }
+
+    /// The role last read, with the model's `roleRevision` it was read at.
+    private var cachedRole: (revision: Int, role: WritingRole)?
 
     /// The paragraph's UTF-16 offset.
     var offset: Int? {
@@ -110,9 +124,11 @@ final class WritingFragment: NSTextLayoutFragment {
             }
         case let .rendered(rendering, _):
             count("rendered")
-            dimming(layer: nil, at: point, in: context) {
-                drawRendered(rendering, at: point, in: context)
+            let dimmed = dimmed
+            if dimmed {
+                count("dimmed")
             }
+            drawRendered(rendering, dimmed: dimmed, at: point, in: context)
         case .collapsed:
             count("collapsed")
         case let .pill(pill):
@@ -137,27 +153,22 @@ final class WritingFragment: NSTextLayoutFragment {
     }
 
     /// Runs `draw` at `WritingFocus.dimmedAlpha` opacity while the paragraph
-    /// is dimmed. A rendered block's image and stale bar are separate single
-    /// draws, so the alpha applies to each (`layer` nil). Source text and a
-    /// pill draw overlapping marks (glyphs over backgrounds, a label over its
-    /// fill), so they draw into a transparency layer over `layer` (from the
-    /// fragment's origin) that is composited at that alpha as one, keeping
-    /// exactly 45 percent of their contrast.
-    private func dimming(layer: CGRect?, at point: CGPoint, in context: CGContext, _ draw: () -> Void) {
+    /// is dimmed. Source text and a pill draw overlapping marks (glyphs over
+    /// backgrounds, a label over its fill), so they draw into a transparency
+    /// layer over `layer` (from the fragment's origin) that is composited at
+    /// that alpha as one, keeping exactly 45 percent of their contrast. A
+    /// rendered block dims in `drawRendered`.
+    private func dimming(layer: CGRect, at point: CGPoint, in context: CGContext, _ draw: () -> Void) {
         guard dimmed else {
             draw()
             return
         }
-        draws["dimmed", default: 0] += 1
+        count("dimmed")
         context.saveGState()
         context.setAlpha(WritingFocus.dimmedAlpha)
-        if let layer {
-            context.beginTransparencyLayer(in: layer.offsetBy(dx: point.x, dy: point.y), auxiliaryInfo: nil)
-            draw()
-            context.endTransparencyLayer()
-        } else {
-            draw()
-        }
+        context.beginTransparencyLayer(in: layer.offsetBy(dx: point.x, dy: point.y), auxiliaryInfo: nil)
+        draw()
+        context.endTransparencyLayer()
         context.restoreGState()
     }
 
@@ -181,28 +192,70 @@ final class WritingFragment: NSTextLayoutFragment {
         )
     }
 
-    private func drawRendered(_ rendering: WritingRendering, at point: CGPoint, in context: CGContext) {
+    /// Draws the block's image and, for a stale render, the amber bar. A
+    /// dimmed block draws its image's dimmed copy (`DimmedImageCache`): the
+    /// same pixels as the image at `WritingFocus.dimmedAlpha`, without the
+    /// slow blend a global alpha costs; the bar draws at that alpha.
+    private func drawRendered(_ rendering: WritingRendering, dimmed: Bool, at point: CGPoint, in context: CGContext) {
         let column = columnWidth
-        if let image = rendering.image {
+        let controller = controller
+        if var image = rendering.image {
             let rect = imageRect(rendering, column: column).offsetBy(dx: point.x, dy: point.y)
             context.saveGState()
-            context.interpolationQuality = .high
+            if dimmed {
+                let source = image
+                if let copy = MainActor.assumeIsolated({ controller?.dimmedImages.dimmed(source) }) {
+                    image = copy
+                } else {
+                    context.setAlpha(WritingFocus.dimmedAlpha)
+                }
+            }
+            let target = Self.imageTarget(image, in: rect, context: context)
+            context.interpolationQuality = target.exact ? .none : .high
             // TextKit draws with y pointing down; CGImage draws with y up.
-            context.translateBy(x: rect.minX, y: rect.maxY)
+            context.translateBy(x: target.rect.minX, y: target.rect.maxY)
             context.scaleBy(x: 1, y: -1)
-            context.draw(image, in: CGRect(origin: .zero, size: rect.size))
+            context.draw(image, in: CGRect(origin: .zero, size: target.rect.size))
             context.restoreGState()
         }
-        let controller = controller
         guard let colors = MainActor.assumeIsolated({ controller?.staleColor() }) else {
             return
         }
         var bar = WritingMetrics.staleBar.offsetBy(dx: point.x, dy: point.y)
         bar.size.height = rendering.height
         context.saveGState()
+        if dimmed {
+            context.setAlpha(WritingFocus.dimmedAlpha)
+        }
         context.setFillColor(colors)
         context.fill(bar)
         context.restoreGState()
+    }
+
+    /// Where to draw `image` for `rect`. The engine rasterizes at the
+    /// drawing scale times the backing scale, so an image's pixels usually
+    /// match the device's one to one, and `rect` differs from the image's
+    /// size only by the transparent padding of its last column and row. Then
+    /// the image draws at exactly its pixel size, with its top-left corner on
+    /// the nearest device pixel and no resampling (`exact`): Core Graphics
+    /// draws such an image several times faster than one it must resample,
+    /// and the glyphs stay as the engine drew them. Otherwise (another
+    /// backing scale, a render made for another scale, a rotated or skewed
+    /// context) it fills `rect` with high-quality resampling, as before.
+    static func imageTarget(_ image: CGImage, in rect: CGRect, context: CGContext) -> (rect: CGRect, exact: Bool) {
+        let transform = context.userSpaceToDeviceSpaceTransform
+        let xScale = abs(transform.a), yScale = abs(transform.d)
+        guard transform.b == 0, transform.c == 0, xScale > 0, yScale > 0 else {
+            return (rect, false)
+        }
+        let width = CGFloat(image.width), height = CGFloat(image.height)
+        let widthGap = width - rect.width * xScale, heightGap = height - rect.height * yScale
+        guard widthGap > -0.01, widthGap < 1.01, heightGap > -0.01, heightGap < 1.01 else {
+            return (rect, false)
+        }
+        let corner = context.convertToDeviceSpace(CGPoint(x: rect.minX, y: rect.minY))
+        let snapped = context.convertToUserSpace(CGPoint(x: corner.x.rounded(), y: corner.y.rounded()))
+        return (CGRect(x: snapped.x, y: snapped.y, width: width / xScale, height: height / yScale), true)
     }
 
     private func drawPill(_ pill: WritingPill, at point: CGPoint, in context: CGContext) {

@@ -69,6 +69,8 @@ final class WritingController: NSObject {
     /// For tests: the paragraphs the last change of the focus blocks laid
     /// out again.
     var refocused: [NSRange] = []
+    /// Focus mode's dimmed copies of the rendered images in view.
+    let dimmedImages = DimmedImageCache()
 
     init(editor: ManuscriptTextView) {
         self.editor = editor
@@ -125,6 +127,7 @@ final class WritingController: NSObject {
         focused = on
         typewriter = nil
         stopTypewriterAnimation()
+        dimmedImages.removeAll()
         guard isRunning else {
             focusSpans = nil
             return
@@ -166,6 +169,7 @@ final class WritingController: NSObject {
         appearanceTask = nil
         typewriter = nil
         stopTypewriterAnimation()
+        dimmedImages.removeAll()
         guard let model, model.isRunning else {
             focusSpans = nil
             return
@@ -408,6 +412,16 @@ final class WritingController: NSObject {
     }
 
     // MARK: - Roles and drawing
+
+    /// The model's `roleRevision` while it runs; nil while every paragraph
+    /// draws source. A fragment's role read at one revision holds until it
+    /// changes.
+    var roleRevision: Int? {
+        guard let model, model.isRunning else {
+            return nil
+        }
+        return model.roleRevision
+    }
 
     /// The role of the paragraph that starts at `offset`.
     func role(ofParagraphAt offset: Int) -> WritingRole {

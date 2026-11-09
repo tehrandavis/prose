@@ -28,7 +28,10 @@ public final class WritingLayout {
     /// The last full compile failed (true) or succeeded again (false).
     public var onStaleChange: ((Bool) -> Void)?
 
-    public private(set) var isRunning = false
+    public private(set) var isRunning = false {
+        didSet { changedRoles() }
+    }
+
     public private(set) var file: URL?
     /// The last full compile failed; renders keep the context of the one before.
     public private(set) var stale = false
@@ -38,7 +41,18 @@ public final class WritingLayout {
     private let renderer: any WritingRenderer
     private let timing: WritingTiming
     private let text = NSMutableString()
-    private var entries: [WritingEntry] = []
+    private var entries: [WritingEntry] = [] {
+        didSet { changedRoles() }
+    }
+
+    /// Changes whenever a paragraph's role may have changed: every change of
+    /// the blocks, every edit, and starting and stopping. Unique across
+    /// models, so a fragment can keep the role it read with the revision it
+    /// read it at (`role(forParagraph:)` grows costly with the paragraphs
+    /// TextKit has built, and TextKit reads each fragment's frame many times
+    /// a frame).
+    public private(set) var roleRevision = 0
+    private static var roleRevisions = 0
     private var indexByID: [Int: Int] = [:]
     private var nextID = 0
     private var nextSerial = 0
@@ -164,6 +178,8 @@ public final class WritingLayout {
         }
         text.replaceCharacters(in: original, with: source.substring(with: edited))
         revision += 1
+        // Paragraph offsets moved, even where no block did.
+        changedRoles()
         let (touched, changedText) = rebase(editing: original, delta: delta)
         if let caret {
             let moved = SourceStyling.rebase(NSRange(location: caret, length: 0), editing: original, delta: delta)
@@ -257,6 +273,11 @@ public final class WritingLayout {
             flush()
         }
         pump()
+    }
+
+    private func changedRoles() {
+        Self.roleRevisions &+= 1
+        roleRevision = Self.roleRevisions
     }
 
     // MARK: - Queries
