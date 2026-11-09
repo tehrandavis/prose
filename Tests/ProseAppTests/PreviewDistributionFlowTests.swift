@@ -98,6 +98,7 @@ extension WritingFlowTests {
             settings.frame = NSRect(origin: .zero, size: WritingSettingsView.windowSize)
             let window = NSWindow(contentRect: settings.frame, styleMask: [.titled], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
+            placeOnTestScreen(window)
             defer { window.close() }
             window.contentView = settings
             settings.layoutSubtreeIfNeeded()

@@ -44,6 +44,7 @@ extension WritingFlowTests {
             styleMask: [.titled, .closable], backing: .buffered, defer: false,
         )
         auxiliary.isReleasedWhenClosed = false
+        placeOnTestScreen(auxiliary)
         auxiliary.orderFront(nil)
         defer { auxiliary.close() }
         #expect(NSApp.sendAction(action, to: auxiliary, from: close))

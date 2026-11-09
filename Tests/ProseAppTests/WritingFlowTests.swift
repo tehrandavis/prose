@@ -520,6 +520,7 @@ final class WritingFixture {
             defer: false,
         )
         window.isReleasedWhenClosed = false
+        placeOnTestScreen(window)
         window.workspace = workspace
         workspace.window = window
         toolbar = WindowToolbar(workspace: workspace)

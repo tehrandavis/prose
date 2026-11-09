@@ -18,6 +18,7 @@ extension WritingFlowTests {
             defer: false,
         )
         window.isReleasedWhenClosed = false
+        placeOnTestScreen(window)
         window.contentView = host
         defer { window.close() }
         func draw() async throws -> Data {

@@ -32,6 +32,7 @@ extension WritingFlowTests {
             defer: false,
         )
         browserWindow.isReleasedWhenClosed = false
+        placeOnTestScreen(browserWindow)
         browserWindow.contentView = browser
         defer { browserWindow.close() }
         browser.layoutSubtreeIfNeeded()
@@ -101,6 +102,7 @@ extension WritingFlowTests {
                 defer: false,
             )
             window.isReleasedWhenClosed = false
+            placeOnTestScreen(window)
             window.contentView = browser
             defer { window.close() }
             browser.layoutSubtreeIfNeeded()
@@ -260,6 +262,7 @@ extension WritingFlowTests {
             defer: false,
         )
         window.isReleasedWhenClosed = false
+        placeOnTestScreen(window)
         window.contentView = browser
         defer { window.close() }
         browser.layoutSubtreeIfNeeded()

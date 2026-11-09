@@ -13,6 +13,7 @@ A native macOS Typst writing app with three views of one source file: Code, Writ
 - Coverage gate is 80 percent of production Swift lines. Keep it.
 - Book benchmark: `scripts/benchmark-books.sh` after `scripts/test.sh`. It runs SICP and War and Peace in Code, Writing (`PROSE_WRITING_MODE=1`) and Focus mode (`PROSE_FOCUS_MODE=1`) and writes `build/benchmarks/summary.md`. The Focus runs add the typewriter step gate: p95 under 33 ms in the instrumented debug build (16.7 ms is the target, not a gate). Numbers vary two to three times with machine load (see "Benchmark after steps E and F" in the Phase 4 note); rerun a failure on a quiet machine before calling it a regression.
 - Native UI tests extend `WritingFlowTests` (the serialized suite). A new `@Suite` runs in parallel with the windows and menus and makes preview tests flaky.
+- Test windows open in the bottom-right corner of the menu bar's screen (`placeOnTestScreen` in `Tests/ProseAppTests/WritingTestSupport.swift`); create every new test window through it. `PROSE_TEST_SCREEN=2` picks another screen, but pixel tests assume 2x: on Tehran's 1x LG monitor `focusModeDimsEveryBlockButTheFocusBlocks` fails.
 
 - Prose is Mac only (decided 2026-11-08). The inherited iPad code (`iPad/`, `Engine/TinymistBridge`, `Sources/Package.swift`, the iPad scripts and CI jobs) was removed on 2026-11-08.
 

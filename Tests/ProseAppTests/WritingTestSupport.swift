@@ -5,6 +5,24 @@ import ObjectiveC
 import ProseCore
 import Testing
 
+/// Puts a test window in the bottom-right corner of the visible area of the
+/// screen with the menu bar, out of the way of the writer's work. Setting
+/// `PROSE_TEST_SCREEN` to a number (1 is the menu bar's screen, as
+/// `NSScreen.screens` orders them) picks another screen. Several pixel tests
+/// assume a 2x screen: on a 1x screen the engine's images are resampled, and
+/// `focusModeDimsEveryBlockButTheFocusBlocks` fails its contrast check.
+@MainActor
+func placeOnTestScreen(_ window: NSWindow) {
+    let screens = NSScreen.screens
+    let chosen = ProcessInfo.processInfo.environment["PROSE_TEST_SCREEN"].flatMap(Int.init) ?? 1
+    guard let screen = screens.indices.contains(chosen - 1) ? screens[chosen - 1] : screens.first else {
+        return
+    }
+    let visible = screen.visibleFrame
+    let size = window.frame.size
+    window.setFrameOrigin(NSPoint(x: max(visible.minX, visible.maxX - size.width), y: visible.minY))
+}
+
 /// Fixture text and helpers shared by the Writing mode pointer, selection and
 /// keyboard tests (`WritingSelectionFlowTests.swift`,
 /// `WritingKeyboardFlowTests.swift`).
