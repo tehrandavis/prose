@@ -12,8 +12,6 @@ import ProseCore
 /// caret's line, when the caret's own block opens) kept where it was.
 @MainActor
 final class WritingController: NSObject {
-    /// The engine's default text colour in dark appearance (spec Section 4.1).
-    static let darkTextColor = RenderColor(red: 0xE8 / 255, green: 0xE4 / 255, blue: 0xDE / 255)
     /// How long entering waits for the viewport's renders before drawing what
     /// it has (decision 4).
     static var entryBudget: Duration = .milliseconds(100)
@@ -408,8 +406,8 @@ final class WritingController: NSObject {
     }
 
     /// Column width = the text container's width, 1.3 times scale (1.4625
-    /// in Focus mode), a bitmap with one pixel per screen pixel, and the dark
-    /// text colour in dark mode.
+    /// in Focus mode), a bitmap with one pixel per screen pixel, and whether
+    /// the engine maps colours for the dark page.
     func currentAppearance() -> WritingAppearance? {
         guard let editor, let container = editor.textContainer, container.size.width > 0 else {
             return nil
@@ -421,7 +419,7 @@ final class WritingController: NSObject {
             columnWidth: container.size.width,
             bitmapScale: min(scale * backing, RenderOptions.maximumBitmapScale),
             scale: scale,
-            textColor: dark ? Self.darkTextColor : nil,
+            dark: dark,
         )
     }
 

@@ -24,7 +24,9 @@ use crate::raster::Bitmap;
 /// block's plain text.
 /// Version 4 (Phase 5 step B): `bibliography_files` and
 /// `bibliography_entries`, which return JSON.
-pub const ABI_VERSION: u32 = 4;
+/// Version 5 (fixes after Phase 5): `PRRenderOptions.dark` replaces the
+/// default text colour; dark appearance maps the laid-out page's paints.
+pub const ABI_VERSION: u32 = 5;
 
 /// An engine, opaque to C.
 pub struct PREngine {
@@ -57,8 +59,7 @@ pub struct PRRefreshInfo {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct PRRenderOptions {
-    pub use_text_color: bool,
-    pub text_color: [u8; 4],
+    pub dark: bool,
     pub bitmap_scale: f64,
 }
 
@@ -413,7 +414,7 @@ unsafe extern "C" fn render(
             // SAFETY: `options` is null or readable.
             let options = unsafe { options.as_ref() }.copied().unwrap_or_default();
             let options = RenderOptions {
-                text_color: options.use_text_color.then_some(options.text_color),
+                dark: options.dark,
                 bitmap_scale: options.bitmap_scale,
             };
             let rendered = engine.render_with(

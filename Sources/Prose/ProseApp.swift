@@ -108,8 +108,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         return .terminateLater
     }
 
+    /// Quits the app through the normal termination path, so
+    /// `applicationShouldTerminate` saves and drains history. Tests replace it.
+    var terminateApplication: () -> Void = { NSApp.terminate(nil) }
+
+    /// The window is never closed: closing a document returns to the previous
+    /// document or the library home, and closing the library home quits.
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        workspace.closeDocument()
+        if workspace.isLibraryHome {
+            terminateApplication()
+        } else {
+            workspace.closeDocument()
+        }
         return false
     }
 

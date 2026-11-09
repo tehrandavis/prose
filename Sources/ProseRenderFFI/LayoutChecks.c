@@ -8,7 +8,7 @@ _Static_assert(sizeof(PRGlyphBox) == 20, "PRGlyphBox layout is part of the ABI")
 _Static_assert(offsetof(PRGlyphBox, source) == 16, "PRGlyphBox layout is part of the ABI");
 _Static_assert(sizeof(PRRect) == 32, "PRRect layout is part of the ABI");
 _Static_assert(sizeof(PRRenderOptions) == 16, "PRRenderOptions layout is part of the ABI");
-_Static_assert(offsetof(PRRenderOptions, text_color) == 1, "PRRenderOptions layout is part of the ABI");
+_Static_assert(offsetof(PRRenderOptions, dark) == 0, "PRRenderOptions layout is part of the ABI");
 _Static_assert(offsetof(PRRenderOptions, bitmap_scale) == 8, "PRRenderOptions layout is part of the ABI");
 _Static_assert(offsetof(PRRenderResult, text) == 168, "PRRenderResult layout is part of the ABI");
 _Static_assert(sizeof(PRRenderResult) == 184, "PRRenderResult layout is part of the ABI");
@@ -27,4 +27,4 @@ _Static_assert(offsetof(PRRenderAPI, files_changed) == 120, "PRRenderAPI layout 
 _Static_assert(offsetof(PRRenderAPI, bibliography_files) == 128, "PRRenderAPI layout is part of the ABI");
 _Static_assert(offsetof(PRRenderAPI, bibliography_entries) == 136, "PRRenderAPI layout is part of the ABI");
 _Static_assert(sizeof(PRRenderAPI) == 144, "PRRenderAPI layout is part of the ABI");
-_Static_assert(PR_RENDER_ABI_VERSION == 4u, "PR_RENDER_ABI_VERSION must match the Rust library");
+_Static_assert(PR_RENDER_ABI_VERSION == 5u, "PR_RENDER_ABI_VERSION must match the Rust library");

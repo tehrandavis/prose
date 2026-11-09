@@ -64,7 +64,11 @@ extension WritingFlowTests {
         #expect(workspace.discoveryMode == .templates)
         #expect(try String(contentsOf: app.document, encoding: .utf8).hasSuffix("More"))
         #expect(!delegate.applicationShouldTerminateAfterLastWindowClosed(NSApp))
+        // On the library home the close button quits through NSApp.terminate.
+        var terminations = 0
+        delegate.terminateApplication = { terminations += 1 }
         #expect(delegate.windowShouldClose(app.window) == false)
+        #expect(terminations == 1)
         let documents = try #require(menu.items
             .first { $0.submenu?.items.contains { $0.keyEquivalent == "w" } == true }?.submenu)
         #expect(documents.items.first { $0.keyEquivalent == "w" }?.title == L10n.text("Close Document"))

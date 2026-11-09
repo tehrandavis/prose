@@ -23,7 +23,7 @@
 #pragma clang assume_nonnull begin
 
 // Increment whenever PRRenderAPI or any struct below changes.
-#define PR_RENDER_ABI_VERSION 4u
+#define PR_RENDER_ABI_VERSION 5u
 // PRGlyphBox.source for generated text: numbers, reference text, text from
 // other files.
 #define PR_NO_SOURCE (-1)
@@ -82,12 +82,12 @@ typedef struct {
 
 // How to render one block. Pass NULL to render for options all zero.
 typedef struct {
-    // Whether text_color applies.
-    bool use_text_color;
-    // A default text colour: red, green, blue, alpha, 0 to 255, alpha not
-    // premultiplied. It is set before the document's own context lines, so a
-    // document that sets its own text colour keeps it. Part of the cache key.
-    uint8_t text_color[4];
+    // Dark appearance (version 5). The block renders with the document's
+    // own colours; then every paint of the laid-out page (text, shape fills
+    // and strokes, gradient stops; never images) is mapped in OKLab onto the
+    // dark page: black ink becomes #E8E4DE and white fades into #262626, hue
+    // kept. Applies to the SVG and the bitmap. Part of the cache key.
+    bool dark;
     // Pixels per point for a bitmap of the drawn area, at most
     // PR_MAX_BITMAP_SCALE; 0 means no bitmap. Bitmaps are made on every call
     // that asks for one, from the cached vector result, and are not cached

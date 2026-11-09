@@ -742,7 +742,7 @@ public final class WritingLayout {
                 received(reply, revision: revision, generation: generation)
             case let .render(request):
                 let options = RenderOptions(
-                    textColor: request.key.appearance.textColor,
+                    dark: request.key.appearance.dark,
                     bitmapScale: request.key.appearance.bitmapScale,
                 )
                 let width = request.key.appearance.renderWidth

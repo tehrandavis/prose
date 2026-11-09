@@ -351,14 +351,14 @@ extension WritingFlowTests {
             return nil
         }
         let light = try #require(rendering())
-        #expect(light.appearance.textColor == nil)
+        #expect(!light.appearance.dark)
 
         app.window.appearance = NSAppearance(named: .darkAqua)
         await app.layout()
         await model.idle()
         await app.layout()
         let dark = try #require(rendering())
-        #expect(dark.appearance.textColor == WritingController.darkTextColor)
+        #expect(dark.appearance.dark)
         #expect(dark != light)
         #expect(dark.appearance.bitmapScale == light.appearance.bitmapScale)
 
@@ -656,6 +656,11 @@ struct WritingCanvas {
             }
         }
         return count
+    }
+
+    /// Pixels in `rect` whose sRGB components (0 to 255) match `body`.
+    func matching(in rect: CGRect, _ body: (Int, Int, Int) -> Bool) -> Int {
+        pixels(in: rect, body)
     }
 
     /// Pixels in `rect` that differ from the page.

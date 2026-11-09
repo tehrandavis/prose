@@ -20,6 +20,7 @@ use crate::cache::{Cache, CacheStats, Dependencies};
 use crate::context::{
     block_document, reference_texts, BlockInputs, Citations, Counters, Shift, PROBE,
 };
+use crate::dark::darken_frame;
 use crate::geometry::{first_baseline, walk, GlyphBounds, GlyphBox, Rect};
 use crate::outline::{split_tree, BlockKind, Outline};
 use crate::raster::{drawn_page, frame_bytes, rasterize, Bitmap};
@@ -92,11 +93,11 @@ pub struct RefreshInfo {
 /// How to render one block.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct RenderOptions {
-    /// A default text colour, straight RGBA from 0 to 255. It is set before
-    /// the document's own context lines, so a document that sets its own
-    /// colour keeps it. It is part of the block document, so part of the
-    /// cache key.
-    pub text_color: Option<[u8; 4]>,
+    /// Dark appearance: the block renders with the document's own colours,
+    /// then every paint in the laid-out page (not images) is mapped onto the
+    /// dark page (`dark::dark_color`), for the SVG and the bitmap alike. Part
+    /// of the cache key.
+    pub dark: bool,
     /// Pixels per point for a bitmap of the drawn area; 0 means no bitmap.
     /// Bitmaps are not cached (see `Engine::render_with`), so the scale is not
     /// part of the cache key.
@@ -496,7 +497,7 @@ impl Engine {
         let mut render = {
             let mut state = self.lock();
             let result = if scale.is_finite() && (0.0..=MAX_BITMAP_SCALE).contains(&scale) {
-                state.render(path, start, end, width_pt, options.text_color)
+                state.render(path, start, end, width_pt, options.dark)
             } else {
                 Err(format!(
                     "bitmap scale {scale} is not between 0 and {MAX_BITMAP_SCALE}"
@@ -847,7 +848,7 @@ impl State {
         start16: usize,
         end16: usize,
         width_pt: f64,
-        text_color: Option<[u8; 4]>,
+        dark: bool,
     ) -> Result<Render, String> {
         if !(width_pt.is_finite() && width_pt > 0.0 && width_pt <= 100_000.0) {
             return Err(format!("width {width_pt} pt is not a usable measure"));
@@ -883,9 +884,8 @@ impl State {
             citations: &self.context.citations,
             bibliography_here,
             width_pt,
-            text_color,
         });
-        let key = typst::utils::hash128(&(&doc, width_pt.to_bits()));
+        let key = typst::utils::hash128(&(&doc, width_pt.to_bits(), dark));
         let versions = &self.versions;
         let current = |deps: &Dependencies| {
             deps.iter()
@@ -910,7 +910,10 @@ impl State {
             .ok_or("the block produced no page")?;
         let walked = walk(&page.frame, &mut self.glyph_bounds);
         let baseline = first_baseline(&page.frame, &walked);
-        let (drawn_page, drawn) = drawn_page(page, walked.ink);
+        let (mut drawn_page, drawn) = drawn_page(page, walked.ink);
+        if dark {
+            darken_frame(&mut drawn_page.frame);
+        }
         let svg = typst_svg::svg(
             &drawn_page,
             &typst_svg::SvgOptions {

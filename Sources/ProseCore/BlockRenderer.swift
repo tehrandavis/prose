@@ -69,45 +69,12 @@ public struct RenderBlock: Equatable, Sendable {
     public let kind: Kind
 }
 
-/// A colour in sRGB, components from 0 to 1, alpha not premultiplied.
-public struct RenderColor: Equatable, Sendable {
-    public let red: Double
-    public let green: Double
-    public let blue: Double
-    public let alpha: Double
-
-    public init(red: Double, green: Double, blue: Double, alpha: Double = 1) {
-        self.red = red
-        self.green = green
-        self.blue = blue
-        self.alpha = alpha
-    }
-
-    /// The colour converted to sRGB, or nil if it cannot be (a pattern).
-    public init?(_ color: CGColor) {
-        guard let srgb = CGColorSpace(name: CGColorSpace.sRGB),
-              let converted = color.converted(to: srgb, intent: .defaultIntent, options: nil),
-              let components = converted.components, components.count == 4
-        else {
-            return nil
-        }
-        self.init(red: components[0], green: components[1], blue: components[2], alpha: components[3])
-    }
-
-    /// The components as bytes, rounded and clamped, for the engine.
-    var bytes: (UInt8, UInt8, UInt8, UInt8) {
-        func byte(_ value: Double) -> UInt8 {
-            UInt8((min(max(value.isNaN ? 0 : value, 0), 1) * 255).rounded())
-        }
-        return (byte(red), byte(green), byte(blue), byte(alpha))
-    }
-}
-
 /// How to render a block.
 public struct RenderOptions: Equatable, Sendable {
-    /// A default text colour, set before the document's own rules, so a
-    /// document that sets its own colour keeps it. Part of the cache key.
-    public var textColor: RenderColor?
+    /// Dark appearance: the block renders with the document's own colours,
+    /// and the engine maps every paint (not images) onto the dark page, black
+    /// ink to `#E8E4DE` and white to `#262626`. Part of the cache key.
+    public var dark: Bool
     /// Pixels per point for `RenderedBlock.bitmap`; 0 means no bitmap. At most
     /// `maximumBitmapScale`. Bitmaps are made from the cached vector result on
     /// every call that asks for one; the engine does not cache them.
@@ -115,8 +82,8 @@ public struct RenderOptions: Equatable, Sendable {
 
     public static let maximumBitmapScale = PR_MAX_BITMAP_SCALE
 
-    public init(textColor: RenderColor? = nil, bitmapScale: Double = 0) {
-        self.textColor = textColor
+    public init(dark: Bool = false, bitmapScale: Double = 0) {
+        self.dark = dark
         self.bitmapScale = bitmapScale
     }
 }
@@ -367,7 +334,7 @@ public actor BlockRenderer {
         render(range, in: file, width: width, options: RenderOptions())
     }
 
-    /// Renders UTF-16 `range` of a file with options: a default text colour and
+    /// Renders UTF-16 `range` of a file with options: the appearance and
     /// a bitmap scale. The bitmap is built here, off the main thread.
     public func render(
         _ range: NSRange,
@@ -382,10 +349,7 @@ public actor BlockRenderer {
             return .failure(BlockRendererError("The range \(range) is outside any file."))
         }
         var rawOptions = PRRenderOptions()
-        if let color = options.textColor {
-            rawOptions.use_text_color = true
-            rawOptions.text_color = color.bytes
-        }
+        rawOptions.dark = options.dark
         rawOptions.bitmap_scale = options.bitmapScale
         let raw = engine.api.pointee.render(
             engine.pointer,

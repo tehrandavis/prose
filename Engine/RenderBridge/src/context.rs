@@ -285,20 +285,14 @@ pub(crate) struct BlockInputs<'a> {
     pub(crate) citations: &'a Citations,
     pub(crate) bibliography_here: bool,
     pub(crate) width_pt: f64,
-    /// A default text colour (straight RGBA), set before the document's own
-    /// context lines so a document that sets its own colour keeps it.
-    pub(crate) text_color: Option<[u8; 4]>,
 }
 
-/// Builds the block document: the default text colour, context lines, a
+/// Builds the block document: context lines, a
 /// transparent page as wide as the measure, counter state, stubs for outside
 /// labels, then the block itself. Returns the document and the byte offset
 /// where the block's text starts in it.
 pub(crate) fn block_document(inputs: &BlockInputs) -> (String, usize) {
     let mut doc = String::new();
-    if let Some([r, g, b, a]) = inputs.text_color {
-        doc.push_str(&format!("#set text(fill: rgb({r}, {g}, {b}, {a}))\n"));
-    }
     if let Some((main_text, main_outline)) = inputs.main {
         for range in &main_outline.context {
             doc.push_str(&main_text[range.clone()]);

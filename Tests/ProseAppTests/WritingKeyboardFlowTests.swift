@@ -770,7 +770,7 @@ private func expectFreshRenders(
             continue
         }
         let appearance = rendering.appearance
-        let options = RenderOptions(textColor: appearance.textColor, bitmapScale: appearance.bitmapScale)
+        let options = RenderOptions(dark: appearance.dark, bitmapScale: appearance.bitmapScale)
         let fresh = try await engine.render(block, in: app.document, width: appearance.renderWidth, options: options)
             .get()
         #expect(fresh.drawnRect == rendering.drawnRect, "Block \(block) drawn area", sourceLocation: sourceLocation)

@@ -15,7 +15,7 @@ struct RenderBridgeLinkTests {
         #expect(Int(api.options_size) == MemoryLayout<PRRenderOptions>.size)
         #expect(MemoryLayout<PRRenderResult>.size == 184 && MemoryLayout<PRRenderOptions>.size == 16)
         #expect(MemoryLayout<PRRenderAPI>.size == 144)
-        #expect(PR_RENDER_ABI_VERSION == 4)
+        #expect(PR_RENDER_ABI_VERSION == 5)
     }
 
     @Test func callsWithoutAnEngineFailSafely() throws {

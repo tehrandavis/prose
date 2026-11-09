@@ -62,7 +62,7 @@ fn the_table_reports_its_version_and_sizes() {
     assert_eq!(std::mem::offset_of!(PRRenderResult, bitmap_width), 152);
     assert_eq!(std::mem::offset_of!(PRRenderResult, cached), 160);
     assert_eq!(std::mem::size_of::<PRRenderOptions>(), 16);
-    assert_eq!(std::mem::offset_of!(PRRenderOptions, text_color), 1);
+    assert_eq!(std::mem::offset_of!(PRRenderOptions, dark), 0);
     assert_eq!(std::mem::offset_of!(PRRenderOptions, bitmap_scale), 8);
     assert_eq!(std::mem::offset_of!(PRRenderAPI, options_size), 24);
     assert_eq!(std::mem::offset_of!(PRRenderAPI, engine_create), 32);
@@ -70,7 +70,7 @@ fn the_table_reports_its_version_and_sizes() {
     assert_eq!(std::mem::offset_of!(PRRenderAPI, bibliography_files), 128);
     assert_eq!(std::mem::offset_of!(PRRenderAPI, bibliography_entries), 136);
     assert_eq!(std::mem::size_of::<PRRenderAPI>(), 144);
-    assert_eq!(ABI_VERSION, 4);
+    assert_eq!(ABI_VERSION, 5);
 }
 
 #[test]
@@ -166,8 +166,7 @@ fn a_round_trip_through_the_c_abi() {
 
         // Options: a bitmap from the cached vector result.
         let options = PRRenderOptions {
-            use_text_color: false,
-            text_color: [0; 4],
+            dark: false,
             bitmap_scale: 2.0,
         };
         let again = (api.render)(

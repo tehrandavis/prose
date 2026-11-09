@@ -253,50 +253,91 @@ fn fills(svg: &str) -> Vec<String> {
         .collect()
 }
 
+/// Straight (not premultiplied) RGB of the bitmap's opaque pixels.
+fn opaque_pixels(bitmap: &prose_render::Bitmap) -> Vec<[u8; 3]> {
+    bitmap
+        .data
+        .chunks(4)
+        .filter(|p| p[3] >= 250)
+        .map(|p| [p[0], p[1], p[2]].map(|c| (c as u32 * 255 / p[3] as u32) as u8))
+        .collect()
+}
+
 #[test]
-fn the_text_colour_option_sets_a_default_that_documents_can_override() {
-    let text = "Plain words.\n\n#text(fill: rgb(\"#123456\"))[Own colour.]\n";
-    let project = Project::new(&[
-        ("main.typ", text),
-        (
-            "own.typ",
-            "#set text(fill: rgb(\"#00ff00\"))\n\nGreen words.\n",
-        ),
-    ]);
+fn dark_appearance_maps_the_documents_own_colours_but_not_images() {
+    let text = "#set text(fill: rgb(\"#1A1918\"))\n\nDark ink words.\n\n#rect(width: 100pt, height: 20pt, fill: white)\n\n#table(columns: (1fr, 1fr), [A], [B])\n\n#image(\"dot.svg\", width: 20pt)\n";
+    let dot = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"><rect width=\"10\" height=\"10\" fill=\"#ff0000\"/></svg>";
+    let project = Project::new(&[("main.typ", text), ("dot.svg", dot)]);
     let engine = project.engine();
     let path = project.path("main.typ");
-    let blocks = engine.blocks(&path).unwrap();
-    let light = RenderOptions {
-        text_color: Some([0xe8, 0xe4, 0xde, 0xff]),
-        bitmap_scale: 0.0,
+    let blocks = rendering_blocks(&engine, &path);
+    assert_eq!(blocks.len(), 4, "{blocks:?}");
+    let render = |block: BlockRange, dark| {
+        engine
+            .render_with(
+                &path,
+                block.start,
+                block.end,
+                300.0,
+                &RenderOptions {
+                    dark,
+                    bitmap_scale: 2.0,
+                },
+            )
+            .unwrap()
     };
-    let plain = engine
-        .render_with(&path, blocks[0].start, blocks[0].end, 300.0, &light)
-        .unwrap();
+    let light = |p: &[u8; 3]| p.iter().all(|c| *c >= 0xA0);
+    let dim = |p: &[u8; 3]| p.iter().all(|c| *c <= 0x40);
+
+    // Text in the document's own dark ink draws light; in light appearance
+    // it keeps the ink.
+    let words = render(blocks[0], true);
+    assert!(!fills(&words.rendered.svg).contains(&"#1a1918".to_string()));
+    let ink = opaque_pixels(words.bitmap.as_ref().unwrap());
+    assert!(!ink.is_empty() && ink.iter().all(light), "{ink:?}");
+    let plain = opaque_pixels(render(blocks[0], false).bitmap.as_ref().unwrap());
+    assert!(!plain.is_empty() && plain.iter().all(dim));
+
+    // A white fill fades into the page.
+    let rect = render(blocks[1], true);
+    let fill = opaque_pixels(rect.bitmap.as_ref().unwrap());
+    assert!(!fill.is_empty());
     assert!(
-        fills(&plain.rendered.svg).contains(&"#e8e4de".to_string()),
+        fill.iter().all(|p| p.iter().all(|c| c.abs_diff(0x26) <= 2)),
         "{:?}",
-        fills(&plain.rendered.svg)
+        &fill[..4]
     );
-    assert!(!plain.rendered.svg.contains("#000000"));
-    let own = engine
-        .render_with(&path, blocks[1].start, blocks[1].end, 300.0, &light)
-        .unwrap();
-    assert!(fills(&own.rendered.svg).contains(&"#123456".to_string()));
-    // A document's own `#set text(fill:)` keeps its colour.
-    let own_file = project.path("own.typ");
-    let green = rendering_blocks(&engine, &own_file)[0];
-    let render = engine
-        .render_with(&own_file, green.start, green.end, 300.0, &light)
-        .unwrap();
-    let colours = fills(&render.rendered.svg);
-    assert!(colours.contains(&"#00ff00".to_string()), "{colours:?}");
-    assert!(!colours.contains(&"#e8e4de".to_string()), "{colours:?}");
-    // Without the option, text is Typst's default black.
-    let default = engine
-        .render(&path, blocks[0].start, blocks[0].end, 300.0)
-        .unwrap();
-    assert!(fills(&default.rendered.svg).contains(&"#000000".to_string()));
+
+    // A table's default black rules and its text draw light.
+    let table = render(blocks[2], true);
+    let bitmap = table.bitmap.as_ref().unwrap();
+    let rules = opaque_pixels(bitmap);
+    assert!(
+        rules.len() > 100 && rules.iter().all(light),
+        "{}",
+        rules.len()
+    );
+    // The top rule: a row across the table, light where it is drawn.
+    let row = |y: u32| {
+        (0..bitmap.width)
+            .map(|x| y as usize * bitmap.row_bytes + x as usize * 4)
+            .filter(|at| bitmap.data[at + 3] >= 128)
+            .map(|at| bitmap.data[at] as u32 * 255 / bitmap.data[at + 3] as u32)
+            .collect::<Vec<_>>()
+    };
+    let top = (0..bitmap.height / 2)
+        .map(row)
+        .find(|pixels| pixels.len() as u32 > bitmap.width / 2)
+        .expect("a top rule");
+    assert!(top.iter().all(|c| *c >= 0xA0), "{:?}", &top[..4]);
+
+    // An image keeps its pixels.
+    for dark in [false, true] {
+        let image = render(blocks[3], dark);
+        let red = opaque_pixels(image.bitmap.as_ref().unwrap());
+        assert!(red.len() > 100);
+        assert!(red.iter().all(|p| *p == [0xff, 0, 0]), "{:?}", &red[..4]);
+    }
 }
 
 #[test]
@@ -306,7 +347,7 @@ fn the_page_is_transparent_in_svg_and_bitmap() {
     let path = project.path("main.typ");
     let block = engine.blocks(&path).unwrap()[0];
     let options = RenderOptions {
-        text_color: None,
+        dark: false,
         bitmap_scale: 2.0,
     };
     let render = engine
@@ -352,7 +393,7 @@ fn hanging_punctuation_lies_inside_the_drawn_area() {
             block.end,
             200.0,
             &RenderOptions {
-                text_color: None,
+                dark: false,
                 bitmap_scale: 3.0,
             },
         )
@@ -427,7 +468,7 @@ fn bitmap_sizes_follow_the_drawn_area_and_the_scale() {
                     block.end,
                     173.3,
                     &RenderOptions {
-                        text_color: None,
+                        dark: false,
                         bitmap_scale: scale,
                     },
                 )
@@ -448,7 +489,7 @@ fn bitmap_sizes_follow_the_drawn_area_and_the_scale() {
     assert!(none.bitmap.is_none());
     for scale in [-1.0, f64::NAN, f64::INFINITY, 16.5] {
         let options = RenderOptions {
-            text_color: None,
+            dark: false,
             bitmap_scale: scale,
         };
         assert!(engine
@@ -471,7 +512,7 @@ fn a_bitmap_past_the_pixel_limit_is_left_out() {
     let path = project.path("main.typ");
     let block = engine.blocks(&path).unwrap()[0];
     let options = RenderOptions {
-        text_color: None,
+        dark: false,
         bitmap_scale: 16.0,
     };
     let render = engine
@@ -484,33 +525,26 @@ fn a_bitmap_past_the_pixel_limit_is_left_out() {
 }
 
 #[test]
-fn options_separate_cache_entries_by_colour_but_not_by_scale() {
+fn options_separate_cache_entries_by_appearance_but_not_by_scale() {
     let project = Project::new(&[("main.typ", "Words to cache.\n")]);
     let engine = project.engine();
     let path = project.path("main.typ");
     let block = engine.blocks(&path).unwrap()[0];
-    let render = |text_color, bitmap_scale| {
+    let render = |dark, bitmap_scale| {
         engine
             .render_with(
                 &path,
                 block.start,
                 block.end,
                 300.0,
-                &RenderOptions {
-                    text_color,
-                    bitmap_scale,
-                },
+                &RenderOptions { dark, bitmap_scale },
             )
             .unwrap()
     };
-    let dark = Some([0xe8, 0xe4, 0xde, 0xff]);
-    assert!(!render(None, 0.0).cached);
-    assert!(!render(dark, 0.0).cached, "a colour is another key");
-    assert!(
-        !render(Some([0xe8, 0xe4, 0xde, 0x80]), 0.0).cached,
-        "so is its alpha"
-    );
-    assert!(render(None, 0.0).cached && render(dark, 0.0).cached);
+    let dark = true;
+    assert!(!render(false, 0.0).cached);
+    assert!(!render(dark, 0.0).cached, "dark appearance is another key");
+    assert!(render(false, 0.0).cached && render(dark, 0.0).cached);
     // The bitmap scale does not change the vector result, which is reused.
     let a = render(dark, 1.0);
     let b = render(dark, 2.0);
@@ -518,5 +552,5 @@ fn options_separate_cache_entries_by_colour_but_not_by_scale() {
     assert!(std::sync::Arc::ptr_eq(&a.rendered, &b.rendered));
     assert_ne!(a.bitmap.unwrap().width, b.bitmap.unwrap().width);
     let stats = engine.cache_stats();
-    assert_eq!((stats.entries, stats.misses), (3, 3));
+    assert_eq!((stats.entries, stats.misses), (2, 2));
 }

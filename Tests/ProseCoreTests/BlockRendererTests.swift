@@ -448,38 +448,33 @@ private func pixels(of image: CGImage) throws -> [UInt8] {
     }
 }
 
-@Test func blockRendererTextColourIsADefaultInTheCacheKey() async throws {
+@Test func blockRendererDarkAppearanceMapsTheDocumentsColoursAndIsInTheCacheKey() async throws {
     let thesis = try ThesisCopy()
     let renderer = try await thesis.renderer()
     let draft = thesis.root.appendingPathComponent("colour.typ")
-    try await renderer.setText("Plain words.\n\n#text(fill: rgb(\"#123456\"))[Own colour.]\n", of: draft)
+    try await renderer.setText("#set text(fill: rgb(\"#1A1918\"))\n\nPlain words.\n", of: draft)
     let blocks = try await renderer.blocks(in: draft)
-    let light = try #require(RenderColor(CGColor(srgbRed: 0xE8 / 255, green: 0xE4 / 255, blue: 0xDE / 255, alpha: 1)))
-    #expect(light.bytes == (0xE8, 0xE4, 0xDE, 0xFF))
-    let options = RenderOptions(textColor: light, bitmapScale: 1)
-    let dark = try await renderer.render(blocks[0].range, in: draft, width: 300, options: options).get()
-    let svg = try #require(String(data: dark.svg, encoding: .utf8)).lowercased()
-    #expect(svg.contains("#e8e4de") && !svg.contains("#000000"))
+    let words = try #require(blocks.first { $0.kind == .paragraph })
+    let dark = try await renderer.render(
+        words.range,
+        in: draft,
+        width: 300,
+        options: RenderOptions(dark: true, bitmapScale: 1),
+    )
+    .get()
     #expect(!dark.cached)
-    // Without the colour it is another cache entry, in Typst's black.
-    let black = try await renderer.render(blocks[0].range, in: draft, width: 300).get()
-    #expect(!black.cached)
-    #expect(try #require(String(data: black.svg, encoding: .utf8)).contains("#000000"))
-    // A document's own colour wins.
-    let own = try await renderer.render(blocks[1].range, in: draft, width: 300, options: options).get()
-    #expect(try #require(String(data: own.svg, encoding: .utf8)).lowercased().contains("#123456"))
-    // The bitmap's ink has the default colour.
+    #expect(try !(#require(String(data: dark.svg, encoding: .utf8)).lowercased().contains("#1a1918")))
+    // In light appearance it is another cache entry, in the document's ink.
+    let light = try await renderer.render(words.range, in: draft, width: 300).get()
+    #expect(!light.cached)
+    #expect(try #require(String(data: light.svg, encoding: .utf8)).lowercased().contains("#1a1918"))
+    // The bitmap's ink is light.
     let image = try #require(dark.bitmap)
     let bytes = try pixels(of: image)
     let solid = stride(from: 0, to: bytes.count, by: 4).filter { bytes[$0 + 3] >= 250 }
     #expect(!solid.isEmpty)
     let straight = { (at: Int, channel: Int) in Int(bytes[at + channel]) * 255 / Int(bytes[at + 3]) }
-    #expect(solid.allSatisfy { abs(straight($0, 0) - 0xE8) <= 3 && abs(straight($0, 2) - 0xDE) <= 3 })
-
-    // Components are clamped and rounded.
-    let clamped = RenderColor(red: -1, green: 2, blue: .nan, alpha: 0.5)
-    #expect(clamped.bytes == (0, 255, 0, 128))
-    #expect(RenderColor(red: 0, green: 0, blue: 0) == RenderColor(red: 0, green: 0, blue: 0, alpha: 1))
+    #expect(solid.allSatisfy { at in (0 ..< 3).allSatisfy { straight(at, $0) >= 0xA0 } })
 }
 
 @Test func blockRendererReadsFilesChangedOnDiskAndShowsCitations() async throws {

@@ -120,3 +120,9 @@ Open items (full list in the design note's Phase 4 outcome):
 - Also: test windows open in the bottom-right corner of the main screen (`95a313f`); `PROSE_TEST_SCREEN` picks another, but pixel tests assume 2x.
 
 Open items (full list in the note's Phase 5 outcome): the `style: "ieee"` default of the bibliography command; citations with the bibliography call in another folder show `??` in Writing mode; a sandboxed run against Zotero; `#bibliography` edits only in the open buffer.
+
+## 2026-11-09 (evening): fixes after Phase 5
+
+- Dark appearance in Writing and Focus modes: the engine renders with the document's own colours and then remaps every paint except images in OKLab (black ink to `#E8E4DE`, white fills to the page `#262626`, hues kept). C ABI version 5 replaces the default text colour with a dark flag. A document that sets its own dark ink (the welcome guide) is now readable, and table rules are light. Open: a mid grey such as the guide's muted text reaches only 3.4:1.
+- The home window's close button now quits through the normal termination path; `⌘W` on the home window quits too. `⌘Q` already worked.
+- Results: lint, release build, 291 core and 209 app tests (coverage 89.72 percent).

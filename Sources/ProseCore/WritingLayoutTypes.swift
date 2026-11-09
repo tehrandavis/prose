@@ -39,14 +39,15 @@ public struct WritingAppearance: Equatable, Sendable {
     public var scale: Double
     /// Bitmap pixels per engine point: `scale` times the backing scale.
     public var bitmapScale: Double
-    /// The default text colour; nil for light appearance.
-    public var textColor: RenderColor?
+    /// Dark appearance: the engine maps the document's colours onto the dark
+    /// page.
+    public var dark: Bool
 
-    public init(columnWidth: Double, bitmapScale: Double, scale: Double = 1.3, textColor: RenderColor? = nil) {
+    public init(columnWidth: Double, bitmapScale: Double, scale: Double = 1.3, dark: Bool = false) {
         self.columnWidth = columnWidth
         self.scale = scale
         self.bitmapScale = bitmapScale
-        self.textColor = textColor
+        self.dark = dark
     }
 
     public var renderWidth: Double {

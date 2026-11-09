@@ -151,4 +151,108 @@ extension WritingFlowTests {
         )
         #expect(log.contains("library.reopenFailed"))
     }
+
+    /// The close button on a document returns to the library home; on the
+    /// library home it quits through the normal termination path.
+    @Test func closeButtonReturnsHomeThenQuitsFromTheLibraryHome() async throws {
+        let source = "= Close me\n"
+        let app = try WritingFixture(text: source, startService: false)
+        defer { app.close() }
+        let delegate = AppDelegate(workspace: app.workspace)
+        var terminations = 0
+        delegate.terminateApplication = { terminations += 1 }
+        let guardian = TerminationGuard()
+        let previousDelegate = NSApp.delegate
+        NSApp.delegate = guardian
+        app.window.delegate = delegate
+        defer { app.window.delegate = nil
+            NSApp.delegate = previousDelegate
+        }
+        app.window.orderFront(nil)
+        // The close button asks the window's delegate, as performClose does.
+        // Clicking it or calling performClose in the test host ends the host's
+        // run loop once the delegate refuses (the next test then exits with
+        // status 0), so the test asks the delegate directly, as the other
+        // close tests do.
+        #expect(app.window.styleMask.contains(.closable))
+        #expect(app.window.standardWindowButton(.closeButton)?.isEnabled == true)
+        #expect(!delegate.windowShouldClose(app.window))
+        await app.layout()
+        #expect(app.workspace.isLibraryHome)
+        #expect(terminations == 0)
+        #expect(app.window.isVisible)
+        #expect(try String(contentsOf: app.document, encoding: .utf8) == source)
+
+        #expect(!delegate.windowShouldClose(app.window))
+        #expect(terminations == 1)
+        #expect(guardian.requests == 0, "Only the injected terminator runs")
+        #expect(app.window.isVisible, "The window stays until the app terminates")
+    }
+
+    /// Command-Q on the library home, with the template discovery panel open,
+    /// passes the window and the palette and reaches the Quit menu item.
+    @Test func commandQOnTheLibraryHomeReachesTheQuitItem() async throws {
+        let app = try WritingFixture(text: "= Quit from home\n", startService: false)
+        defer { app.close() }
+        let delegate = AppDelegate(workspace: app.workspace)
+        let previousMenu = NSApp.mainMenu, previousWindows = NSApp.windowsMenu
+        defer {
+            NSApp.mainMenu = previousMenu
+            NSApp.windowsMenu = previousWindows
+            app.window.delegate = nil
+        }
+        delegate.installMenu()
+        delegate.terminateApplication = {}
+        app.window.delegate = delegate
+        app.window.orderFront(nil)
+        #expect(!delegate.windowShouldClose(app.window))
+        app.workspace.openDiscovery(.templates)
+        await app.layout()
+        #expect(app.workspace.isLibraryHome && app.workspace.discoveryMode == .templates)
+
+        let menu = try #require(NSApp.mainMenu)
+        let quit = try #require(menu.items.flatMap { $0.submenu?.items ?? [] }
+            .first { $0.keyEquivalent == "q" && $0.keyEquivalentModifierMask == .command })
+        #expect(quit.action == #selector(NSApplication.terminate(_:)))
+        #expect(quit.target == nil, "A nil target sends Quit to NSApp")
+        // NSApp.terminate asks its delegate first; this one cancels, so the
+        // real Quit path runs and the test process does not exit.
+        let guardian = TerminationGuard()
+        let previousDelegate = NSApp.delegate
+        NSApp.delegate = guardian
+        defer { NSApp.delegate = previousDelegate }
+
+        let event = app.key("q", code: 12, modifiers: .command)
+        // AppKit offers a key equivalent to the key window, then to the main menu.
+        #expect(!app.window.performKeyEquivalent(with: event))
+        #expect(!app.workspace.handlePaletteKey(event))
+        #expect(guardian.requests == 0)
+        #expect(menu.performKeyEquivalent(with: event))
+        #expect(guardian.requests == 1)
+
+        // The same on a document with the command palette open.
+        app.workspace.discoveryMode = nil
+        #expect(app.workspace.open(app.document))
+        await app.layout()
+        app.workspace.togglePalette()
+        #expect(app.workspace.paletteOpen)
+        #expect(!app.window.performKeyEquivalent(with: event))
+        #expect(!app.workspace.handlePaletteKey(event))
+        #expect(guardian.requests == 1)
+        #expect(menu.performKeyEquivalent(with: event))
+        #expect(guardian.requests == 2)
+        app.workspace.closePalette()
+    }
+}
+
+/// Stands in for the app delegate while a test sends Quit: counts the
+/// termination requests and cancels each one.
+@MainActor
+private final class TerminationGuard: NSObject, NSApplicationDelegate {
+    private(set) var requests = 0
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        requests += 1
+        return .terminateCancel
+    }
 }

@@ -763,7 +763,7 @@ private func expectOrdered(_ blocks: [RenderBlock], within length: Int) {
     #expect(log.covers(layout.blocks[2].range.location))
 
     var dark = narrow
-    dark.textColor = RenderColor(red: 0xE8 / 255, green: 0xE4 / 255, blue: 0xDE / 255)
+    dark.dark = true
     layout.setAppearance(dark)
     await layout.idle()
     let darkened = layout.blocks.indices.compactMap { layout.state(ofBlockAt: $0).rendering }
