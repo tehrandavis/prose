@@ -24,7 +24,7 @@ final class WritingController: NSObject {
     /// it has (decision 4).
     static var entryBudget: Duration = .milliseconds(100)
 
-    private weak var editor: ManuscriptTextView?
+    private(set) weak var editor: ManuscriptTextView?
     private(set) var model: WritingLayout?
     private(set) var renderer: BlockRenderer?
     private(set) var stale = false
@@ -33,6 +33,8 @@ final class WritingController: NSObject {
     private(set) var caret: Int?
     /// The selection's fixed end, to tell which end moved.
     private var selectionAnchor: Int?
+    /// The last selection the pointer made that opened no block (decision 6).
+    private var pointerSelection: NSRange?
     /// The caret's line in the viewport before the model changed roles.
     private var caretLine: (offset: Int, y: CGFloat)?
     private var entering = false
@@ -125,6 +127,7 @@ final class WritingController: NSObject {
         stale = false
         caret = nil
         selectionAnchor = nil
+        pointerSelection = nil
     }
 
     /// Stops and lets go of the engine.
@@ -180,6 +183,12 @@ final class WritingController: NSObject {
             return
         }
         manager.delegate = self
+        let navigation = manager.textSelectionNavigation
+        let writingNavigation = WritingSelectionNavigation(dataSource: manager, controller: self)
+        writingNavigation.allowsNonContiguousRanges = navigation.allowsNonContiguousRanges
+        writingNavigation.rotatesCoordinateSystemForLayoutOrientation = navigation
+            .rotatesCoordinateSystemForLayoutOrientation
+        manager.textSelectionNavigation = writingNavigation
         let anchor = editor.writingAnchor(changing: [])
         let whole = manager.documentRange
         content.performEditingTransaction {
@@ -210,15 +219,46 @@ final class WritingController: NSObject {
     /// The selection or the marked text changed. The caret is the selection's
     /// moving end: the end away from the last fixed end (the caret before the
     /// selection grew), or the far end of a selection made at once.
-    func selectionDidChange() {
+    ///
+    /// A selection the pointer made (`byPointer`: a click, shift-click or drag
+    /// has ended) opens no block unless it is empty, so the text under the
+    /// pointer does not move (decision 6); `anchor` is its fixed end when known.
+    /// Later calls for the same selection leave it so.
+    func selectionDidChange(byPointer: Bool = false, anchor: Int? = nil) {
         guard let model, model.isRunning, let editor, !editor.loading else {
             return
         }
-        let caret = movingEnd(of: editor.selectedRange())
+        let selection = editor.selectedRange()
+        if selection.length > 0, byPointer || selection == pointerSelection {
+            if byPointer {
+                pointerSelection = selection
+                if let anchor, anchor == selection.location || anchor == NSMaxRange(selection) {
+                    selectionAnchor = anchor
+                }
+            }
+            return
+        }
+        pointerSelection = nil
+        let caret = movingEnd(of: selection)
         self.caret = caret
         caretLine = line(of: caret)
         model.selectionDidChange(caret: caret)
         caretLine = nil
+    }
+
+    /// The end of `selection` a shift-click at `offset` keeps: the end away
+    /// from the click, or inside the selection its fixed end.
+    func fixedEnd(of selection: NSRange, toward offset: Int) -> Int {
+        guard selection.length > 0 else {
+            return selection.location
+        }
+        if offset <= selection.location {
+            return NSMaxRange(selection)
+        }
+        if offset >= NSMaxRange(selection) {
+            return selection.location
+        }
+        return selectionAnchor == NSMaxRange(selection) ? NSMaxRange(selection) : selection.location
     }
 
     private func movingEnd(of selection: NSRange) -> Int {
@@ -313,7 +353,7 @@ final class WritingController: NSObject {
     }
 
     /// A dynamic colour in the editor's appearance.
-    private func resolved(_ color: NSColor) -> CGColor {
+    func resolved(_ color: NSColor) -> CGColor {
         var value = color.cgColor
         (editor?.effectiveAppearance ?? NSApp.effectiveAppearance).performAsCurrentDrawingAppearance {
             value = color.cgColor

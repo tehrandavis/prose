@@ -494,7 +494,7 @@ Plain paragraph after the code.
 """
 
 /// Sets the hidden default and returns a closure that restores it.
-private func writingModeDefault(_ enabled: Bool) -> () -> Void {
+func writingModeDefault(_ enabled: Bool) -> () -> Void {
     let defaults = UserDefaults.standard
     let previous = defaults.object(forKey: WritingController.defaultsKey)
     defaults.set(enabled, forKey: WritingController.defaultsKey)
@@ -508,9 +508,10 @@ private func writingModeDefault(_ enabled: Bool) -> () -> Void {
 }
 
 /// Enters Writing mode and waits for the engine, the first renders and the
-/// end of the entry window.
+/// end of the entry window. The helpers from here on are shared with
+/// `WritingSelectionFlowTests.swift`.
 @MainActor
-private func enterWritingMode(_ app: WritingFixture) async throws -> WritingLayout {
+func enterWritingMode(_ app: WritingFixture) async throws -> WritingLayout {
     let editor = try #require(app.workspace.editor)
     app.workspace.setMode(.writing)
     #expect(app.workspace.editorMode == .writing)
@@ -545,7 +546,7 @@ private struct WritingSnapshot: Equatable {
 
 /// The storage holds only source: no attachments, and TextKit 2 is still on.
 @MainActor
-private func expectPlainStorage(_ editor: ManuscriptTextView) {
+func expectPlainStorage(_ editor: ManuscriptTextView) {
     var attachments = 0
     if let storage = editor.textStorage {
         storage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: storage.length)) { value, _, _ in
@@ -557,7 +558,7 @@ private func expectPlainStorage(_ editor: ManuscriptTextView) {
     #expect(!editor.switchedToTextKit1 && editor.textLayoutManager != nil)
 }
 
-private struct WritingFragmentInfo {
+struct WritingFragmentInfo {
     let offset: Int
     let role: WritingRole
     let frame: CGRect
@@ -586,7 +587,7 @@ extension WritingRole {
 
 /// Every paragraph's fragment, laid out, in order.
 @MainActor
-private func writingFragments(_ manager: NSTextLayoutManager) -> [WritingFragmentInfo] {
+func writingFragments(_ manager: NSTextLayoutManager) -> [WritingFragmentInfo] {
     var result: [WritingFragmentInfo] = []
     manager.enumerateTextLayoutFragments(from: manager.documentRange.location, options: [.ensuresLayout]) { fragment in
         let writing = fragment as? WritingFragment
@@ -602,7 +603,7 @@ private func writingFragments(_ manager: NSTextLayoutManager) -> [WritingFragmen
 }
 
 @MainActor
-private func writingScrollToTop(_ editor: ManuscriptTextView) {
+func writingScrollToTop(_ editor: ManuscriptTextView) {
     guard let clip = editor.enclosingScrollView?.contentView else {
         return
     }
@@ -613,7 +614,7 @@ private func writingScrollToTop(_ editor: ManuscriptTextView) {
 
 /// A picture of the editor's visible rect, read in container coordinates.
 @MainActor
-private struct WritingCanvas {
+struct WritingCanvas {
     let bitmap: NSBitmapImageRep
     let visible: CGRect
     let origin: CGPoint
@@ -655,6 +656,18 @@ private struct WritingCanvas {
         }
     }
 
+    /// Pixels in `rect` tinted with the light selection colour (#F2E9F4), or
+    /// ink drawn over it: red and blue above green. Black ink, its grey edges,
+    /// pills and the inactive grey selection have none.
+    func selected(in rect: CGRect) -> Int {
+        pixels(in: rect) { red, green, blue in red - green >= 4 && blue - green >= 4 }
+    }
+
+    /// Every pixel in `rect`.
+    func count(in rect: CGRect) -> Int {
+        pixels(in: rect) { _, _, _ in true }
+    }
+
     /// Light pixels: text drawn in the dark appearance's colour.
     func brightInk(in rect: CGRect) -> Int {
         pixels(in: rect) { red, green, blue in red > 160 && green > 160 && blue > 150 }
@@ -681,7 +694,7 @@ private struct WritingCanvas {
     }
 }
 
-private func writingSave(_ bitmap: NSBitmapImageRep, _ name: String) throws {
+func writingSave(_ bitmap: NSBitmapImageRep, _ name: String) throws {
     let path = ProcessInfo.processInfo.environment["PROSE_WRITING_OUTPUT"]
     let folder = path.map { URL(fileURLWithPath: $0) } ?? TestPaths.temporaryDirectory
         .appendingPathComponent("writing-mode")

@@ -112,7 +112,7 @@ final class WritingFragment: NSTextLayoutFragment {
     }
 
     /// The text container's width: the column blocks render for.
-    private var columnWidth: CGFloat {
+    var columnWidth: CGFloat {
         textLayoutManager?.textContainer?.size.width ?? super.layoutFragmentFrame.width
     }
 

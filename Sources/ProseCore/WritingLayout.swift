@@ -250,6 +250,28 @@ public final class WritingLayout {
         }
     }
 
+    /// The paragraphs of each block that does not draw source (rendered blocks
+    /// and pills) and that shares characters with `range`, in order. NSTextView
+    /// draws no selection there; the view draws it from the glyph boxes.
+    public func drawnSpans(intersecting range: NSRange) -> [NSRange] {
+        var spans: [NSRange] = []
+        var index = firstEntry(spanEndAtLeast: range.location)
+        let end = NSMaxRange(range)
+        while index < entries.count, entries[index].span.location < end {
+            let span = entries[index].span
+            if !entries[index].shown.isSource, NSIntersectionRange(span, range).length > 0 {
+                spans.append(span)
+            }
+            index += 1
+        }
+        return spans
+    }
+
+    /// The range of the block whose paragraphs hold `offset`.
+    public func blockRange(holding offset: Int) -> NSRange? {
+        entry(holding: offset).map { entries[$0].range }
+    }
+
     /// The blocks in order, with ranges in today's text.
     public var blocks: [RenderBlock] {
         entries.map { RenderBlock(range: $0.range, kind: $0.kind) }

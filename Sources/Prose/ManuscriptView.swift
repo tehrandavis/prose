@@ -214,7 +214,18 @@ final class ManuscriptTextView: NSTextView {
     var assistancePopover: NSPopover?
     lazy var sourceHover = SourceHoverController(editor: self)
     private var sourceTrackingArea: NSTrackingArea?
-    private var selectingWithMouse = false
+    /// While a mouse selection is tracked; its selection changes apply once it ends.
+    var selectingWithMouse = false
+    /// Where a pointer drag that Prose tracks reads its events: the window's
+    /// queue when nil. Tests script it, because posted mouse events end a
+    /// `swift test` run (Phase 3 spike).
+    var pointerEvents: (() -> NSEvent?)?
+    /// The last click Prose mapped through a rendered block, for the second
+    /// and third clicks of a multi-click, which land after the block opened.
+    var lastWritingClick: WritingClick?
+    /// Clicks that would have entered AppKit's own tracking while
+    /// `pointerEvents` was scripted; that loop would wait for posted events.
+    private(set) var unhandledScriptedClicks = 0
     private var placeholders: [NSRange] = []
     private var placeholderIndex = 0
     var typingTask: Task<Void, Never>?
@@ -487,11 +498,34 @@ final class ManuscriptTextView: NSTextView {
             workspace?.goToDefinition()
             return
         }
+        // Writing mode: a press in a rendered block or a pill maps through
+        // the glyph boxes and runs Prose's own tracking loop.
+        if trackWritingPointer(event) {
+            return
+        }
+        lastWritingClick = nil
+        guard pointerEvents == nil else {
+            unhandledScriptedClicks += 1
+            return
+        }
         selectingWithMouse = true
         defer { selectingWithMouse = false
-            selectionChanged()
+            selectionChanged(byPointer: true)
         }
         super.mouseDown(with: event)
+    }
+
+    override func setSelectedRanges(_ ranges: [NSValue], affinity: NSSelectionAffinity, stillSelecting: Bool) {
+        let old = selectedRanges
+        super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
+        writing.selectionWillDraw(from: old, to: selectedRanges)
+    }
+
+    override func drawBackground(in rect: NSRect) {
+        super.drawBackground(in: rect)
+        // Under the fragments: rendered blocks are transparent outside ink,
+        // as NSTextView's own selection view lies under its text.
+        writing.drawSelection(in: rect)
     }
 
     func load(_ content: String, selection: NSRange) {
@@ -522,11 +556,11 @@ final class ManuscriptTextView: NSTextView {
     }
 
     /// The selection moved: apply styles that waited for a composition. A
-    /// mouse drag updates once it ends.
-    func selectionChanged() {
+    /// mouse drag updates once it ends; `byPointer` marks that update.
+    func selectionChanged(byPointer: Bool = false, anchor: Int? = nil) {
         if !selectingWithMouse {
             styler?.selectionDidChange()
-            writing.selectionDidChange()
+            writing.selectionDidChange(byPointer: byPointer, anchor: anchor)
         }
     }
 

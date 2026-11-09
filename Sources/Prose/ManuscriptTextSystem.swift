@@ -8,10 +8,11 @@ extension ManuscriptTextView {
     static func make(frame: NSRect) -> ManuscriptTextView {
         let container = NSTextContainer(size: NSSize(width: frame.width, height: .greatestFiniteMagnitude))
         let content = NSTextContentStorage()
-        let manager = NSTextLayoutManager()
+        let manager = ManuscriptLayoutManager()
         content.addTextLayoutManager(manager)
         manager.textContainer = container
         let editor = ManuscriptTextView(frame: frame, textContainer: container)
+        manager.writing = editor.writing
         editor.styler = SourceStyler(
             contentStorage: content,
             textLayoutManager: manager,
@@ -138,6 +139,60 @@ extension ManuscriptTextView {
 
     func drawnColor(at offset: Int) -> NSColor? {
         drawnAttribute(.foregroundColor, at: offset) as? NSColor
+    }
+}
+
+/// The editor's layout manager. In Writing mode it leaves the paragraphs of
+/// rendered blocks and pills out of selection segments, because NSTextView
+/// draws its selection highlight from them: `-[NSTextView
+/// _updateTextLayoutManagerSelectionLayers]`, run from the view's `layout`,
+/// asks `enumerateTextSegments(in:type: .selection, options: .rangeNotRequired)`
+/// for the selected range and draws one line view per segment. Inside a
+/// rendered block those segments are the source lines' rectangles, and the
+/// collapsed lines' lie over the paragraph below the block (Phase 3 spike).
+/// Empty ranges (caret queries) and every other segment type pass through,
+/// and so does everything while Writing mode is off.
+final class ManuscriptLayoutManager: NSTextLayoutManager {
+    weak var writing: WritingController?
+
+    override func enumerateTextSegments(
+        in textRange: NSTextRange,
+        type: NSTextLayoutManager.SegmentType,
+        options: NSTextLayoutManager.SegmentOptions = [],
+        using block: (NSTextRange?, CGRect, CGFloat, NSTextContainer) -> Bool,
+    ) {
+        guard type == .selection, !textRange.isEmpty, Thread.isMainThread, let writing else {
+            super.enumerateTextSegments(in: textRange, type: type, options: options, using: block)
+            return
+        }
+        let start = offset(from: documentRange.location, to: textRange.location)
+        let range = NSRange(location: start, length: offset(from: textRange.location, to: textRange.endLocation))
+        let pieces = MainActor.assumeIsolated { writing.nativeSelectionPieces(of: range) }
+        guard pieces != [range] else {
+            super.enumerateTextSegments(in: textRange, type: type, options: options, using: block)
+            return
+        }
+        var stopped = false
+        for piece in pieces {
+            guard let begin = location(documentRange.location, offsetBy: piece.location),
+                  let end = location(begin, offsetBy: piece.length),
+                  let pieceRange = NSTextRange(location: begin, end: end)
+            else {
+                continue
+            }
+            super
+                .enumerateTextSegments(
+                    in: pieceRange,
+                    type: type,
+                    options: options,
+                ) { range, frame, baseline, container in
+                    stopped = !block(range, frame, baseline, container)
+                    return !stopped
+                }
+            if stopped {
+                return
+            }
+        }
     }
 }
 

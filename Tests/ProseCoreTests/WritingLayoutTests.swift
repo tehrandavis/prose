@@ -564,6 +564,18 @@ private func expectOrdered(_ blocks: [RenderBlock], within length: Int) {
     #expect(role("// Only a comment.") == .pill(WritingPill(text: "// Only a comment.", muted: true)))
     #expect(layout.role(forParagraph: NSRange(location: text.length, length: 0)) == .source)
     #expect(layout.bytesHeld > 0)
+
+    // The paragraphs NSTextView draws no selection over, and block lookup.
+    let whole = NSRange(location: 0, length: text.length)
+    let drawn = layout.blocks.indices.filter { !layout.state(ofBlockAt: $0).isSource }
+    #expect(layout.drawnSpans(intersecting: whole) == drawn.map { text.paragraphRange(for: layout.blocks[$0].range) })
+    let paragraph = layout.blocks[1].range
+    #expect(layout.drawnSpans(intersecting: NSRange(location: paragraph.location + 3, length: 2)) == [
+        text.paragraphRange(for: paragraph),
+    ])
+    #expect(layout.drawnSpans(intersecting: layout.blocks[3].range).isEmpty)
+    #expect(layout.blockRange(holding: paragraph.location + 30) == paragraph)
+    #expect(layout.blockRange(holding: NSMaxRange(paragraph) + 1) == nil)
 }
 
 @Test @MainActor func writingLayoutKeepsBlocksThatShareALineAsSource() async throws {
