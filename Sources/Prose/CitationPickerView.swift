@@ -8,19 +8,26 @@ struct CitationPickerPane: View {
     @ObservedObject var workspace: Workspace
     let picker: CitationPicker
 
-    static func hint(_ stage: CitationPicker.Stage) -> String {
-        switch stage {
-        case .list: L10n.text("↑ ↓ to select · ↵ to cite · ⌥↵ to add a page or section")
+    static func hint(_ picker: CitationPicker) -> String {
+        switch picker.stage {
+        case .list: L10n.text("↑ ↓ to select · ↵ to cite · ⌥↵ to add a page or section · Tab to switch")
         case .supplement: L10n.text("↵ to cite · Esc to go back")
         case .linkBibliography: L10n.text("↵ to add the bibliography · N to cite only · Esc to go back")
+        case .zoteroLink: L10n.text("↵ to link · Esc to go back")
         }
     }
 
     var body: some View {
         switch picker.stage {
-        case .list: list
+        case .list:
+            if picker.tab == .zotero {
+                ZoteroResultsPane(workspace: workspace)
+            } else {
+                list
+            }
         case let .supplement(entry): supplementForm(entry)
         case let .linkBibliography(entry, _, path): offer(entry, path: path)
+        case .zoteroLink: ZoteroLinkForm(workspace: workspace)
         }
     }
 
@@ -93,7 +100,7 @@ struct CitationPickerPane: View {
                     ),
                     label: L10n.text("Page or section"),
                     placeholder: "p. 4",
-                    onSubmit: { workspace.cite(entry, supplement: workspace.citationPicker?.supplement) },
+                    onSubmit: { workspace.submitSupplement(for: entry) },
                 )
                 .frame(height: 18).padding(10)
                 .background(Theme.background, in: RoundedRectangle(cornerRadius: 4))
@@ -102,7 +109,7 @@ struct CitationPickerPane: View {
             }
             Text(CitationInsertion.citation(entry.key, supplement: picker.supplement))
                 .font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.secondary)
-            Button { workspace.cite(entry, supplement: workspace.citationPicker?.supplement) } label: {
+            Button { workspace.submitSupplement(for: entry) } label: {
                 actionLabel(L10n.text("Insert Citation"), key: "↵", primary: true)
             }.buttonStyle(.plain).disabled(workspace.applyingCommand)
         }.padding(.top, 10).padding(.trailing, 24).frame(maxWidth: .infinity, alignment: .leading)

@@ -242,6 +242,9 @@ public struct ProjectRecord: Codable, Equatable, Identifiable, Sendable {
     /// Expanded folders, relative to the folder. The root is always expanded.
     public var expanded: [String]
     public var lastOpened: Date
+    /// The project's Better BibTeX auto-export and its Zotero collection,
+    /// when the writer linked them (citations note, step E).
+    public var zotero: ZoteroLink? = nil
 
     public var name: String {
         (path as NSString).lastPathComponent

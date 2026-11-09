@@ -186,11 +186,23 @@ final class Workspace: ObservableObject {
         }
     }
 
-    @Published var message: String?
+    @Published var message: String? {
+        didSet {
+            if message == nil {
+                messageAction = nil
+            }
+        }
+    }
+
+    /// A button beside the message, such as "Show in Zotero".
+    @Published var messageAction: MessageAction?
     @Published var paletteOpen = false
     @Published var paletteGroup: String?
     @Published var searchMode = false
-    @Published var query = ""
+    @Published var query = "" {
+        didSet { citationQueryChanged() }
+    }
+
     @Published var activeCommand: WritingCommand?
     @Published var fieldValues: [String: String] = [:]
     @Published var resourceSelection: ResourceSelection?
@@ -214,6 +226,16 @@ final class Workspace: ObservableObject {
     /// Main files whose writer declined adding a `#bibliography` call.
     var declinedBibliographyOffers: Set<URL> = []
     var citationResultsCache: (query: String, revision: Int, entries: [BibliographyEntry])?
+    /// Zotero for the picker's Zotero tab (citations note, step E); tests
+    /// script their own.
+    var zoteroSource: any ZoteroSource = HTTPZoteroSource()
+    @Published var zotero = ZoteroPane()
+    var zoteroSearchTask: Task<Void, Never>?
+    var zoteroCheckTask: Task<Void, Never>?
+    /// Entries removed from `references-prose.bib` as duplicates, for tests.
+    var proseDuplicatesRemoved = 0
+    /// Opens a link outside Prose, such as "Show in Zotero"; tests record it.
+    var openExternalURL: @MainActor (URL) -> Void = { NSWorkspace.shared.open($0) }
     @Published var exporting = false
     @Published var previewZoom: CGFloat = 1
     @Published var previewDark = false
@@ -1908,13 +1930,15 @@ final class Workspace: ObservableObject {
         jump(to: item.position.offset(in: text))
     }
 
-    func showMessage(_ value: String, persistent: Bool = false) {
+    func showMessage(_ value: String, persistent: Bool = false, action: MessageAction? = nil) {
         messageTask?.cancel()
         message = value
+        messageAction = action
         if !persistent {
             messageTask = Task {
                 do { try await Task.sleep(for: .seconds(6)) } catch { return }
                 message = nil
+                messageAction = nil
             }
         }
     }

@@ -307,6 +307,14 @@ struct ContentView: View {
             PhosphorIcon(name: "warning-circle", size: 15).foregroundStyle(Theme.accent)
             Text(message).font(.system(size: 11)).foregroundStyle(Theme.secondary).lineLimit(3)
             Spacer()
+            if let action = workspace.messageAction {
+                Button { workspace.performMessageAction() } label: {
+                    HStack(spacing: 6) {
+                        PhosphorIcon(name: action.icon, size: 12)
+                        Text(action.title).font(.system(size: 11, weight: .medium))
+                    }
+                }.buttonStyle(.plain).foregroundStyle(Theme.accent)
+            }
             QuietButton(icon: "x", help: L10n.text("Dismiss Message")) { workspace.message = nil }
         }.padding(.horizontal, 20).padding(.vertical, 3).background(Theme.panel)
     }

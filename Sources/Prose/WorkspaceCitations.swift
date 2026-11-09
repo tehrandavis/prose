@@ -4,6 +4,12 @@ import ProseCore
 /// The citation picker's state in the command panel (citations note,
 /// decision 4). It shares the panel's query and selected row.
 struct CitationPicker: Equatable {
+    /// The project's own entries, or Zotero's (step E).
+    enum Tab: Equatable {
+        case project
+        case zotero
+    }
+
     enum Stage: Equatable {
         /// Searching the entries.
         case list
@@ -12,9 +18,18 @@ struct CitationPicker: Equatable {
         /// The document has no `#bibliography` call: offer to add one for
         /// the file the entry came from.
         case linkBibliography(BibliographyEntry, supplement: String?, path: String)
+        /// "Link to Zotero…": the project's auto-exported file and its
+        /// collection.
+        case zoteroLink
     }
 
+    var tab = Tab.project
     var stage = Stage.list
+    /// The Zotero row a page or section is being typed for.
+    var zoteroItem: ZoteroSearch.Result?
+    /// A Zotero entry to write into `references-prose.bib` with the
+    /// citation.
+    var zoteroAddition: ZoteroAddition?
     var supplement = ""
     /// The index is being read.
     var loading = true
@@ -67,7 +82,7 @@ extension Workspace {
         case .list: highlightedCitation
         case let .supplement(entry): entry
         case let .linkBibliography(entry, _, _): entry
-        case nil: nil
+        case .zoteroLink, nil: nil
         }
     }
 
@@ -112,6 +127,7 @@ extension Workspace {
             guard generation == bibliographyIndexGeneration else {
                 return
             }
+            await removeProseDuplicates(using: engine.renderer, root: engine.root)
             bibliographyReloads += 1
             recordOperation("citation.indexed", [
                 "entries": String(bibliographyIndex.entries.count),
@@ -164,6 +180,13 @@ extension Workspace {
         let isReturn = event.keyCode == 36 || event.keyCode == 76
         switch picker.stage {
         case .list:
+            if let tab = Self.citationTab(for: event) {
+                switchCitationTab(tab ?? (picker.tab == .project ? .zotero : .project))
+                return true
+            }
+            if picker.tab == .zotero {
+                return handleZoteroListKey(event, modifiers: modifiers, isReturn: isReturn)
+            }
             if modifiers.isEmpty || modifiers == .shift, event.keyCode == 125 {
                 selectedCommandIndex = min(selectedCommandIndex + 1, max(0, citationResults.count - 1))
                 return true
@@ -185,7 +208,13 @@ extension Workspace {
             return false
         case let .supplement(entry):
             if isReturn, modifiers.isEmpty {
-                cite(entry, supplement: picker.supplement)
+                submitSupplement(for: entry)
+                return true
+            }
+            return false
+        case .zoteroLink:
+            if isReturn, modifiers.isEmpty {
+                confirmZoteroLink()
                 return true
             }
             return false
@@ -202,14 +231,91 @@ extension Workspace {
         }
     }
 
+    /// The tab a key chooses inside the picker: `⌘1` the project, `⌘2`
+    /// Zotero, and Tab the other one (`.some(nil)`); nil for other keys.
+    static func citationTab(for event: NSEvent) -> CitationPicker.Tab?? {
+        let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
+        if event.keyCode == 48, modifiers.isEmpty || modifiers == .shift {
+            return .some(nil)
+        }
+        guard modifiers == .command else {
+            return nil
+        }
+        switch event.charactersIgnoringModifiers {
+        case "1": return .project
+        case "2": return .zotero
+        default: return nil
+        }
+    }
+
+    /// `⌘1` and `⌘2` while the picker lists entries, before the menu's mode
+    /// shortcuts see them.
+    func handleCitationTabShortcut(_ event: NSEvent) -> Bool {
+        guard paletteOpen, citationPicker?.stage == .list,
+              event.modifierFlags.intersection([.command, .control, .option, .shift]) == .command,
+              case let .some(tab?) = Self.citationTab(for: event)
+        else {
+            return false
+        }
+        switchCitationTab(tab)
+        return true
+    }
+
+    private func handleZoteroListKey(_ event: NSEvent, modifiers: NSEvent.ModifierFlags, isReturn: Bool) -> Bool {
+        if modifiers.isEmpty || modifiers == .shift, event.keyCode == 125 {
+            selectedCommandIndex = min(selectedCommandIndex + 1, max(0, zotero.results.count - 1))
+            return true
+        }
+        if modifiers.isEmpty || modifiers == .shift, event.keyCode == 126 {
+            selectedCommandIndex = max(0, selectedCommandIndex - 1)
+            return true
+        }
+        if isReturn, modifiers.isEmpty || modifiers == .option {
+            if let result = highlightedZoteroResult {
+                if modifiers == .option {
+                    askSupplement(for: Self.entry(for: result.item), zotero: result)
+                } else {
+                    chooseZoteroItem(result)
+                }
+            }
+            return true
+        }
+        return false
+    }
+
+    /// A Zotero item as an entry of `references-prose.bib`, for the panel.
+    static func entry(for item: ZoteroItem) -> BibliographyEntry {
+        BibliographyEntry(
+            key: item.key,
+            title: item.title,
+            authors: item.authors,
+            year: item.year,
+            container: item.container,
+            doi: item.doi,
+            file: ProseBibliography.fileName,
+        )
+    }
+
     /// `⌥Return` (the note's **Choice**): one field for a page or section.
-    func askSupplement(for entry: BibliographyEntry) {
+    func askSupplement(for entry: BibliographyEntry, zotero result: ZoteroSearch.Result? = nil) {
         guard citationPicker != nil else {
             return
         }
         commandError = nil
         citationPicker?.supplement = ""
+        citationPicker?.zoteroItem = result
         citationPicker?.stage = .supplement(entry)
+    }
+
+    /// Cites with the typed page or section: the project's entry, or the
+    /// Zotero item it was asked for.
+    func submitSupplement(for entry: BibliographyEntry) {
+        let supplement = citationPicker?.supplement
+        if let result = citationPicker?.zoteroItem {
+            chooseZoteroItem(result, supplement: supplement)
+        } else {
+            cite(entry, supplement: supplement)
+        }
     }
 
     /// Accepts or declines the offer to add a `#bibliography` call.
@@ -281,6 +387,7 @@ extension Workspace {
         } else {
             nil
         }
+        let addition = picker.zoteroAddition?.item.key == entry.key ? picker.zoteroAddition : nil
         applyingCommand = true
         recordOperation("insertion.begin", ["command": command.id])
         Task {
@@ -295,6 +402,22 @@ extension Workspace {
                         ["command": command.id, "reason": "document, selection or panel changed"],
                     )
                     return
+                }
+                // A Zotero entry goes into `references-prose.bib` first, so
+                // the compile after the citation finds it.
+                var wrote = false
+                if let addition {
+                    wrote = try await Task.detached { try Self.appendToProseBibliography(addition) }.value
+                    if wrote {
+                        _ = await writingEngine?.renderer.filesChanged([addition.file])
+                    }
+                    guard version == revision, documentURL == document, editor.selectedRange() == selection else {
+                        recordOperation(
+                            "insertion.cancelled",
+                            ["command": command.id, "reason": "changed during write"],
+                        )
+                        return
+                    }
                 }
                 let bibliographyCommand = addingBibliography && offerPath != nil
                     ? WritingCommand.all.first(where: { $0.id == "bibliography" }) : nil
@@ -318,7 +441,17 @@ extension Workspace {
                     "insertion.finished",
                     ["command": command.id, "insertedUTF16": String(citation.utf16.count)],
                 )
-                if let call {
+                if let addition {
+                    recordOperation("zotero.added", ["key": addition.item.key, "written": String(wrote)])
+                    var named = false
+                    if let call {
+                        await appendBibliographyCall(call, path: offerPath ?? "", document: document)
+                        named = true
+                    } else if !addingBibliography, offerPath == nil {
+                        named = await addProseBibliographyToCall(document: document)
+                    }
+                    confirmZoteroAddition(addition, named: named)
+                } else if let call {
                     await appendBibliographyCall(call, path: offerPath ?? "", document: document)
                 }
             } catch {

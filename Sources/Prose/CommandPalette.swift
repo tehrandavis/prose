@@ -29,7 +29,9 @@ struct CommandPalette: View {
                     }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     Rectangle().fill(Theme.border.opacity(0.7)).frame(width: 1)
                     Group {
-                        if workspace.citationPicker != nil {
+                        if let picker = workspace.citationPicker, picker.tab == .zotero, picker.stage == .list {
+                            ZoteroGuide(workspace: workspace)
+                        } else if workspace.citationPicker != nil {
                             CitationGuide(workspace: workspace)
                         } else {
                             commandGuide
@@ -53,10 +55,11 @@ struct CommandPalette: View {
                 if picker.stage == .list {
                     PaletteTextField(
                         text: $workspace.query,
-                        label: L10n.text("Search Sources"),
+                        label: picker.tab == .zotero ? L10n.text("Search Zotero") : L10n.text("Search Sources"),
                         placeholder: L10n.text("Search by author, year, title or key…"),
                     )
                     .frame(height: 22).onChange(of: workspace.query) { _, _ in workspace.selectedCommandIndex = 0 }
+                    CitationTabs(workspace: workspace, tab: picker.tab)
                 } else {
                     Text(breadcrumb).font(.system(size: 12, weight: .medium))
                 }
@@ -333,7 +336,7 @@ struct CommandPalette: View {
                 PhosphorIcon(name: "warning-circle", size: 13).foregroundStyle(Theme.red)
                 Text(error).font(.system(size: 10)).foregroundStyle(Theme.redText).lineLimit(2)
             } else if let picker = workspace.citationPicker {
-                Text(CitationPickerPane.hint(picker.stage))
+                Text(CitationPickerPane.hint(picker))
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
             } else {
                 Text(workspace.activeCommand == nil ? L10n

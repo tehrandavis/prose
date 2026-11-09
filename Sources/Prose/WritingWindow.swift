@@ -6,6 +6,9 @@ final class WritingWindow: NSWindow {
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         workspace?.recordKeyEvent(event, stage: "shortcut")
+        if workspace?.handleCitationTabShortcut(event) == true {
+            return true
+        }
         return super.performKeyEquivalent(with: event)
     }
 

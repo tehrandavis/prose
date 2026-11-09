@@ -126,6 +126,7 @@ extension Workspace {
     /// the engine's cache compiles only those whose result can have changed.
     /// The open file's text is the editor's.
     func projectFilesChanged(_ files: [URL]) {
+        checkProseDuplicates(after: files)
         guard let engine = writingEngine else {
             return
         }
