@@ -42,6 +42,8 @@ struct WritingDrawnBlock {
     let block: NSRange
     /// Nil for a pill.
     let map: WritingGlyphMap?
+    /// The pill, for a pill.
+    var pill: WritingPill?
 
     var lines: [WritingGlyphMap.Line] {
         map?.sourceLines() ?? []
@@ -280,9 +282,9 @@ extension WritingController {
         switch role {
         case .source, .collapsed:
             return nil
-        case .pill:
+        case let .pill(pill):
             return model.blockRange(holding: paragraph.location).map {
-                WritingDrawnBlock(frame: frame, block: $0, map: nil)
+                WritingDrawnBlock(frame: frame, block: $0, map: nil, pill: pill)
             }
         case let .rendered(rendering, block):
             return WritingDrawnBlock(frame: frame, block: block, map: fragment.glyphMap(rendering, block: block))

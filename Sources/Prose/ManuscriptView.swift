@@ -204,6 +204,13 @@ final class ManuscriptTextView: NSTextView {
         writing.appearanceDidChange()
     }
 
+    override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
+        // A composition that replaced a selection in a rendered block opened
+        // it; lay it out before the input method asks where the text is.
+        writing.editDidEnd()
+    }
+
     override func unmarkText() {
         super.unmarkText()
         // Swaps and renders that waited for the composition apply now.

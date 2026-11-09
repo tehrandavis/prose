@@ -159,7 +159,9 @@ extension ManuscriptTextView {
 /// rendered block those segments are the source lines' rectangles, and the
 /// collapsed lines' lie over the paragraph below the block (Phase 3 spike).
 /// Empty ranges (caret queries) and every other segment type pass through,
-/// and so does everything while Writing mode is off.
+/// and so does everything while Writing mode is off. NSTextView's
+/// accessibility frames read the same segments; Writing mode answers those
+/// for rendered blocks itself (`WritingAccessibility.swift`).
 final class ManuscriptLayoutManager: NSTextLayoutManager {
     weak var writing: WritingController?
 

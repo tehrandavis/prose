@@ -458,6 +458,41 @@ private func expectOrdered(_ blocks: [RenderBlock], within length: Int) {
     #expect(layout.source == text as String)
 }
 
+@Test @MainActor func writingLayoutOpensABlockWhoseTextACompositionChanges() async throws {
+    let draft = try Draft()
+    let text = NSMutableString(string: threeParagraphs)
+    let (layout, log) = try await started(text as String, draft.renderer(), draft)
+    var marked = false
+    layout.hasMarkedText = { marked }
+    #expect(renderedEverywhere(layout) && layout.activeBlock == nil)
+
+    // A composition replaces a selection inside the second block, which the
+    // pointer made and which opened nothing: the block opens at once.
+    let second = layout.blocks[1].range
+    let reported = log.calls.count
+    marked = true
+    edit(text, NSRange(location: second.location + 7, length: 9), "zhong", layout)
+    #expect(layout.state(ofBlockAt: 1) == .source(.active))
+    #expect(log.calls.count == reported + 1)
+    #expect(log.covers(layout.blocks[1].range.location))
+    #expect(layout.state(ofBlockAt: 0).rendering != nil && layout.state(ofBlockAt: 2).rendering != nil)
+    // Further marked edits, caret moves and renders still swap nothing.
+    edit(text, NSRange(location: second.location + 7, length: 5), "中文", layout)
+    layout.selectionDidChange(caret: layout.blocks[2].range.location + 2)
+    await layout.idle()
+    #expect(log.calls.count == reported + 1)
+    #expect(layout.state(ofBlockAt: 2).rendering != nil)
+
+    // When it ends, the caret's block opens and the edited one renders again.
+    marked = false
+    layout.selectionDidChange(caret: layout.blocks[2].range.location + 2)
+    #expect(layout.activeBlock == 2 && layout.state(ofBlockAt: 1) == .source(.waiting))
+    await layout.idle()
+    let rendering = try #require(layout.state(ofBlockAt: 1).rendering)
+    #expect(rendering.origin == layout.blocks[1].range.location)
+    #expect(layout.source == text as String)
+}
+
 @Test @MainActor func writingLayoutHoldsABlockListThatArrivesDuringAComposition() async throws {
     let draft = try Draft()
     let gate = try await GatedRenderer(draft.renderer())

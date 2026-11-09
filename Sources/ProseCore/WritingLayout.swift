@@ -8,7 +8,8 @@ import Foundation
 /// The view forwards edits, the caret, the visible range and the appearance;
 /// the layout delegate asks `role(forParagraph:)` for each TextKit paragraph,
 /// and `onChange` names the ranges whose roles changed. While text is marked,
-/// no state changes and nothing is reported.
+/// no state changes and nothing is reported, except that a block whose text
+/// the composition itself changes opens at once.
 ///
 /// All engine calls run one at a time in this order of priority: sending the
 /// text after edits settle, renders near the viewport (nearest first), and a
@@ -163,15 +164,38 @@ public final class WritingLayout {
         }
         text.replaceCharacters(in: original, with: source.substring(with: edited))
         revision += 1
-        let touched = rebase(editing: original, delta: delta)
+        let (touched, changedText) = rebase(editing: original, delta: delta)
         if let caret {
             let moved = SourceStyling.rebase(NSRange(location: caret, length: 0), editing: original, delta: delta)
             self.caret = moved.location
         }
         changed = changed.map { SourceStyling.rebase($0, editing: original, delta: delta) }
         restartTimers()
-        restate(touched)
-        flush()
+        if hasMarkedText() {
+            openComposing(changedText)
+        } else {
+            restate(touched)
+            flush()
+        }
+    }
+
+    /// While text is marked nothing swaps, except that a block whose text the
+    /// composition changes draws source at once: its render or label no
+    /// longer matches its text, and the marked text is drawn only in source.
+    /// That happens when a composition replaces a selection the pointer made,
+    /// which opens no block. The block counts as active until the
+    /// composition ends.
+    private func openComposing(_ indices: [Int]) {
+        restateWaits = true
+        var opened = false
+        for index in indices where !entries[index].shown.isSource {
+            entries[index].shown = .source(.active)
+            changed.append(entries[index].span)
+            opened = true
+        }
+        if opened {
+            report()
+        }
     }
 
     /// The selection changed; `caret` is its moving end. Only the block that
@@ -314,10 +338,11 @@ public final class WritingLayout {
     // MARK: - Blocks across edits
 
     /// Moves every block across a native edit and returns the indices whose
-    /// paragraphs it touched.
-    private func rebase(editing edit: NSRange, delta: Int) -> [Int] {
+    /// paragraphs it touched, and those whose text it changed.
+    private func rebase(editing edit: NSRange, delta: Int) -> (touched: [Int], changed: [Int]) {
         let end = NSMaxRange(edit)
         var touched: [Int] = []
+        var changedText: [Int] = []
         var index = firstEntry(spanEndAtLeast: edit.location)
         while index < entries.count {
             let old = entries[index]
@@ -333,6 +358,7 @@ public final class WritingLayout {
                 entries[index].failure = nil
                 entries[index].label = nil
                 entries[index].lines = text.paragraphCount(in: range, limit: Self.longBlockLines)
+                changedText.append(index)
             }
             touched.append(index)
             index += 1
@@ -345,7 +371,7 @@ public final class WritingLayout {
         for index in touched {
             (entries[index].span, entries[index].aligned) = text.blockSpan(entries[index].range)
         }
-        return touched
+        return (touched, changedText)
     }
 
     /// Replaces the list with the engine's for today's text. Blocks with the
@@ -487,7 +513,15 @@ public final class WritingLayout {
 
     /// Reports the changed ranges unless text is marked.
     private func flush() {
-        guard !changed.isEmpty, !hasMarkedText() else {
+        guard !hasMarkedText() else {
+            return
+        }
+        report()
+    }
+
+    /// Reports the changed ranges, sorted and merged.
+    private func report() {
+        guard !changed.isEmpty else {
             return
         }
         let length = text.length

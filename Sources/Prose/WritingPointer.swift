@@ -141,27 +141,8 @@ extension WritingController {
     /// point near no box, and a pill, give the block's start, or its end while
     /// a selection whose fixed end `anchor` lies before the block is extended.
     func pointerHit(at point: CGPoint, anchor: Int? = nil) -> WritingPointerHit? {
-        guard isRunning, let model, let editor, let fragment = writingFragment(at: point),
-              let start = fragment.offset
-        else {
+        guard let editor, let (hit, block) = drawnHit(at: point) else {
             return nil
-        }
-        let frame = fragment.layoutFragmentFrame
-        let block: NSRange
-        let hit: WritingGlyphMap.Hit
-        switch fragment.role {
-        case .source, .collapsed:
-            return nil
-        case .pill:
-            guard let range = model.blockRange(holding: start) else {
-                return nil
-            }
-            block = range
-            hit = .missed
-        case let .rendered(rendering, range):
-            block = range
-            hit = fragment.glyphMap(rendering, block: range)
-                .hit(at: CGPoint(x: point.x - frame.minX, y: point.y - frame.minY))
         }
         let text = editor.string as NSString
         let offset = switch hit {
@@ -173,6 +154,40 @@ extension WritingController {
             anchor.map { $0 <= block.location } == true ? NSMaxRange(block) : block.location
         }
         return WritingPointerHit(offset: min(max(offset, block.location), NSMaxRange(block)), block: block)
+    }
+
+    /// The character drawn under `point` (container coordinates) when it lies
+    /// in a rendered fragment or a pill; nil over source. In a rendered block
+    /// it is the nearest glyph box's character, as a click maps it; a
+    /// generated glyph, a point near no box, and a pill give the block's
+    /// first character. Accessibility and input methods ask for it.
+    func characterHit(at point: CGPoint) -> Int? {
+        guard let (hit, block) = drawnHit(at: point) else {
+            return nil
+        }
+        if case let .glyph(offset, _) = hit {
+            return offset
+        }
+        return block.location
+    }
+
+    /// The glyph map's hit at `point` and the block under it, in a rendered
+    /// fragment or a pill.
+    private func drawnHit(at point: CGPoint) -> (hit: WritingGlyphMap.Hit, block: NSRange)? {
+        guard isRunning, let model, let fragment = writingFragment(at: point), let start = fragment.offset else {
+            return nil
+        }
+        let frame = fragment.layoutFragmentFrame
+        switch fragment.role {
+        case .source, .collapsed:
+            return nil
+        case .pill:
+            return model.blockRange(holding: start).map { (.missed, $0) }
+        case let .rendered(rendering, range):
+            let hit = fragment.glyphMap(rendering, block: range)
+                .hit(at: CGPoint(x: point.x - frame.minX, y: point.y - frame.minY))
+            return (hit, range)
+        }
     }
 
     /// The selection for a press at `point`, or for extending `anchor` to it,

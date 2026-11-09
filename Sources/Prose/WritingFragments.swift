@@ -20,6 +20,14 @@ enum WritingMetrics {
     static var pillFragmentHeight: CGFloat {
         pillHeight + 2 * pillSpacing
     }
+
+    /// Where a pill with `label` draws its rounded rectangle, from its
+    /// fragment's top-left corner, in a column `column` wide.
+    static func pillRect(label: String, column: CGFloat) -> CGRect {
+        let size = NSAttributedString(string: label, attributes: [.font: pillFont]).size()
+        let width = min(column, ceil(size.width) + 2 * pillPadding)
+        return CGRect(x: 0, y: pillSpacing, width: max(width, 2 * pillRadius), height: pillHeight)
+    }
 }
 
 /// One fragment class for every TextKit paragraph while Writing mode has been
@@ -167,13 +175,7 @@ final class WritingFragment: NSTextLayoutFragment {
         ]
         let label = NSAttributedString(string: pill.text, attributes: attributes)
         let size = label.size()
-        let width = min(column, ceil(size.width) + 2 * WritingMetrics.pillPadding)
-        let rect = CGRect(
-            x: point.x,
-            y: point.y + WritingMetrics.pillSpacing,
-            width: max(width, 2 * WritingMetrics.pillRadius),
-            height: WritingMetrics.pillHeight,
-        )
+        let rect = WritingMetrics.pillRect(label: pill.text, column: column).offsetBy(dx: point.x, dy: point.y)
         context.saveGState()
         context.addPath(CGPath(
             roundedRect: rect,
