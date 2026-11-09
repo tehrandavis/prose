@@ -107,3 +107,16 @@ Open items (full list in the design note's Phase 4 outcome):
 - Benchmark numbers vary two to three times with machine load (`mediaanalysisd` overnight); a step E run failed the typewriter gate under load and passed on a quiet machine.
 - A changed `.bib` on disk is not passed to the engines; settle in the proposed Citations phase.
 - Recommended next: a Citations phase (picker over project `.bib` files through Hayagriva in the Rust bridge, Better BibTeX auto-export guidance, then a Zotero local API spike) before Phase 5. Not started; awaits Tehran.
+
+## 2026-11-09 (afternoon): Phase 5, Citations
+
+- Tehran accepted Citations as Phase 5 (polish moves to Phase 6), said he uses Better BibTeX with an auto-exported `.bib` and wants the link per project, and allowed a read-only spike against his Zotero library.
+- Step A (`19bf763`): `.bib` changes on disk reach both engines (ABI 3 `files_changed`, refresh after a 300 ms pause). Tinymist already followed the file on its own. Defect found and fixed: citations never rendered in Writing mode (`??`); a citing block now carries a hidden copy of the document's citations and bibliography.
+- Step B (`71d1256`): bibliography entry index through Hayagriva (ABI 4, JSON), `BibliographyIndex` search.
+- Step C (`487d305`): "Cite a Source" (`⌘J R S`) picker; `⌥Return` adds a page; offer to add a `#bibliography` call.
+- Step D (`0e0adfa`): Zotero spike on the real library: Better BibTeX search and export work, keys agree, no way to list auto-exports or add to a collection, raw control characters in JSON.
+- Step E (`cb922de`): Zotero tab, per-project link in `recent.json`, new entries in `references-prose.bib` with "Show in Zotero", deduplication after the next auto-export.
+- Step F: opt-in real-library test (`PROSE_REAL_ZOTERO=1`) passed; docs updated; three gate runs passed after two test-race fixes.
+- Also: test windows open in the bottom-right corner of the main screen (`95a313f`); `PROSE_TEST_SCREEN` picks another, but pixel tests assume 2x.
+
+Open items (full list in the note's Phase 5 outcome): the `style: "ieee"` default of the bibliography command; citations with the bibliography call in another folder show `??` in Writing mode; a sandboxed run against Zotero; `#bibliography` edits only in the open buffer.

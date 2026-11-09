@@ -37,12 +37,14 @@ Colours, type, radius and spacing come from Intent (`~/dev/Cadence/Cadence/Theme
 | 2 | `Engine/RenderBridge` Rust crate: per-block render with document context, cache, SVG with glyph rectangles | Done 2026-11-08 |
 | 3 | Writing mode in the editor, with selection, undo, IME and VoiceOver acceptance tests before it is on by default | Done 2026-11-09 |
 | 4 | Focus mode, floating toolbar, syntax-aware spell check | Done 2026-11-09 |
-| 5 | Citations: `.bib` reload from disk, citation picker, Zotero via Better BibTeX (linked auto-export per project) | Started 2026-11-09 (`docs/plans/2026-11-09-citations.md`) |
+| 5 | Citations: `.bib` reload from disk, citation picker, Zotero via Better BibTeX (linked auto-export per project) | Done 2026-11-09 |
 | 6 | Info popover, export sheet, per-document mode memory, screenshots, writing guide | Not started |
 
 Phase 3 shipped editable: all 14 acceptance tests passed three full runs in a row, so the kill switch was not used. Writing mode costs about 650 to 710 MiB for the block engine on a book. The outcome and the open items are at the end of `docs/plans/2026-11-08-phase-3-writing-mode.md`.
 
 Phase 4 shipped Focus mode, the floating toolbar and spell check, and made the app English only. All 15 acceptance tests passed three gate runs in a row. Focus is Writing mode plus view state at scale 1.4625 in a 467 pt column; it adds about 10 MiB to Writing mode. Phase 4 also cut Writing mode's scroll and draw cost (images drawn on whole device pixels, a role cache per fragment). The typewriter step meets its 33 ms gate (p95 19 to 26 ms outside heavy load) but not the 16.7 ms target for Return. The outcome, the decision changes and the open items are at the end of `docs/plans/2026-11-09-phase-4-focus-toolbar-spellcheck.md`.
+
+Phase 5 shipped citations. All 10 acceptance tests passed three gate runs in a row. Bibliography and other files changed on disk reach both engines with no edit (C ABI version 3), and citations render in Writing mode for the first time, from a hidden copy of the document's citations in each citing block. The **Cite a Source** picker (`⌘J R S`) searches the project's entries (C ABI version 4, Hayagriva) and, in its Zotero tab, the Zotero library through Better BibTeX. The writer links each project to its auto-exported `.bib`; Prose writes new entries only into `references-prose.bib` and removes them when the export catches up. No test in the default run contacts Zotero. `PROSE_REAL_ZOTERO=1 swift test --skip-build --filter realZoteroLibraryAnswersEveryCallProseMakes` (after `source scripts/environment.sh` and `swift build --build-tests`) runs one read-only check against the real library and prints each call's time. The outcome, the decision changes and the open items are at the end of `docs/plans/2026-11-09-citations.md`.
 
 ## Working agreements
 

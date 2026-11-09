@@ -121,7 +121,12 @@ extension WritingFlowTests {
         let removed = app.workspace.proseDuplicatesRemoved
         let exportedFile = String(decoding: bibliography, as: UTF8.self) + "\n" + newEntry(title: "Wombat")
         try Data(exportedFile.utf8).write(to: paper.bibliography)
-        try await app.wait { (try? String(contentsOf: paper.prose, encoding: .utf8))?.isEmpty == true }
+        // The file is rewritten off the main actor and counted after it, so
+        // wait for both.
+        try await app.wait {
+            (try? String(contentsOf: paper.prose, encoding: .utf8))?.isEmpty == true
+                && app.workspace.proseDuplicatesRemoved > removed
+        }
         #expect(app.workspace.proseDuplicatesRemoved == removed + 1)
         #expect(try String(contentsOf: paper.bibliography, encoding: .utf8) == exportedFile)
         #expect(app.workspace.text == expected)

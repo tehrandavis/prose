@@ -72,6 +72,16 @@ func openSelectionDocument(_ app: WritingFixture) async throws
     writingScrollToTop(editor)
     await app.layout()
     writingScrollToTop(editor)
+    // Under load the fixture's first renders can still be in flight here, and
+    // tests read their glyph boxes at once. Wait for the blocks that render.
+    let text = editor.string as NSString
+    let blocks = ["= Numbered heading", "A short paragraph", "A paragraph with inline math", "$ integral"]
+        .map { text.range(of: $0).location }
+        .filter { $0 != NSNotFound }
+    try await app.wait {
+        writingScrollToTop(editor)
+        return blocks.allSatisfy { renderedBlock(manager, at: $0) != nil }
+    }
     return (editor, manager, model)
 }
 
