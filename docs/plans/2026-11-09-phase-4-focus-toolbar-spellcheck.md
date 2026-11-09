@@ -292,3 +292,19 @@ UI tests are `extension WritingFlowTests`, on the real window, editor and engine
 - Results: lint (0 violations; `--fix` only wrapped long lines and removed `throws` from tests that do not throw, reviewed by hand), release build passes, and 266 core and 185 app tests pass in the first full run, with coverage 89.23 percent and no failures, flaky or otherwise. The book benchmark was not run (outside load; the main session runs it).
 - Open items: step G draws (source through `.spellingState`, rendered blocks in the fragment), the context menu, `⌘;` and accessibility. The typing gates with spell check on are not yet measured in the book benchmark. Main-thread time per viewport check rose from about 1.3 to 3 ms over three checks on War and Peace, likely from the growing misspelling list (War and Peace has many names the system dictionary does not know); profile it if the benchmark shows it. The cut-word rule leaves words like `#emph[un]believable` unchecked. NSSpellChecker's language detection is the system's; a multilingual document gets whatever it decides.
 - Main-session rerun: lint (0 violations) and the release build pass; 266 core and 185 app tests pass with no failure, coverage 89.20 percent. The book benchmark runs next, covering steps E and F together.
+
+## Benchmark after steps E and F (2026-11-09)
+
+- Run on a quieter machine (load average 4 to 10, no `mediaanalysisd`), at commit `9dc6d4d`. All gates pass in Code, Writing and Focus on both books, so step E's typewriter failures were outside load, as its outcome says.
+
+| Book | Mode | Typing median / p95 / max (ms) | Scroll and draw p95 (ms) | Paragraphs built |
+|-|-|-|-|-|
+| War and Peace | Code | 4.97 / 6.46 / 6.93 | 4.40 | 1,254 |
+| War and Peace | Writing | 6.45 / 7.14 / 8.16 | 6.90 | 1,518 |
+| War and Peace | Focus | 9.39 / 9.98 / 11.18 | 6.16 | 1,433 |
+| SICP | Code | 3.16 / 4.43 / 5.44 | 2.52 | 968 |
+| SICP | Writing | 3.75 / 4.40 / 4.88 | 3.53 | 1,075 |
+| SICP | Focus | 7.42 / 7.82 / 9.22 | 6.65 | 1,053 |
+
+- Typewriter step median / p95 / max: War and Peace 13.05 / 18.94 / 22.09 ms, SICP 12.58 / 19.46 / 21.31 ms (gate 33 ms, target 16.7 ms). Spell check is on in every run (the default).
+- Measurements depend on machine load by a factor of two to three: the same gates measured in step D under load gave Writing-mode scroll and draw p95 of 14.61 ms on War and Peace, against 6.90 ms here.
