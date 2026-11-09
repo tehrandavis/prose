@@ -10,11 +10,14 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::cache::CacheStats;
-use crate::engine::{Engine, Options, Rendered};
+use crate::engine::{Engine, Options, RenderOptions, Rendered};
 use crate::geometry::{GlyphBox, Rect};
+use crate::raster::Bitmap;
 
 /// `PR_RENDER_ABI_VERSION`. Increment whenever the table or a struct changes.
-pub const ABI_VERSION: u32 = 1;
+/// Version 2 (Phase 3): blocks cover the whole file with four more kinds,
+/// `render` takes options, and results carry the drawn area and a bitmap.
+pub const ABI_VERSION: u32 = 2;
 
 /// An engine, opaque to C.
 pub struct PREngine {
@@ -43,6 +46,15 @@ pub struct PRRefreshInfo {
     pub references: u32,
 }
 
+/// How to render one block; see `ProseRender.h`.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct PRRenderOptions {
+    pub use_text_color: bool,
+    pub text_color: [u8; 4],
+    pub bitmap_scale: f64,
+}
+
 /// One render result; see `ProseRender.h`.
 #[repr(C)]
 #[derive(Debug)]
@@ -54,8 +66,14 @@ pub struct PRRenderResult {
     pub height: f64,
     pub baseline: f64,
     pub ink: Rect,
+    pub drawn: Rect,
     pub glyphs: *const GlyphBox,
     pub glyph_count: usize,
+    pub bitmap: *const u8,
+    pub bitmap_length: usize,
+    pub bitmap_row_bytes: usize,
+    pub bitmap_width: u32,
+    pub bitmap_height: u32,
     pub cached: bool,
 }
 
@@ -66,6 +84,7 @@ struct ResultBox {
     result: PRRenderResult,
     rendered: Option<Arc<Rendered>>,
     glyphs: Vec<GlyphBox>,
+    bitmap: Option<Bitmap>,
     error: Option<CString>,
 }
 
@@ -78,6 +97,7 @@ pub struct PRRenderAPI {
     pub result_size: u32,
     pub refresh_size: u32,
     pub stats_size: u32,
+    pub options_size: u32,
     pub engine_create: unsafe extern "C" fn(
         *const c_char,
         *const c_char,
@@ -93,8 +113,14 @@ pub struct PRRenderAPI {
     pub refresh: unsafe extern "C" fn(*mut PREngine, *mut PRRefreshInfo) -> bool,
     pub blocks: unsafe extern "C" fn(*mut PREngine, *const c_char, *mut usize) -> *mut PRBlock,
     pub blocks_free: unsafe extern "C" fn(*mut PRBlock, usize),
-    pub render:
-        unsafe extern "C" fn(*mut PREngine, *const c_char, u32, u32, f64) -> *mut PRRenderResult,
+    pub render: unsafe extern "C" fn(
+        *mut PREngine,
+        *const c_char,
+        u32,
+        u32,
+        f64,
+        *const PRRenderOptions,
+    ) -> *mut PRRenderResult,
     pub result_free: unsafe extern "C" fn(*mut PRRenderResult),
     pub cache_stats: unsafe extern "C" fn(*mut PREngine) -> CacheStats,
     pub last_error: unsafe extern "C" fn(*mut PREngine) -> *mut c_char,
@@ -330,24 +356,33 @@ fn error_result(message: &str) -> ResultBox {
             height: 0.0,
             baseline: 0.0,
             ink: Rect::default(),
+            drawn: Rect::default(),
             glyphs: std::ptr::null(),
             glyph_count: 0,
+            bitmap: std::ptr::null(),
+            bitmap_length: 0,
+            bitmap_row_bytes: 0,
+            bitmap_width: 0,
+            bitmap_height: 0,
             cached: false,
         },
         rendered: None,
         glyphs: Vec::new(),
+        bitmap: None,
         error: Some(error),
     }
 }
 
 /// # Safety
-/// `engine` must be null or live; `path` null or NUL-terminated.
+/// `engine` must be null or live; `path` null or NUL-terminated; `options`
+/// null or readable.
 unsafe extern "C" fn render(
     engine: *mut PREngine,
     path: *const c_char,
     start: u32,
     end: u32,
     width_pt: f64,
+    options: *const PRRenderOptions,
 ) -> *mut PRRenderResult {
     let boxed = guarded(
         || error_result("the render panicked"),
@@ -360,9 +395,33 @@ unsafe extern "C" fn render(
             let Some(path) = (unsafe { c_str(path) }) else {
                 return error_result("the path must be a UTF-8 string");
             };
-            match engine.render(Path::new(path), start as usize, end as usize, width_pt) {
-                Ok(render) => {
+            // SAFETY: `options` is null or readable.
+            let options = unsafe { options.as_ref() }.copied().unwrap_or_default();
+            let options = RenderOptions {
+                text_color: options.use_text_color.then_some(options.text_color),
+                bitmap_scale: options.bitmap_scale,
+            };
+            let rendered = engine.render_with(
+                Path::new(path),
+                start as usize,
+                end as usize,
+                width_pt,
+                &options,
+            );
+            match rendered {
+                Ok(mut render) => {
                     let r = &render.rendered;
+                    let bitmap = render.bitmap.take();
+                    let (pixels, length, row_bytes, width, height) = match &bitmap {
+                        Some(b) => (
+                            b.data.as_ptr(),
+                            b.data.len(),
+                            b.row_bytes,
+                            b.width,
+                            b.height,
+                        ),
+                        None => (std::ptr::null(), 0, 0, 0, 0),
+                    };
                     ResultBox {
                         result: PRRenderResult {
                             error: std::ptr::null(),
@@ -372,16 +431,23 @@ unsafe extern "C" fn render(
                             height: r.height,
                             baseline: r.baseline,
                             ink: r.ink,
+                            drawn: r.drawn,
                             glyphs: if render.glyphs.is_empty() {
                                 std::ptr::null()
                             } else {
                                 render.glyphs.as_ptr()
                             },
                             glyph_count: render.glyphs.len(),
+                            bitmap: pixels,
+                            bitmap_length: length,
+                            bitmap_row_bytes: row_bytes,
+                            bitmap_width: width,
+                            bitmap_height: height,
                             cached: render.cached,
                         },
                         rendered: Some(render.rendered.clone()),
                         glyphs: render.glyphs,
+                        bitmap,
                         error: None,
                     }
                 }
@@ -438,6 +504,7 @@ static API: PRRenderAPI = PRRenderAPI {
     result_size: std::mem::size_of::<PRRenderResult>() as u32,
     refresh_size: std::mem::size_of::<PRRefreshInfo>() as u32,
     stats_size: std::mem::size_of::<CacheStats>() as u32,
+    options_size: std::mem::size_of::<PRRenderOptions>() as u32,
     engine_create,
     engine_free,
     set_text,

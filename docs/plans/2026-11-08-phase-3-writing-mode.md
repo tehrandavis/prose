@@ -270,3 +270,10 @@ Test block: a paragraph of three source lines starting at offset 17 (lines start
 2. **Large blocks stay source.** A block of more than 400 source lines stays source in version one. SICP's index (about 10,500 lines) otherwise breaks the 5,000-paragraph gate.
 3. **Swaps change fragment state.** Each fragment reads its block's state (rendered, source, pill), and `invalidateLayout(for:)` swaps it. Step D checks drawing for this method first. `recordEditAction(in:newTextRange:)` on the block's range is the backup.
 4. **Drag tests.** Acceptance test 3 is split as written above: Prose handles drags that start in rendered blocks, and tests drive them directly; drags that start in source stay with AppKit.
+
+## Step B outcome (2026-11-08)
+
+- ABI version 2. `blocks` covers the whole file with five new kinds: `context`, `include`, `raw`, `list` and `comment`. A loose list stays one block, as Typst groups it, so numbering matches the full document.
+- `render` takes options: a default text colour and a bitmap scale. Bitmaps are premultiplied RGBA8, built from the cached vector result after the engine lock is released, and are not cached in the engine; the editor keeps the images it draws. Pages are transparent, and the drawn area covers hanging punctuation.
+- SICP: 3,651 blocks, 0 failures. Rasterizing at scale 2.6 takes 0.69 ms median, 4.2 ms p95 and 84 ms at most (the index table). The executable grew by 1.6 MB.
+- Known limits for step D: the text colour does not change default strokes (table rules stay black in dark appearance), and selection drawing should use the union of the drawn area and the glyph boxes.

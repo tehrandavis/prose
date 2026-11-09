@@ -5,7 +5,9 @@
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use prose_render::{Engine, Options};
+use std::path::Path;
+
+use prose_render::{BlockRange, Engine, Options};
 
 /// A project folder that is removed when dropped.
 pub struct Project {
@@ -58,4 +60,14 @@ pub fn utf16_index(text: &str, needle: &str) -> usize {
 pub fn utf16_slice(text: &str, start: usize, end: usize) -> String {
     let units: Vec<u16> = text.encode_utf16().collect();
     String::from_utf16(&units[start..end]).unwrap()
+}
+
+/// The blocks of a file that render: not context, include or comment blocks.
+pub fn rendering_blocks(engine: &Engine, path: &Path) -> Vec<BlockRange> {
+    engine
+        .blocks(path)
+        .unwrap()
+        .into_iter()
+        .filter(|b| b.kind.renders())
+        .collect()
 }

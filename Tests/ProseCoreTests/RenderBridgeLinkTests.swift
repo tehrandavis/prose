@@ -12,16 +12,20 @@ struct RenderBridgeLinkTests {
         #expect(Int(api.result_size) == MemoryLayout<PRRenderResult>.size)
         #expect(Int(api.refresh_size) == MemoryLayout<PRRefreshInfo>.size)
         #expect(Int(api.stats_size) == MemoryLayout<PRCacheStats>.size)
+        #expect(Int(api.options_size) == MemoryLayout<PRRenderOptions>.size)
+        #expect(MemoryLayout<PRRenderResult>.size == 168 && MemoryLayout<PRRenderOptions>.size == 16)
     }
 
     @Test func callsWithoutAnEngineFailSafely() throws {
         let api = prose_render_api().pointee
         let stats = api.cache_stats(nil)
         #expect(stats.entries == 0 && stats.bytes == 0 && stats.hits == 0 && stats.misses == 0)
-        let result = api.render(nil, "main.typ", 0, 1, 300)
+        var options = PRRenderOptions()
+        options.bitmap_scale = 2
+        let result = api.render(nil, "main.typ", 0, 1, 300, &options)
         defer { api.result_free(result) }
         let error = try #require(result.pointee.error)
         #expect(!String(cString: error).isEmpty)
-        #expect(result.pointee.svg == nil && result.pointee.glyph_count == 0)
+        #expect(result.pointee.svg == nil && result.pointee.glyph_count == 0 && result.pointee.bitmap == nil)
     }
 }

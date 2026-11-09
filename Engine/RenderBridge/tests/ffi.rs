@@ -6,7 +6,8 @@ use std::ffi::{CStr, CString};
 
 use common::{utf16_index, Project};
 use prose_render::ffi::{
-    prose_render_api, PRBlock, PRRefreshInfo, PRRenderAPI, PRRenderResult, ABI_VERSION,
+    prose_render_api, PRBlock, PRRefreshInfo, PRRenderAPI, PRRenderOptions, PRRenderResult,
+    ABI_VERSION,
 };
 use prose_render::{CacheStats, GlyphBox, Rect};
 
@@ -42,15 +43,29 @@ fn the_table_reports_its_version_and_sizes() {
         std::mem::size_of::<PRRefreshInfo>()
     );
     assert_eq!(api.stats_size as usize, std::mem::size_of::<CacheStats>());
+    assert_eq!(
+        api.options_size as usize,
+        std::mem::size_of::<PRRenderOptions>()
+    );
     // The C layouts in ProseRender.h, on a 64-bit target.
     assert_eq!(std::mem::size_of::<PRBlock>(), 12);
     assert_eq!(std::mem::size_of::<GlyphBox>(), 20);
     assert_eq!(std::mem::size_of::<Rect>(), 32);
     assert_eq!(std::mem::size_of::<PRRefreshInfo>(), 28);
     assert_eq!(std::mem::size_of::<CacheStats>(), 40);
-    assert_eq!(std::mem::size_of::<PRRenderResult>(), 104);
+    assert_eq!(std::mem::size_of::<PRRenderResult>(), 168);
     assert_eq!(std::mem::offset_of!(PRRenderResult, ink), 48);
-    assert_eq!(std::mem::offset_of!(PRRenderResult, cached), 96);
+    assert_eq!(std::mem::offset_of!(PRRenderResult, drawn), 80);
+    assert_eq!(std::mem::offset_of!(PRRenderResult, glyphs), 112);
+    assert_eq!(std::mem::offset_of!(PRRenderResult, bitmap), 128);
+    assert_eq!(std::mem::offset_of!(PRRenderResult, bitmap_width), 152);
+    assert_eq!(std::mem::offset_of!(PRRenderResult, cached), 160);
+    assert_eq!(std::mem::size_of::<PRRenderOptions>(), 16);
+    assert_eq!(std::mem::offset_of!(PRRenderOptions, text_color), 1);
+    assert_eq!(std::mem::offset_of!(PRRenderOptions, bitmap_scale), 8);
+    assert_eq!(std::mem::offset_of!(PRRenderAPI, options_size), 24);
+    assert_eq!(std::mem::offset_of!(PRRenderAPI, engine_create), 32);
+    assert_eq!(std::mem::size_of::<PRRenderAPI>(), 120);
 }
 
 #[test]
@@ -103,14 +118,24 @@ fn a_round_trip_through_the_c_abi() {
         let mut count = 0usize;
         let blocks = (api.blocks)(engine, path.as_ptr(), &mut count);
         assert!(!blocks.is_null());
-        assert_eq!(count, 3);
+        assert_eq!(count, 4);
         let list = std::slice::from_raw_parts(blocks, count).to_vec();
         (api.blocks_free)(blocks, count);
-        assert_eq!(list.iter().map(|b| b.kind).collect::<Vec<_>>(), [1, 3, 1]);
-        assert_eq!(list[1].start as usize, utf16_index(text, "See"));
+        assert_eq!(
+            list.iter().map(|b| b.kind).collect::<Vec<_>>(),
+            [4, 1, 3, 1]
+        );
+        assert_eq!(list[2].start as usize, utf16_index(text, "See"));
 
-        let paragraph = list[1];
-        let result = (api.render)(engine, path.as_ptr(), paragraph.start, paragraph.end, 300.0);
+        let paragraph = list[2];
+        let result = (api.render)(
+            engine,
+            path.as_ptr(),
+            paragraph.start,
+            paragraph.end,
+            300.0,
+            std::ptr::null(),
+        );
         let r: &PRRenderResult = &*result;
         assert!(r.error.is_null());
         assert!(!r.cached);
@@ -119,6 +144,8 @@ fn a_round_trip_through_the_c_abi() {
         assert_eq!(r.width, 300.0);
         assert!(r.height > 0.0 && r.baseline > 0.0 && r.baseline < r.height);
         assert!(r.ink.width > 0.0 && r.ink.height > 0.0);
+        assert!(r.drawn.x <= 0.0 && r.drawn.width >= r.width);
+        assert!(r.bitmap.is_null() && r.bitmap_width == 0 && r.bitmap_length == 0);
         let glyphs = std::slice::from_raw_parts(r.glyphs, r.glyph_count);
         let kanji = utf16_index(text, "漢字") as i32;
         assert!(glyphs.iter().any(|g| g.source == kanji));
@@ -130,15 +157,53 @@ fn a_round_trip_through_the_c_abi() {
             || (paragraph.start as i32..paragraph.end as i32).contains(&g.source)));
         (api.result_free)(result);
 
-        let again = (api.render)(engine, path.as_ptr(), paragraph.start, paragraph.end, 300.0);
-        assert!((*again).cached);
+        // Options: a bitmap from the cached vector result.
+        let options = PRRenderOptions {
+            use_text_color: false,
+            text_color: [0; 4],
+            bitmap_scale: 2.0,
+        };
+        let again = (api.render)(
+            engine,
+            path.as_ptr(),
+            paragraph.start,
+            paragraph.end,
+            300.0,
+            &options,
+        );
+        let a: &PRRenderResult = &*again;
+        assert!(a.error.is_null() && a.cached);
+        assert_eq!(a.bitmap_width, (a.drawn.width * 2.0).ceil() as u32);
+        assert_eq!(a.bitmap_height, (a.drawn.height * 2.0).ceil() as u32);
+        assert_eq!(a.bitmap_row_bytes, a.bitmap_width as usize * 4);
+        assert_eq!(
+            a.bitmap_length,
+            a.bitmap_row_bytes * a.bitmap_height as usize
+        );
+        let pixels = std::slice::from_raw_parts(a.bitmap, a.bitmap_length);
+        assert!(pixels.chunks(4).any(|p| p[3] >= 250), "ink is opaque");
         (api.result_free)(again);
+        // A scale out of range is an error result.
+        let options = PRRenderOptions {
+            bitmap_scale: -1.0,
+            ..options
+        };
+        let bad = (api.render)(
+            engine,
+            path.as_ptr(),
+            paragraph.start,
+            paragraph.end,
+            300.0,
+            &options,
+        );
+        assert!(!(*bad).error.is_null() && (*bad).bitmap.is_null());
+        (api.result_free)(bad);
         let stats = (api.cache_stats)(engine);
         assert_eq!((stats.entries, stats.hits, stats.misses), (1, 1, 1));
         assert_eq!(stats.budget, 64 * 1024 * 1024);
 
         // Errors come back as results and as last_error.
-        let bad = (api.render)(engine, path.as_ptr(), 5, 2, 300.0);
+        let bad = (api.render)(engine, path.as_ptr(), 5, 2, 300.0, std::ptr::null());
         assert!(!(*bad).error.is_null());
         assert!((*bad).svg.is_null() && (*bad).glyph_count == 0);
         let message = CStr::from_ptr((*bad).error).to_string_lossy().into_owned();
@@ -192,7 +257,7 @@ fn null_and_invalid_arguments_fail_safely() {
         let mut count = 3;
         assert!((api.blocks)(null, main.as_ptr(), &mut count).is_null());
         assert_eq!(count, 0);
-        let result = (api.render)(null, main.as_ptr(), 0, 1, 300.0);
+        let result = (api.render)(null, main.as_ptr(), 0, 1, 300.0, std::ptr::null());
         assert!(!(*result).error.is_null());
         (api.result_free)(result);
         assert_eq!((api.cache_stats)(null), CacheStats::default());

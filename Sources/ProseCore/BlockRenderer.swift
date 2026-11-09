@@ -31,18 +31,94 @@ public struct RenderRefresh: Equatable, Sendable {
     public let message: String?
 }
 
-/// One top-level block of a file: a UTF-16 range (`NSRange`) and its kind.
-/// Context lines (`#set`, `#show`, `#let`, `#import`) and `#include` lines are
-/// not blocks.
+/// One top-level block of a file: a UTF-16 range (`NSRange`) and its kind. The
+/// blocks of a file are in order, do not overlap, and cover every character
+/// that is not whitespace between them; a block ends at its last character
+/// that is not whitespace.
 public struct RenderBlock: Equatable, Sendable {
     public enum Kind: Sendable {
         case heading
+        /// A display equation (`$ x $`).
         case equation
         case paragraph
+        /// A `#set`, `#show`, `#let` or `#import` line, with a comment on the
+        /// same line. Its text is the context of every later block. Drawn as a
+        /// pill, not rendered.
+        case context
+        /// An `#include` line. Drawn as a pill, not rendered.
+        case include
+        /// A single fenced raw block. It renders, though Writing mode shows it
+        /// as source.
+        case raw
+        /// Only bullet, numbered and term list items.
+        case list
+        /// Only comments. Drawn as a muted pill, not rendered.
+        case comment
+
+        /// Whether blocks of this kind are drawn from a render. Context,
+        /// include and comment blocks are pills.
+        public var renders: Bool {
+            switch self {
+            case .context, .include, .comment: false
+            case .heading, .equation, .paragraph, .raw, .list: true
+            }
+        }
     }
 
     public let range: NSRange
     public let kind: Kind
+}
+
+/// A colour in sRGB, components from 0 to 1, alpha not premultiplied.
+public struct RenderColor: Equatable, Sendable {
+    public let red: Double
+    public let green: Double
+    public let blue: Double
+    public let alpha: Double
+
+    public init(red: Double, green: Double, blue: Double, alpha: Double = 1) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+        self.alpha = alpha
+    }
+
+    /// The colour converted to sRGB, or nil if it cannot be (a pattern).
+    public init?(_ color: CGColor) {
+        guard let srgb = CGColorSpace(name: CGColorSpace.sRGB),
+              let converted = color.converted(to: srgb, intent: .defaultIntent, options: nil),
+              let components = converted.components, components.count == 4
+        else {
+            return nil
+        }
+        self.init(red: components[0], green: components[1], blue: components[2], alpha: components[3])
+    }
+
+    /// The components as bytes, rounded and clamped, for the engine.
+    var bytes: (UInt8, UInt8, UInt8, UInt8) {
+        func byte(_ value: Double) -> UInt8 {
+            UInt8((min(max(value.isNaN ? 0 : value, 0), 1) * 255).rounded())
+        }
+        return (byte(red), byte(green), byte(blue), byte(alpha))
+    }
+}
+
+/// How to render a block.
+public struct RenderOptions: Equatable, Sendable {
+    /// A default text colour, set before the document's own rules, so a
+    /// document that sets its own colour keeps it. Part of the cache key.
+    public var textColor: RenderColor?
+    /// Pixels per point for `RenderedBlock.bitmap`; 0 means no bitmap. At most
+    /// `maximumBitmapScale`. Bitmaps are made from the cached vector result on
+    /// every call that asks for one; the engine does not cache them.
+    public var bitmapScale: Double
+
+    public static let maximumBitmapScale = PR_MAX_BITMAP_SCALE
+
+    public init(textColor: RenderColor? = nil, bitmapScale: Double = 0) {
+        self.textColor = textColor
+        self.bitmapScale = bitmapScale
+    }
 }
 
 /// One glyph's box, in points from the block's top-left corner, y pointing down.
@@ -55,7 +131,7 @@ public struct RenderedGlyph: Equatable, Sendable {
 
 /// A typeset block. Geometry is in points from the block's top-left corner.
 public struct RenderedBlock: Equatable, Sendable {
-    /// SVG, UTF-8.
+    /// SVG of `drawnRect`, UTF-8. Transparent outside ink.
     public let svg: Data
     /// The block's page: the measure wide, as tall as its content plus a small margin.
     public let size: CGSize
@@ -63,8 +139,17 @@ public struct RenderedBlock: Equatable, Sendable {
     public let baseline: Double
     /// The bounds of everything drawn.
     public let ink: CGRect
+    /// What `svg` and `bitmap` cover: the page and the ink, which can pass the
+    /// page's edges where punctuation hangs. Its origin is zero or negative.
+    /// Draw the image into this rectangle and the glyphs line up with it.
+    public let drawnRect: CGRect
     public let glyphs: [RenderedGlyph]
-    /// Whether the result came from the engine's cache.
+    /// `drawnRect` at the options' bitmap scale (pixel size rounded up; the part
+    /// of a pixel past the rectangle is transparent), premultiplied RGBA in
+    /// sRGB. Nil when no bitmap was asked for or it would be larger than 32 Mi
+    /// pixels. Immutable, so safe to share across threads.
+    public let bitmap: CGImage?
+    /// Whether the vector result came from the engine's cache.
     public let cached: Bool
 }
 
@@ -149,6 +234,7 @@ public actor BlockRenderer {
             && Int(api.result_size) == MemoryLayout<PRRenderResult>.size
             && Int(api.refresh_size) == MemoryLayout<PRRefreshInfo>.size
             && Int(api.stats_size) == MemoryLayout<PRCacheStats>.size
+            && Int(api.options_size) == MemoryLayout<PRRenderOptions>.size
     }
 
     /// The app's bundled packages, the editor's package cache when given (the
@@ -215,6 +301,11 @@ public actor BlockRenderer {
             let kind: RenderBlock.Kind = switch block.kind {
             case PR_BLOCK_HEADING: .heading
             case PR_BLOCK_EQUATION: .equation
+            case PR_BLOCK_CONTEXT: .context
+            case PR_BLOCK_INCLUDE: .include
+            case PR_BLOCK_RAW: .raw
+            case PR_BLOCK_LIST: .list
+            case PR_BLOCK_COMMENT: .comment
             default: .paragraph
             }
             return RenderBlock(
@@ -225,21 +316,39 @@ public actor BlockRenderer {
     }
 
     /// Renders UTF-16 `range` of a file, `width` points wide, with the file's
-    /// current text and the last refreshed context. Usually a range from
-    /// `blocks(in:)`. Results are cached.
+    /// current text and the last refreshed context, with no text colour and no
+    /// bitmap. Usually a range from `blocks(in:)`. Results are cached.
     public func render(_ range: NSRange, in file: URL, width: Double) -> Result<RenderedBlock, BlockRendererError> {
+        render(range, in: file, width: width, options: RenderOptions())
+    }
+
+    /// Renders UTF-16 `range` of a file with options: a default text colour and
+    /// a bitmap scale. The bitmap is built here, off the main thread.
+    public func render(
+        _ range: NSRange,
+        in file: URL,
+        width: Double,
+        options: RenderOptions,
+    ) -> Result<RenderedBlock, BlockRendererError> {
         let limit = Int(UInt32.max)
         guard range.location >= 0, range.length >= 0, range.location <= limit,
               range.length <= limit - range.location
         else {
             return .failure(BlockRendererError("The range \(range) is outside any file."))
         }
+        var rawOptions = PRRenderOptions()
+        if let color = options.textColor {
+            rawOptions.use_text_color = true
+            rawOptions.text_color = color.bytes
+        }
+        rawOptions.bitmap_scale = options.bitmapScale
         let raw = engine.api.pointee.render(
             engine.pointer,
             file.path,
             UInt32(range.location),
             UInt32(NSMaxRange(range)),
             width,
+            &rawOptions,
         )
         defer { engine.api.pointee.result_free(raw) }
         let result = raw.pointee
@@ -261,10 +370,35 @@ public actor BlockRenderer {
             svg: result.svg.map { Data(bytes: $0, count: result.svg_length) } ?? Data(),
             size: CGSize(width: result.width, height: result.height),
             baseline: result.baseline,
-            ink: CGRect(x: result.ink.x, y: result.ink.y, width: result.ink.width, height: result.ink.height),
+            ink: CGRect(result.ink),
+            drawnRect: CGRect(result.drawn),
             glyphs: glyphs,
+            bitmap: Self.image(result),
             cached: result.cached,
         ))
+    }
+
+    /// The result's bitmap as an image that owns a copy of its pixels.
+    private static func image(_ result: PRRenderResult) -> CGImage? {
+        guard let pixels = result.bitmap, result.bitmap_width > 0, result.bitmap_height > 0,
+              let provider = CGDataProvider(data: Data(bytes: pixels, count: result.bitmap_length) as CFData),
+              let srgb = CGColorSpace(name: CGColorSpace.sRGB)
+        else {
+            return nil
+        }
+        return CGImage(
+            width: Int(result.bitmap_width),
+            height: Int(result.bitmap_height),
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            bytesPerRow: result.bitmap_row_bytes,
+            space: srgb,
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+            provider: provider,
+            decode: nil,
+            shouldInterpolate: true,
+            intent: .defaultIntent,
+        )
     }
 
     public func cacheStats() -> RenderCacheStats {
@@ -285,6 +419,12 @@ public actor BlockRenderer {
         }
         defer { engine.api.pointee.string_free(raw) }
         return BlockRendererError(String(cString: raw))
+    }
+}
+
+private extension CGRect {
+    init(_ rect: PRRect) {
+        self.init(x: rect.x, y: rect.y, width: rect.width, height: rect.height)
     }
 }
 

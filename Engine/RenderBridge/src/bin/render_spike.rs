@@ -1,7 +1,12 @@
 //! Measures per-block rendering on a real document through the engine's
 //! Rust API. See docs/plans/2026-11-08-phase-2-engine-spike.md.
 //!
-//! render-spike <main.typ> [--width PT] [--sample N] [--budget MB] [--edits N] [--passes N] [--print] [--svg DIR]
+//! render-spike <main.typ> [--width PT] [--sample N] [--budget MB] [--edits N] [--passes N] [--print] [--svg DIR] [--raster] [--scale S]
+//!
+//! Blocks that do not render (context, `#include` and comment-only blocks)
+//! are counted and skipped. With `--raster`, each block's first render is
+//! also rasterized at `--scale` pixels per point (2.6 by default: Writing
+//! mode's 1.3 times on a 2x screen), and the rasterize times are reported.
 //!
 //! After a cold refresh, the main file gets `--edits` one-paragraph edits (2
 //! by default), each followed by a refresh. Each block is then rendered twice
@@ -119,6 +124,10 @@ fn main() {
     let edits: usize = option("--edits").and_then(|v| v.parse().ok()).unwrap_or(2);
     let passes: usize = option("--passes").and_then(|v| v.parse().ok()).unwrap_or(0);
     let print = args.iter().any(|a| a == "--print");
+    let raster = args.iter().any(|a| a == "--raster");
+    let scale: f64 = option("--scale")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(2.6);
     let svg_dir = option("--svg").map(PathBuf::from);
     let root = main_path.parent().unwrap().to_path_buf();
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -209,11 +218,23 @@ fn main() {
         }
     }
     let mut all = Vec::new();
+    let mut kinds: BTreeMap<String, usize> = BTreeMap::new();
     for (index, path) in files.iter().enumerate() {
         for block in engine.blocks(path).expect("blocks") {
-            all.push((index, block));
+            *kinds.entry(format!("{:?}", block.kind)).or_default() += 1;
+            if block.kind.renders() {
+                all.push((index, block));
+            }
         }
     }
+    println!(
+        "block kinds: {}",
+        kinds
+            .iter()
+            .map(|(kind, n)| format!("{n} {kind}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
     let step = (all.len() / sample.max(1)).max(1);
     let chosen: Vec<_> = all.iter().step_by(step).take(sample).collect();
     println!(
@@ -230,6 +251,10 @@ fn main() {
     let mut failures: BTreeMap<String, usize> = BTreeMap::new();
     let (mut text_glyphs, mut mapped, mut generated) = (0usize, 0usize, 0usize);
     let mut svg_bytes = 0usize;
+    let mut raster_times = Vec::new();
+    let mut raster_bytes = 0usize;
+    let mut raster_skipped = 0usize;
+    let mut hanging = 0usize;
     for (n, (index, block)) in chosen.iter().enumerate() {
         let path = &files[*index];
         let start = Instant::now();
@@ -252,6 +277,19 @@ fn main() {
                     .or_default()
                     .push(elapsed);
                 svg_bytes += rendered.svg.len();
+                if rendered.drawn.width > rendered.width || rendered.drawn.x < 0.0 {
+                    hanging += 1;
+                }
+                if raster {
+                    let start = Instant::now();
+                    match rendered.rasterize(scale) {
+                        Some(bitmap) => {
+                            raster_times.push(ms(start));
+                            raster_bytes += bitmap.data.len();
+                        }
+                        None => raster_skipped += 1,
+                    }
+                }
                 for glyph in &render.glyphs {
                     if glyph.source < 0 {
                         generated += 1;
@@ -309,6 +347,16 @@ fn main() {
         "svg: {:.1} KB per block on average",
         svg_bytes as f64 / 1024.0 / ok.max(1) as f64
     );
+    println!("drawn area wider than the page (hanging punctuation): {hanging} blocks");
+    if raster {
+        let made = raster_times.len();
+        summary(&format!("rasterize at {scale}"), &mut raster_times);
+        println!(
+            "bitmaps: {:.0} KB per block on average, {:.0} MB in all; {raster_skipped} over the pixel limit",
+            raster_bytes as f64 / 1024.0 / made.max(1) as f64,
+            raster_bytes as f64 / 1024.0 / 1024.0
+        );
+    }
 
     summary("block render, repeated (cache)", &mut repeats);
     let stats = engine.cache_stats();

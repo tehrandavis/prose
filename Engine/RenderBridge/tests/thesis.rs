@@ -21,6 +21,9 @@ fn blocks_render_alone_with_the_full_documents_numbers_and_references() {
     let mut shown = Vec::new();
     for path in [root.join("main.typ"), root.join("sections/method.typ")] {
         for block in engine.blocks(&path).unwrap() {
+            if !block.kind.renders() {
+                continue;
+            }
             let render = engine
                 .render(&path, block.start, block.end, 450.0)
                 .unwrap_or_else(|message| panic!("{:?}: {message}", block.kind));

@@ -23,19 +23,39 @@
 #pragma clang assume_nonnull begin
 
 // Increment whenever PRRenderAPI or any struct below changes.
-#define PR_RENDER_ABI_VERSION 1u
+#define PR_RENDER_ABI_VERSION 2u
 // PRGlyphBox.source for generated text: numbers, reference text, text from
 // other files.
 #define PR_NO_SOURCE (-1)
-// PRBlock.kind values.
+// PRBlock.kind values. Codes are never reused; new kinds are appended.
 #define PR_BLOCK_HEADING 1u
+// A display equation ($ x $ with a space or newline after the opening $).
 #define PR_BLOCK_EQUATION 2u
 #define PR_BLOCK_PARAGRAPH 3u
+// A #set, #show, #let or #import line, with a comment on the same line. Its
+// text is also the context of every later block's document. Not meant to be
+// rendered alone (it renders with no ink).
+#define PR_BLOCK_CONTEXT 4u
+// An #include line, with a comment on the same line. Not meant to be
+// rendered alone (it would render the whole included file).
+#define PR_BLOCK_INCLUDE 5u
+// A single fenced raw block (```), with an optional label.
+#define PR_BLOCK_RAW 6u
+// Only bullet (-), numbered (+, 1.) and term (/) list items.
+#define PR_BLOCK_LIST 7u
+// Only comments: nothing to render. The editor shows it as a pill.
+#define PR_BLOCK_COMMENT 8u
+// The largest PRRenderOptions.bitmap_scale render accepts.
+#define PR_MAX_BITMAP_SCALE 16.0
+// A bitmap with more pixels than this (128 MB) is not made; the result has
+// no bitmap but is otherwise complete. 1 << 25.
+#define PR_MAX_BITMAP_PIXELS 33554432u
 
 typedef struct PREngine PREngine;
 
-// One top-level block of a file. Context lines (#set, #show, #let, #import)
-// and #include lines are not blocks.
+// One top-level block of a file. The blocks of a file are in order, do not
+// overlap, and cover every character that is not whitespace between them. A
+// block ends at its last character that is not whitespace.
 typedef struct {
     uint32_t start;
     uint32_t end;
@@ -60,12 +80,28 @@ typedef struct {
     double height;
 } PRRect;
 
+// How to render one block. Pass NULL to render for options all zero.
+typedef struct {
+    // Whether text_color applies.
+    bool use_text_color;
+    // A default text colour: red, green, blue, alpha, 0 to 255, alpha not
+    // premultiplied. It is set before the document's own context lines, so a
+    // document that sets its own text colour keeps it. Part of the cache key.
+    uint8_t text_color[4];
+    // Pixels per point for a bitmap of the drawn area, at most
+    // PR_MAX_BITMAP_SCALE; 0 means no bitmap. Bitmaps are made on every call
+    // that asks for one, from the cached vector result, and are not cached
+    // themselves, so the scale is not part of the cache key.
+    double bitmap_scale;
+} PRRenderOptions;
+
 // One render. When error is non-NULL it is a NUL-terminated message (the
 // first Typst diagnostic, or why the call failed) and every other field is
 // zero or NULL. All pointers stay valid until result_free.
 typedef struct {
     const char *_Nullable error;
-    // SVG bytes, UTF-8, not NUL-terminated.
+    // SVG of the drawn area, UTF-8, not NUL-terminated. The page has no fill:
+    // everything outside ink is transparent.
     const uint8_t *_Nullable svg;
     size_t svg_length;
     // The block's page: the measure wide, as tall as its content plus a
@@ -76,9 +112,26 @@ typedef struct {
     double baseline;
     // The bounds of everything drawn, from the frames, not the page box.
     PRRect ink;
+    // What the SVG and the bitmap cover: the union of the page and the ink,
+    // in the same coordinates as everything else. Its x and y are 0 or
+    // negative, and it is wider or taller than the page when punctuation
+    // hangs past the page's edges. Draw the SVG or bitmap into this rectangle
+    // and glyph boxes, baseline and ink line up with it.
+    PRRect drawn;
     const PRGlyphBox *_Nullable glyphs;
     size_t glyph_count;
-    // Whether the result came from the cache.
+    // The drawn area rasterized at the options' bitmap_scale: premultiplied
+    // RGBA, 8 bits per channel, sRGB, rows from the top, pixel (0, 0) at the
+    // drawn area's top-left corner. bitmap_width and bitmap_height are the
+    // drawn area's size times the scale, rounded up; the fraction of a pixel
+    // past the drawn area is transparent. NULL when no bitmap was asked for or
+    // it would exceed PR_MAX_BITMAP_PIXELS.
+    const uint8_t *_Nullable bitmap;
+    size_t bitmap_length;
+    size_t bitmap_row_bytes;
+    uint32_t bitmap_width;
+    uint32_t bitmap_height;
+    // Whether the vector result came from the cache.
     bool cached;
 } PRRenderResult;
 
@@ -111,6 +164,7 @@ typedef struct {
     uint32_t result_size;
     uint32_t refresh_size;
     uint32_t stats_size;
+    uint32_t options_size;
     // Scans fonts (Typst's embedded fonts, system fonts, then font_dirs) and
     // opens the project. main is absolute or relative to root. Package
     // directories are read only; nothing is downloaded. Missing directories
@@ -134,16 +188,19 @@ typedef struct {
     // succeeded; a failed compile keeps the previous context. info may be
     // NULL. On failure last_error holds the first error's message.
     bool (*_Nonnull refresh)(PREngine *_Nullable engine, PRRefreshInfo *_Nullable info);
-    // The file's blocks in order, from its current text. Release with
-    // blocks_free. NULL on failure, with count set to 0.
+    // The file's blocks in order, from its current text: every top-level
+    // piece, context lines, #include lines and comments included. Release
+    // with blocks_free. NULL on failure, with count set to 0.
     PRBlock *_Nullable (*_Nonnull blocks)(PREngine *_Nullable engine, const char *_Nullable path,
                                           size_t *_Nullable count);
     void (*_Nonnull blocks_free)(PRBlock *_Nullable blocks, size_t count);
     // Renders UTF-16 [start, end) of a file, width_pt points wide, with the
     // file's current text and the last refreshed context. Usually a range
-    // from blocks. Cached. Never NULL; check error. Release with result_free.
+    // from blocks. options may be NULL. The vector result is cached. Never
+    // NULL; check error. Release with result_free.
     PRRenderResult *_Nonnull (*_Nonnull render)(PREngine *_Nullable engine, const char *_Nullable path,
-                                                uint32_t start, uint32_t end, double width_pt);
+                                                uint32_t start, uint32_t end, double width_pt,
+                                                const PRRenderOptions *_Nullable options);
     void (*_Nonnull result_free)(PRRenderResult *_Nullable result);
     // Cache counters, for tests and tuning. All zero for a NULL engine.
     PRCacheStats (*_Nonnull cache_stats)(PREngine *_Nullable engine);

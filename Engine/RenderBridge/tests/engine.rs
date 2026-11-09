@@ -3,13 +3,13 @@
 
 mod common;
 
-use common::{utf16_index, utf16_slice, Project};
+use common::{rendering_blocks, utf16_index, utf16_slice, Project};
 use prose_render::{BlockKind, Engine, Options};
 
 const NUMBERED: &str = "#set heading(numbering: \"1.\")\n#set text(size: 11pt)\n\n";
 
 #[test]
-fn blocks_exclude_context_lines() {
+fn context_and_include_lines_are_blocks_of_their_own() {
     let text = "#set text(size: 11pt)\n#let x = 1\n#import \"lib.typ\": f\n#show heading: set text(red)\n\n= Title\n\nA paragraph.\n#set par(justify: true)\nAnother.\n\n$ x + y $\n\n#include \"other.typ\"\n";
     let project = Project::new(&[
         ("main.typ", text),
@@ -20,23 +20,40 @@ fn blocks_exclude_context_lines() {
     let blocks = engine.blocks(&project.path("main.typ")).unwrap();
     let shown: Vec<(String, BlockKind)> = blocks
         .iter()
-        .map(|b| (utf16_slice(text, b.start, b.end).trim().to_string(), b.kind))
+        .map(|b| (utf16_slice(text, b.start, b.end), b.kind))
         .collect();
+    let expected = [
+        ("#set text(size: 11pt)", BlockKind::Context),
+        ("#let x = 1", BlockKind::Context),
+        ("#import \"lib.typ\": f", BlockKind::Context),
+        ("#show heading: set text(red)", BlockKind::Context),
+        ("= Title", BlockKind::Heading),
+        ("A paragraph.", BlockKind::Paragraph),
+        ("#set par(justify: true)", BlockKind::Context),
+        ("Another.", BlockKind::Paragraph),
+        ("$ x + y $", BlockKind::Equation),
+        ("#include \"other.typ\"", BlockKind::Include),
+    ];
     assert_eq!(
         shown,
-        vec![
-            ("= Title".to_string(), BlockKind::Heading),
-            ("A paragraph.".to_string(), BlockKind::Paragraph),
-            ("Another.".to_string(), BlockKind::Paragraph),
-            ("$ x + y $".to_string(), BlockKind::Equation),
-        ]
+        expected
+            .iter()
+            .map(|(t, k)| (t.to_string(), *k))
+            .collect::<Vec<_>>()
     );
-    for block in &blocks {
+    // Context blocks are the context, and render with no ink; no rendering
+    // block holds a context line.
+    for block in blocks.iter().filter(|b| b.kind.renders()) {
         let body = utf16_slice(text, block.start, block.end);
         for line in ["#set", "#let", "#import", "#show", "#include"] {
             assert!(!body.contains(line), "{body:?} holds a context line");
         }
     }
+    let path = project.path("main.typ");
+    let first = engine
+        .render(&path, blocks[0].start, blocks[0].end, 300.0)
+        .unwrap();
+    assert!(first.glyphs.is_empty());
 }
 
 #[test]
@@ -107,7 +124,7 @@ fn geometry_reports_ink_and_first_baseline() {
     let project = Project::new(&[("main.typ", "#set text(size: 11pt)\n\nA line of text\nthat wraps onto a second line because the measure is narrow.\n")]);
     let engine = project.engine();
     let path = project.path("main.typ");
-    let block = engine.blocks(&path).unwrap()[0];
+    let block = rendering_blocks(&engine, &path)[0];
     let render = engine.render(&path, block.start, block.end, 120.0).unwrap();
     let r = &render.rendered;
     assert_eq!(r.width, 120.0);
@@ -142,7 +159,7 @@ fn cache_hits_on_identical_render_and_misses_after_a_change() {
     let engine = project.engine();
     assert!(engine.refresh().ok);
     let path = project.path("main.typ");
-    let block = engine.blocks(&path).unwrap()[1];
+    let block = rendering_blocks(&engine, &path)[1];
 
     let first = engine.render(&path, block.start, block.end, 300.0).unwrap();
     assert!(!first.cached);
@@ -163,7 +180,7 @@ fn cache_hits_on_identical_render_and_misses_after_a_change() {
     // Changing the block is another key.
     let edited = text.replace("A first paragraph.", "A changed paragraph.");
     engine.set_text(&path, &edited).unwrap();
-    let block = engine.blocks(&path).unwrap()[1];
+    let block = rendering_blocks(&engine, &path)[1];
     let changed = engine.render(&path, block.start, block.end, 300.0).unwrap();
     assert!(!changed.cached);
     assert!(changed.rendered.text.contains("changed"));
@@ -171,7 +188,7 @@ fn cache_hits_on_identical_render_and_misses_after_a_change() {
     // cache entry, alone.
     let typed = edited.replace("= One", "= One more");
     engine.set_text(&path, &typed).unwrap();
-    let block = engine.blocks(&path).unwrap()[1];
+    let block = rendering_blocks(&engine, &path)[1];
     assert!(
         engine
             .render(&path, block.start, block.end, 300.0)
@@ -221,7 +238,7 @@ fn cache_checks_imported_files() {
     ]);
     let engine = project.engine();
     let path = project.path("main.typ");
-    let block = engine.blocks(&path).unwrap()[0];
+    let block = rendering_blocks(&engine, &path)[0];
     assert!(engine
         .render(&path, block.start, block.end, 300.0)
         .unwrap()
@@ -282,7 +299,7 @@ fn render_keeps_the_old_context_when_a_refresh_fails() {
         "the old context is kept"
     );
 
-    let blocks = engine.blocks(&path).unwrap();
+    let blocks = rendering_blocks(&engine, &path);
     let shown: Vec<String> = blocks
         .iter()
         .filter(|b| !utf16_slice(&broken, b.start, b.end).contains("unknown"))
@@ -394,7 +411,7 @@ fn renders_and_refreshes_stay_correct_across_memo_evictions() {
     let engine = Engine::new(options).unwrap();
     let path = project.path("main.typ");
     assert!(engine.refresh().ok);
-    let blocks = engine.blocks(&path).unwrap();
+    let blocks = rendering_blocks(&engine, &path);
     assert_eq!(blocks.len(), 301);
     for (round, width) in [300.0, 280.0].into_iter().enumerate() {
         for (n, block) in blocks.iter().skip(1).enumerate() {

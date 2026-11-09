@@ -1,8 +1,10 @@
 //! Per-block Typst rendering for Prose's Writing mode (spec Section 5.2).
 //!
 //! Swift asks for any top-level block of the open document and gets back a
-//! typeset fragment: SVG, its size, its first baseline, its ink bounds, and a
-//! box for each glyph with the UTF-16 offset in the file it came from.
+//! typeset fragment: SVG, its size, its first baseline, its ink bounds, the
+//! drawn area (the page and any hanging punctuation), a box for each glyph
+//! with the UTF-16 offset in the file it came from, and on request a bitmap
+//! of the drawn area. The page is transparent.
 //!
 //! How a block renders alone, as the Phase 2 spike established
 //! (`docs/plans/2026-11-08-phase-2-engine-spike.md`):
@@ -11,9 +13,9 @@
 //!   file. The probe records every heading's and equation's counter value,
 //!   and each reference's displayed text is read from the link rectangles of
 //!   the full layout. A failed compile keeps the previous context.
-//! - `render` builds a block document: the context lines (`#set`, `#show`,
-//!   `#let`, `#import`), a page as wide as the measure, counter updates, a
-//!   `metadata` stub and a `show ref.where(target:)` rule for each outside
+//! - `render` builds a block document: an optional default text colour, the
+//!   context lines (`#set`, `#show`, `#let`, `#import`), a transparent page
+//!   as wide as the measure, counter updates, a `metadata` stub and a `show ref.where(target:)` rule for each outside
 //!   label, an invisible `#metadata(none)` anchor, then the block's text.
 //!   Results are cached by a hash of that document and the width.
 //!
@@ -30,13 +32,17 @@ mod engine;
 pub mod ffi;
 mod geometry;
 mod outline;
+mod raster;
 mod world;
 
 pub use cache::{CacheStats, DEFAULT_BUDGET};
 pub use context::PROBE;
-pub use engine::{BlockRange, Engine, Options, RefreshInfo, Render, Rendered};
+pub use engine::{
+    BlockRange, Engine, Options, RefreshInfo, Render, RenderOptions, Rendered, MAX_BITMAP_SCALE,
+};
 pub use geometry::{GlyphBox, Rect};
 pub use outline::{split, Block, BlockKind, Outline};
+pub use raster::{Bitmap, MAX_BITMAP_PIXELS};
 
 /// The syntax bridge's C function table, linked into this library. Two Rust
 /// static libraries in one binary duplicate the standard library's symbols,

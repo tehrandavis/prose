@@ -13,12 +13,13 @@ use typst::{Library, LibraryExt};
 use typst_kit::files::{FileStore, FsRoot};
 use typst_kit::fonts::{self, FontStore};
 use typst_kit::packages::FsPackages;
-use typst_layout::PagedDocument;
+use typst_layout::{Page, PagedDocument};
 
 use crate::cache::{Cache, CacheStats, Dependencies};
 use crate::context::{block_document, reference_texts, BlockInputs, Counters, Shift, PROBE};
 use crate::geometry::{first_baseline, walk, GlyphBounds, GlyphBox, Rect};
 use crate::outline::{split_tree, BlockKind, Outline};
+use crate::raster::{drawn_page, frame_bytes, rasterize, Bitmap};
 use crate::world::{Loader, Shared, View};
 
 /// How many evictions memoized Typst work (comemo) survives unused.
@@ -85,6 +86,23 @@ pub struct RefreshInfo {
     pub message: Option<String>,
 }
 
+/// How to render one block.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct RenderOptions {
+    /// A default text colour, straight RGBA from 0 to 255. It is set before
+    /// the document's own context lines, so a document that sets its own
+    /// colour keeps it. It is part of the block document, so part of the
+    /// cache key.
+    pub text_color: Option<[u8; 4]>,
+    /// Pixels per point for a bitmap of the drawn area; 0 means no bitmap.
+    /// Bitmaps are not cached (see `Engine::render_with`), so the scale is not
+    /// part of the cache key.
+    pub bitmap_scale: f64,
+}
+
+/// The largest bitmap scale `render` accepts.
+pub const MAX_BITMAP_SCALE: f64 = 16.0;
+
 /// A block as a UTF-16 range of its file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BlockRange {
@@ -97,13 +115,23 @@ pub struct BlockRange {
 /// corner.
 #[derive(Debug, Clone)]
 pub struct Rendered {
+    /// SVG of the drawn area.
     pub svg: String,
+    /// The block's page: the measure wide, as tall as its content plus the
+    /// margins.
     pub width: f64,
     pub height: f64,
     /// The first line's baseline, from the top.
     pub baseline: f64,
     /// The bounds of everything drawn, from the frames.
     pub ink: Rect,
+    /// What the SVG and the bitmap cover: the union of the page and the ink.
+    /// Its origin is at or above and left of the block's top-left corner, when
+    /// punctuation hangs past the page.
+    pub drawn: Rect,
+    /// A page covering the drawn area, kept so a cached block can be
+    /// rasterized without compiling again.
+    pub page: Page,
     /// Glyph boxes with `source` relative to the block's start, or -1, so the
     /// same block document at another place in the file can share the entry.
     /// `Render::glyphs` has the offsets in the file.
@@ -120,6 +148,17 @@ impl Rendered {
             + self.svg.len()
             + self.text.len()
             + self.relative_glyphs.len() * std::mem::size_of::<GlyphBox>()
+            + frame_bytes(&self.page.frame)
+    }
+
+    /// The drawn area as a bitmap at `scale` pixels per point, or None if the
+    /// scale is not positive or the bitmap would have more than
+    /// `MAX_BITMAP_PIXELS` pixels.
+    pub fn rasterize(&self, scale: f64) -> Option<Bitmap> {
+        if !(scale.is_finite() && scale > 0.0) {
+            return None;
+        }
+        rasterize(&self.page, self.drawn, scale)
     }
 }
 
@@ -131,6 +170,9 @@ pub struct Render {
     /// generated text.
     pub glyphs: Vec<GlyphBox>,
     pub cached: bool,
+    /// The drawn area rasterized, when the options asked for a bitmap and it
+    /// fits `MAX_BITMAP_PIXELS`.
+    pub bitmap: Option<Bitmap>,
 }
 
 impl Render {
@@ -151,6 +193,7 @@ impl Render {
             rendered,
             glyphs,
             cached,
+            bitmap: None,
         }
     }
 }
@@ -384,8 +427,9 @@ impl Engine {
         self.lock().context.references.get(label).cloned()
     }
 
-    /// The file's blocks as UTF-16 ranges, in order. Context lines are not
-    /// blocks.
+    /// The file's blocks as UTF-16 ranges, in order. They cover every
+    /// character of the file other than whitespace between blocks; context,
+    /// `#include` and comment-only blocks are among them.
     pub fn blocks(&self, path: &Path) -> Result<Vec<BlockRange>, String> {
         let mut state = self.lock();
         let result = state.blocks(path);
@@ -393,7 +437,8 @@ impl Engine {
     }
 
     /// Renders the block at UTF-16 `[start, end)` of a file, `width_pt` wide,
-    /// with the file's current text and the last refreshed context.
+    /// with the file's current text and the last refreshed context, with the
+    /// default options: no text colour, no bitmap.
     pub fn render(
         &self,
         path: &Path,
@@ -401,9 +446,42 @@ impl Engine {
         end: usize,
         width_pt: f64,
     ) -> Result<Render, String> {
-        let mut state = self.lock();
-        let result = state.render(path, start, end, width_pt);
-        Self::noted(&mut state, result)
+        self.render_with(path, start, end, width_pt, &RenderOptions::default())
+    }
+
+    /// Renders a block with options; see `render`.
+    ///
+    /// The vector result (SVG, geometry and the laid-out page) is cached, and
+    /// the bitmap is made from it on every call that asks for one, after the
+    /// engine's lock is released. Bitmaps are not cached: at scale 2.6 one
+    /// block of a 657 pt measure is about 1.7 MB per 100 pt of height, so a
+    /// viewport of 20 blocks would take tens of MB and push the rest of the
+    /// document's vector results out of the 64 MB budget. The caller keeps
+    /// the images it is drawing.
+    pub fn render_with(
+        &self,
+        path: &Path,
+        start: usize,
+        end: usize,
+        width_pt: f64,
+        options: &RenderOptions,
+    ) -> Result<Render, String> {
+        let scale = options.bitmap_scale;
+        let mut render = {
+            let mut state = self.lock();
+            let result = if scale.is_finite() && (0.0..=MAX_BITMAP_SCALE).contains(&scale) {
+                state.render(path, start, end, width_pt, options.text_color)
+            } else {
+                Err(format!(
+                    "bitmap scale {scale} is not between 0 and {MAX_BITMAP_SCALE}"
+                ))
+            };
+            Self::noted(&mut state, result)?
+        };
+        if scale > 0.0 {
+            render.bitmap = render.rendered.rasterize(scale);
+        }
+        Ok(render)
     }
 
     pub fn cache_stats(&self) -> CacheStats {
@@ -600,6 +678,7 @@ impl State {
         start16: usize,
         end16: usize,
         width_pt: f64,
+        text_color: Option<[u8; 4]>,
     ) -> Result<Render, String> {
         if !(width_pt.is_finite() && width_pt > 0.0 && width_pt <= 100_000.0) {
             return Err(format!("width {width_pt} pt is not a usable measure"));
@@ -627,6 +706,7 @@ impl State {
             equation: Counters::before(&self.context.counters.equations, id, at),
             references: &self.context.references,
             width_pt,
+            text_color,
         });
         let key = typst::utils::hash128(&(&doc, width_pt.to_bits()));
         let versions = &self.versions;
@@ -651,15 +731,16 @@ impl State {
             .pages()
             .first()
             .ok_or("the block produced no page")?;
+        let walked = walk(&page.frame, &mut self.glyph_bounds);
+        let baseline = first_baseline(&page.frame, &walked);
+        let (drawn_page, drawn) = drawn_page(page, walked.ink);
         let svg = typst_svg::svg(
-            page,
+            &drawn_page,
             &typst_svg::SvgOptions {
                 render_bleed: false,
                 pretty: false,
             },
         );
-        let walked = walk(&page.frame, &mut self.glyph_bounds);
-        let baseline = first_baseline(&page.frame, &walked);
 
         // Map each glyph's span back to the file. Spans in the block document's
         // prefix (reference text), detached spans and other files are generated.
@@ -701,6 +782,8 @@ impl State {
             height: page.frame.height().to_pt(),
             baseline,
             ink: walked.ink,
+            drawn,
+            page: drawn_page,
             relative_glyphs: glyphs,
             text: walked.text,
         });

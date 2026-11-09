@@ -242,13 +242,20 @@ pub(crate) struct BlockInputs<'a> {
     pub(crate) equation: Option<Vec<i64>>,
     pub(crate) references: &'a HashMap<String, String>,
     pub(crate) width_pt: f64,
+    /// A default text colour (straight RGBA), set before the document's own
+    /// context lines so a document that sets its own colour keeps it.
+    pub(crate) text_color: Option<[u8; 4]>,
 }
 
-/// Builds the block document: context lines, a page as wide as the measure,
-/// counter state, stubs for outside labels, then the block itself. Returns
-/// the document and the byte offset where the block's text starts in it.
+/// Builds the block document: the default text colour, context lines, a
+/// transparent page as wide as the measure, counter state, stubs for outside
+/// labels, then the block itself. Returns the document and the byte offset
+/// where the block's text starts in it.
 pub(crate) fn block_document(inputs: &BlockInputs) -> (String, usize) {
     let mut doc = String::new();
+    if let Some([r, g, b, a]) = inputs.text_color {
+        doc.push_str(&format!("#set text(fill: rgb({r}, {g}, {b}, {a}))\n"));
+    }
     if let Some((main_text, main_outline)) = inputs.main {
         for range in &main_outline.context {
             doc.push_str(&main_text[range.clone()]);
@@ -264,9 +271,10 @@ pub(crate) fn block_document(inputs: &BlockInputs) -> (String, usize) {
         doc.push_str(&inputs.file_text[range.clone()]);
         doc.push('\n');
     }
-    // Margins above and below keep descenders from being clipped.
+    // Margins above and below keep descenders from being clipped. No fill:
+    // the page is transparent outside ink, in SVG and bitmaps.
     doc.push_str(&format!(
-        "#set page(width: {}pt, height: auto, margin: (x: 0pt, top: 0.25em, bottom: 0.4em), header: none, footer: none, background: none, foreground: none, numbering: none)\n",
+        "#set page(width: {}pt, height: auto, margin: (x: 0pt, top: 0.25em, bottom: 0.4em), fill: none, header: none, footer: none, background: none, foreground: none, numbering: none)\n",
         inputs.width_pt
     ));
     if let Some(value) = &inputs.heading {

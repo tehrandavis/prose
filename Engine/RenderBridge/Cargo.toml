@@ -21,6 +21,8 @@ path = "src/bin/render_spike.rs"
 typst = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }
 typst-layout = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }
 typst-svg = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }
+# Bitmaps for Writing mode: the main thread draws images, never SVG.
+typst-render = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1" }
 typst-kit = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist/v0.15.1", features = ["embedded-fonts", "scan-fonts"] }
 # Glyph outlines for ink bounds. The same version Typst already uses.
 ttf-parser = "0.25.1"

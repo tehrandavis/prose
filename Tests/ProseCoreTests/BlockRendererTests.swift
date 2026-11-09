@@ -67,14 +67,27 @@ private func sourcesFallInside(_ rendered: RenderedBlock, _ block: RenderBlock) 
     #expect(refresh.references > 0)
 }
 
-@Test func blockRendererBlocksAreUTF16RangesWithoutContextLines() async throws {
+@Test func blockRendererBlocksCoverTheFileAsUTF16Ranges() async throws {
     let thesis = try ThesisCopy()
     let renderer = try await thesis.renderer()
     let text = try thesis.text(thesis.main) as NSString
     let blocks = try await renderer.blocks(in: thesis.main)
     let shown = blocks.map { text.substring(with: $0.range) }
-    #expect(shown.first == "= Introduction <intro>")
-    #expect(!shown.contains { $0.hasPrefix("#set") || $0.hasPrefix("#let") || $0.hasPrefix("#include") })
+    // Context lines and #include lines are blocks of their own kinds.
+    #expect(blocks.first?.kind == .context)
+    #expect(shown.first { !$0.hasPrefix("#") } == "= Introduction <intro>")
+    #expect(zip(shown, blocks).allSatisfy { shown, block in
+        let pill = ["#set", "#show", "#let", "#import"].contains { shown.hasPrefix($0) }
+        return pill == (block.kind == .context) && shown.hasPrefix("#include") == (block.kind == .include)
+    })
+    #expect(blocks.contains { $0.kind == .include })
+    #expect(blocks.filter { !$0.kind.renders }.allSatisfy { [.context, .include, .comment].contains($0.kind) })
+    // Everything other than whitespace is in a block.
+    var rest = text as String
+    for block in blocks.reversed() {
+        rest = (rest as NSString).replacingCharacters(in: block.range, with: "")
+    }
+    #expect(rest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
     #expect(blocks.filter { $0.kind == .heading }.count == 2)
     #expect(blocks.filter { $0.kind == .equation }.count == 2)
     #expect(blocks.contains { $0.kind == .paragraph })
@@ -116,7 +129,7 @@ private func sourcesFallInside(_ rendered: RenderedBlock, _ block: RenderBlock) 
     let thesis = try ThesisCopy()
     let renderer = try await BlockRenderer(root: thesis.root, main: thesis.main, cacheBudget: 8 << 20)
     _ = await renderer.refresh()
-    let first = try #require(await renderer.blocks(in: thesis.main).first)
+    let first = try #require(await renderer.blocks(in: thesis.main).first(where: \.kind.renders))
     let fresh = try await renderer.render(first.range, in: thesis.main, width: 300).get()
     let again = try await renderer.render(first.range, in: thesis.main, width: 300).get()
     #expect(!fresh.cached && again.cached)
@@ -259,6 +272,9 @@ private func sourcesFallInside(_ rendered: RenderedBlock, _ block: RenderBlock) 
     var resized = table
     resized.result_size += 8
     #expect(!BlockRenderer.isCompatible(resized))
+    var options = table
+    options.options_size += 8
+    #expect(!BlockRenderer.isCompatible(options))
 }
 
 @Test func blockRendererSVGDecodesToAnImage() async throws {
@@ -276,7 +292,7 @@ private func sourcesFallInside(_ rendered: RenderedBlock, _ block: RenderBlock) 
         #expect(String(data: rendered.svg.prefix(4), encoding: .utf8) == "<svg")
         let image = try #require(NSImage(data: rendered.svg))
         #expect(image.size.width > 0 && image.size.height > 0)
-        #expect(abs(image.size.width - rendered.size.width) < 1)
+        #expect(abs(image.size.width - rendered.drawnRect.width) < 1)
     }
 }
 
@@ -287,7 +303,7 @@ private func sourcesFallInside(_ rendered: RenderedBlock, _ block: RenderBlock) 
     let files = [thesis.main, thesis.method]
     var work: [(URL, RenderBlock)] = []
     for file in files {
-        work += try await renderer.blocks(in: file).map { (file, $0) }
+        work += try await renderer.blocks(in: file).filter(\.kind.renders).map { (file, $0) }
     }
     let results = await withTaskGroup(of: Bool.self) { group in
         for (file, block) in work + work {
@@ -315,4 +331,138 @@ private func sourcesFallInside(_ rendered: RenderedBlock, _ block: RenderBlock) 
     #expect(fonts.count == 1)
     #expect(fonts
         .allSatisfy { FileManager.default.fileExists(atPath: $0.appendingPathComponent("NotoSansSC.ttf").path) })
+}
+
+@Test func blockRendererKindsIncludeContextIncludeRawListAndComment() async throws {
+    let thesis = try ThesisCopy()
+    let renderer = try await thesis.renderer()
+    let draft = thesis.root.appendingPathComponent("kinds.typ")
+    let source = """
+    // Notes for later.
+    #set text(size: 11pt) // body size
+
+    = A heading
+
+    ```swift
+    let x = 1
+    ```
+
+    - one
+    + two
+    / Term: description
+
+    #include "sections/method.typ"
+
+    A paragraph.
+
+    $ x = y $
+    """
+    try await renderer.setText(source, of: draft)
+    let blocks = try await renderer.blocks(in: draft)
+    let text = source as NSString
+    #expect(blocks.map(\.kind) == [.comment, .context, .heading, .raw, .list, .include, .paragraph, .equation])
+    #expect(text.substring(with: blocks[1].range) == "#set text(size: 11pt) // body size")
+    #expect(blocks.map(\.kind.renders) == [false, false, true, true, true, false, true, true])
+    // A list and a raw block render.
+    for block in blocks where block.kind == .raw || block.kind == .list {
+        let rendered = try await renderer.render(block.range, in: draft, width: 300).get()
+        #expect(rendered.ink.width > 0)
+    }
+}
+
+/// The premultiplied RGBA bytes of an image, drawn into an sRGB context of its size.
+private func pixels(of image: CGImage) throws -> [UInt8] {
+    var data = [UInt8](repeating: 0, count: image.width * image.height * 4)
+    let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+    try data.withUnsafeMutableBytes { buffer in
+        let context = try #require(CGContext(
+            data: buffer.baseAddress,
+            width: image.width,
+            height: image.height,
+            bitsPerComponent: 8,
+            bytesPerRow: image.width * 4,
+            space: space,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue,
+        ))
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    }
+    return data
+}
+
+@Test func blockRendererMakesATransparentBitmapOfTheDrawnArea() async throws {
+    let thesis = try ThesisCopy()
+    let renderer = try await thesis.renderer()
+    _ = await renderer.refresh()
+    let text = try thesis.text(thesis.main)
+    let blocks = try await renderer.blocks(in: thesis.main)
+    let paragraph = try block(startingWith: "Perception and action", in: text, of: blocks)
+    let plain = try await renderer.render(paragraph.range, in: thesis.main, width: 450).get()
+    #expect(plain.bitmap == nil)
+    #expect(plain.drawnRect.minX <= 0 && plain.drawnRect.minY <= 0)
+    #expect(plain.drawnRect.maxX >= plain.size.width && plain.drawnRect.maxY >= plain.size.height)
+    #expect(plain.drawnRect.contains(plain.ink.insetBy(dx: 0.01, dy: 0.01)))
+
+    let scale = 2.6
+    let rendered = try await renderer.render(
+        paragraph.range,
+        in: thesis.main,
+        width: 450,
+        options: RenderOptions(bitmapScale: scale),
+    ).get()
+    // The bitmap comes from the cached vector result.
+    #expect(rendered.cached && rendered.svg == plain.svg && rendered.drawnRect == plain.drawnRect)
+    let image = try #require(rendered.bitmap)
+    #expect(image.width == Int((rendered.drawnRect.width * scale).rounded(.up)))
+    #expect(image.height == Int((rendered.drawnRect.height * scale).rounded(.up)))
+    #expect(image.alphaInfo == .premultipliedLast && image.bitsPerPixel == 32)
+    let bytes = try pixels(of: image)
+    let corners = [0, image.width - 1, (image.height - 1) * image.width, image.width * image.height - 1]
+    #expect(corners.allSatisfy { bytes[$0 * 4 + 3] == 0 })
+    #expect(stride(from: 3, to: bytes.count, by: 4).contains { bytes[$0] > 200 })
+
+    // Scales out of range fail; zero gives no bitmap.
+    for bad in [-1, Double.nan, RenderOptions.maximumBitmapScale + 1] {
+        if case .success = await renderer.render(
+            paragraph.range,
+            in: thesis.main,
+            width: 450,
+            options: RenderOptions(bitmapScale: bad),
+        ) {
+            Issue.record("A bitmap scale of \(bad) rendered")
+        }
+    }
+}
+
+@Test func blockRendererTextColourIsADefaultInTheCacheKey() async throws {
+    let thesis = try ThesisCopy()
+    let renderer = try await thesis.renderer()
+    let draft = thesis.root.appendingPathComponent("colour.typ")
+    try await renderer.setText("Plain words.\n\n#text(fill: rgb(\"#123456\"))[Own colour.]\n", of: draft)
+    let blocks = try await renderer.blocks(in: draft)
+    let light = try #require(RenderColor(CGColor(srgbRed: 0xE8 / 255, green: 0xE4 / 255, blue: 0xDE / 255, alpha: 1)))
+    #expect(light.bytes == (0xE8, 0xE4, 0xDE, 0xFF))
+    let options = RenderOptions(textColor: light, bitmapScale: 1)
+    let dark = try await renderer.render(blocks[0].range, in: draft, width: 300, options: options).get()
+    let svg = try #require(String(data: dark.svg, encoding: .utf8)).lowercased()
+    #expect(svg.contains("#e8e4de") && !svg.contains("#000000"))
+    #expect(!dark.cached)
+    // Without the colour it is another cache entry, in Typst's black.
+    let black = try await renderer.render(blocks[0].range, in: draft, width: 300).get()
+    #expect(!black.cached)
+    #expect(try #require(String(data: black.svg, encoding: .utf8)).contains("#000000"))
+    // A document's own colour wins.
+    let own = try await renderer.render(blocks[1].range, in: draft, width: 300, options: options).get()
+    #expect(try #require(String(data: own.svg, encoding: .utf8)).lowercased().contains("#123456"))
+    // The bitmap's ink has the default colour.
+    let image = try #require(dark.bitmap)
+    let bytes = try pixels(of: image)
+    let solid = stride(from: 0, to: bytes.count, by: 4).filter { bytes[$0 + 3] >= 250 }
+    #expect(!solid.isEmpty)
+    let straight = { (at: Int, channel: Int) in Int(bytes[at + channel]) * 255 / Int(bytes[at + 3]) }
+    #expect(solid.allSatisfy { abs(straight($0, 0) - 0xE8) <= 3 && abs(straight($0, 2) - 0xDE) <= 3 })
+
+    // Components are clamped and rounded.
+    let clamped = RenderColor(red: -1, green: 2, blue: .nan, alpha: 0.5)
+    #expect(clamped.bytes == (0, 255, 0, 128))
+    #expect(RenderColor(red: 0, green: 0, blue: 0) == RenderColor(red: 0, green: 0, blue: 0, alpha: 1))
 }
