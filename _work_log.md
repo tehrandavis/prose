@@ -56,3 +56,20 @@ Next: Phase 2 proper (C ABI, cache, background rendering), using the spike's fin
 Open items: peak memory about 1 GB on a 450-page book; counters for a file with no prior headings; files changed by other apps; duplicated embedded fonts (18.5 MB). Optional cleanup: delete the iPad code.
 
 - Removed the inherited iPad code (d3f4364). Full suite and lint pass.
+
+## 2026-11-08: Phase 3, steps A to E
+
+- Design note `docs/plans/2026-11-08-phase-3-writing-mode.md`; Tehran accepted it and its three recommendations (the paragraph-style fallback is inside the rule, a hidden default during the phase, block-granularity drags as a fallback).
+- Step A, spike (branch `phase-3-spike`, `e7162f5`, not merged): a layout fragment subclass can take a rendered block's height (`layoutFragmentFrame`). `invalidateLayout(for:)` alone does not swap fragments. SVG drawing on the main thread was too slow (38 ms a viewport), and SICP's 10,500-line index broke the paragraph gate. Tehran approved four changes: bitmaps, a 400-line cap, fragments that read their state, and split drag tests.
+- Step B (`4237b83`): engine ABI 2, blocks cover the whole file (context, include, raw, list, comment kinds; loose lists stay one block), text colour option, premultiplied RGBA bitmaps, transparent pages, hanging punctuation inside the drawn area.
+- Step C (`fb36bf8`): `WritingLayout` model in ProseCore, 99 percent covered.
+- Step D (`e8d85b7`): Writing mode draws in the editor behind `defaults write com.tehrandavis.prose WritingModeEnabled -bool YES`; pills, stale bar, dark appearance, engine per project.
+- Step E (`d90dcea`): click, double- and triple-click, shift-click and drag map through glyph boxes; native selection is hidden in rendered blocks and drawn from glyph boxes. Acceptance tests 1 to 5 pass.
+- Results after step E: 239 core and 161 app tests pass, coverage 88.36 percent; lint and the release build pass.
+- Two subagents stopped while waiting on their own test runs; the main session ran their checks.
+
+Open items:
+
+- Steps F (keyboard and undo), G (input methods and VoiceOver) and H (book benchmark, gate, documents) remain; acceptance tests 6 to 14 are not written.
+- Inactive-window selection colour in rendered blocks; table rules stay black in dark appearance; an external file change does not trigger a refresh.
+- Tehran asked about the inherited Chinese interface; the proposal to remove `zh-Hans` and the 17 MB NotoSansSC font after Phase 3 awaits his answer.
