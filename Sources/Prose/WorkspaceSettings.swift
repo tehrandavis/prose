@@ -148,6 +148,7 @@ struct WritingSettingsView: View {
                     in: 12 ... 28,
                 )
                 Toggle(L10n.text("Style headings and emphasis in the editor"), isOn: $workspace.styledSource)
+                Toggle(L10n.text("Check Spelling While Typing"), isOn: $workspace.checkSpellingWhileTyping)
             } header: { Text(L10n.text("Editor")) }
             Section {
                 Toggle(L10n.text("Dark preview"), isOn: $workspace.previewDark)

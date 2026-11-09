@@ -249,6 +249,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         edit.addItem(.separator())
         item(L10n.text("Find…"), #selector(find), "f", edit, target: self)
         item(L10n.text("Complete Syntax"), #selector(completion), ".", edit, modifiers: .control, target: self)
+        let spelling = NSMenu(title: L10n.text("Spelling and Grammar"))
+        let spellingItem = NSMenuItem(title: spelling.title, action: nil, keyEquivalent: "")
+        spellingItem.submenu = spelling
+        edit.addItem(spellingItem)
+        item(L10n.text("Check Spelling While Typing"), #selector(toggleSpellCheck), "", spelling, target: self)
         for id in [
             "quickHelp",
             "contextActions",
@@ -299,6 +304,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(toggleSpellCheck) {
+            menuItem.state = workspace.checkSpellingWhileTyping ? .on : .off
+            return true
+        }
         if menuItem.action == #selector(printDocument) {
             return workspace.serviceReady && !workspace.exporting && !workspace.isLibraryHome
         }
@@ -434,6 +443,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc private func completion() {
         workspace.requestCompletion()
+    }
+
+    @objc func toggleSpellCheck() {
+        workspace.toggleSpellCheck()
     }
 
     @objc private func find() {

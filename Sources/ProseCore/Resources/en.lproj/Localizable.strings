@@ -53,6 +53,7 @@
 "Change the preview colors. Exported PDFs keep the document's original colors." = "Change the preview colors. Exported PDFs keep the document's original colors.";
 "Check Document" = "Check Document";
 "Check Source" = "Check Source";
+"Check Spelling While Typing" = "Check Spelling While Typing";
 "Choose a new name and location for this document." = "Choose a new name and location for this document.";
 "Choose a project folder containing the selected Typst source file." = "Choose a project folder containing the selected Typst source file.";
 "Choose a shortcut for command discovery. Spaces and standard macOS editing shortcuts remain available." = "Choose a shortcut for command discovery. Spaces and standard macOS editing shortcuts remain available.";
@@ -410,6 +411,7 @@
 "Sign in to iCloud and enable iCloud Drive in System Settings before turning on sync." = "Sign in to iCloud and enable iCloud Drive in System Settings before turning on sync.";
 "Small Capitals" = "Small Capitals";
 "Space · pt" = "Space · pt";
+"Spelling and Grammar" = "Spelling and Grammar";
 "Square Root" = "Square Root";
 "Start a new line within the same paragraph." = "Start a new line within the same paragraph.";
 "Start labels with an English letter; use letters, numbers, hyphens or underscores." = "Start labels with an English letter; use letters, numbers, hyphens or underscores.";

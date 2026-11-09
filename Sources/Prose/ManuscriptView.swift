@@ -214,8 +214,10 @@ final class ManuscriptTextView: NSTextView {
 
     override func unmarkText() {
         super.unmarkText()
-        // Swaps and renders that waited for the composition apply now.
+        // Swaps, renders and spelling results that waited for the
+        // composition apply now.
         writing.selectionDidChange()
+        workspace?.spelling.selectionDidChange(selectedRange())
     }
 
     weak var workspace: Workspace?
@@ -325,6 +327,7 @@ final class ManuscriptTextView: NSTextView {
             viewportTask = nil
             updateOutlineForViewport()
             writing.viewportDidChange()
+            spellingViewportDidChange()
         }
     }
 
@@ -344,6 +347,7 @@ final class ManuscriptTextView: NSTextView {
         }
         styler?.textDidChange(edited: range, delta: delta)
         writing.textDidChange(in: storage, edited: range, delta: delta)
+        workspace?.spelling.textDidChange(edited: range, delta: delta, in: storage.string as NSString)
         characterEditCount += 1
         guard characterEditCount == 1, range.length - delta >= 0,
               NSMaxRange(range) <= storage.length
@@ -720,6 +724,7 @@ final class ManuscriptTextView: NSTextView {
         setSelectedRange(NSRange(location: min(selection.location, (content as NSString).length), length: 0))
         restyle()
         highlight()
+        spellingDidLoad(content)
         // After the first layout pass. Revealing a distant caret before it
         // makes TextKit 2 lay out every paragraph above it, and each later
         // keystroke then pays for all of them (40 ms in War and Peace).
@@ -729,6 +734,7 @@ final class ManuscriptTextView: NSTextView {
                 return
             }
             reveal(selectedRange())
+            spellingViewportDidChange()
         }
     }
 
@@ -738,6 +744,7 @@ final class ManuscriptTextView: NSTextView {
         if !selectingWithMouse {
             styler?.selectionDidChange()
             writing.selectionDidChange(byPointer: byPointer, anchor: anchor)
+            workspace?.spelling.selectionDidChange(selectedRange())
         }
     }
 
@@ -748,7 +755,13 @@ final class ManuscriptTextView: NSTextView {
             return
         }
         let size = workspace?.fontSize ?? 16
-        styler.open(fontSize: size, textColor: Theme.sourceText, isEnabled: workspace?.styledSource ?? true)
+        // While loading, the text was replaced and its spelling state with it.
+        styler.open(
+            fontSize: size,
+            textColor: Theme.sourceText,
+            isEnabled: workspace?.styledSource ?? true,
+            keepsSpelling: !loading,
+        )
         typingAttributes = styler.baseAttributes
         appliedFontSize = size
         appliedSyntaxRevision = -1

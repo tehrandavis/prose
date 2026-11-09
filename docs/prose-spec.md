@@ -179,7 +179,7 @@ The hard part is not rendering. It is keeping native selection, undo, IME and ac
 - One block engine (`BlockRenderer`) serves each open project. It is created the first time Writing mode is used, for the project root and main entry, and the open file's buffer goes in through `setText`, so an included chapter renders with the main file's rules and numbers. Switching files in the project keeps it; switching projects or closing the window frees it. Project files that change on disk reach it through `setText`.
 - Writing mode is available to everyone from 2026-11-09. A document opens in Code mode; per-document mode memory is Phase 5.
 
-Spell check uses `NSSpellChecker` on the source storage with the engine's glyph rectangles to draw the red underline under the rendered word. Spell check skips code, math, raw and function call ranges using the syntax tree.
+Spell check uses `NSSpellChecker` on the source storage with the engine's glyph rectangles to draw the red underline under the rendered word. Through the syntax tree it reads only prose: the text of markup, including headings, list items, strong and emphasis, and the content blocks of function calls (footnotes, `#emph[...]`, figure captions). It skips code (a call's name, arguments and strings), math, raw text, labels, references, links, comments, escapes, shorthands and `#set`, `#show`, `#let`, `#import` and `#include`. In source the word gets the system's spelling underline as a TextKit 2 rendering attribute. One setting, Edit › Spelling and Grammar › Check Spelling While Typing, covers all documents; it is on by default.
 
 ### 5.4 What Writing mode does not do in version one
 

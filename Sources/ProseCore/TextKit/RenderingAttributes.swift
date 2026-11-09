@@ -6,9 +6,13 @@ import Foundation
 /// one, so a mirror of the whole document answers the styler's reads and
 /// only changed spans are pushed. The mirror follows each character edit the
 /// way TextKit moves rendering attributes: inserted text has none.
+///
+/// `.spellingState` is drawn too: TextKit 2 draws the system's spelling
+/// underline for it as a rendering attribute (Phase 4, step F). Spelling is
+/// not a syntax colour, so `removeAll()` keeps it unless asked not to.
 @MainActor
 public final class RenderingAttributes {
-    private static let drawn: [NSAttributedString.Key] = [.foregroundColor, .backgroundColor]
+    private static let drawn: [NSAttributedString.Key] = [.foregroundColor, .backgroundColor, .spellingState]
     /// More separate changes than this are cheaper as one ordered rebuild.
     private static let rebuildThreshold = 256
     private let manager: NSTextLayoutManager
@@ -80,11 +84,25 @@ public final class RenderingAttributes {
         mirror.length
     }
 
-    public func removeAll() {
-        mirror = NSMutableAttributedString(string: String(repeating: " ", count: mirror.length))
+    /// Clears every drawn attribute; the spelling state stays, drawn again,
+    /// unless `keepingSpelling` is false (the text was replaced).
+    public func removeAll(keepingSpelling: Bool = true) {
+        let whole = NSRange(location: 0, length: mirror.length)
+        let kept = NSMutableAttributedString(string: String(repeating: " ", count: mirror.length))
+        if keepingSpelling {
+            mirror.enumerateAttribute(.spellingState, in: whole) { value, span, _ in
+                if let value {
+                    kept.addAttribute(.spellingState, value: value, range: span)
+                }
+            }
+        }
+        mirror = kept
         changes = []
         rebuild = false
         manager.setRenderingAttributes([:], for: manager.documentRange)
+        if keepingSpelling {
+            push(whole, clear: false)
+        }
     }
 
     public func replaceCharacters(in range: NSRange, length: Int) {

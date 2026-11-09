@@ -114,6 +114,17 @@ final class Workspace: ObservableObject {
 
     /// Focus mode's hidden title row items and status bar.
     let focusChrome = FocusChrome()
+    /// Spell check of the open file (decisions 7 and 8 of the Phase 4 note).
+    lazy var spelling: SpellCheckModel = makeSpellCheckModel()
+    /// Edit › Spelling and Grammar › Check Spelling While Typing.
+    @Published var checkSpellingWhileTyping = SpellCheckPreference.isEnabled() {
+        didSet {
+            if checkSpellingWhileTyping != oldValue {
+                spellCheckSettingChanged()
+            }
+        }
+    }
+
     /// The sidebar and layout Focus mode replaced, restored when it ends.
     var focusSavedPanes: FocusPanes?
     /// While Focus mode itself changes the panes.
@@ -1897,6 +1908,7 @@ final class Workspace: ObservableObject {
         library.stop()
         engine = nil
         freeWritingEngine()
+        spelling.close()
         client.stop()
     }
 

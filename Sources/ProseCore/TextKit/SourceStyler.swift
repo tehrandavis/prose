@@ -99,7 +99,10 @@ public final class SourceStyler: NSObject, @preconcurrency NSTextContentStorageD
     /// book later would invalidate every paragraph after layout began, and
     /// TextKit 2 then re-estimates the whole document while the writer
     /// scrolls.
-    public func open(fontSize: CGFloat, textColor: PlatformColor, isEnabled: Bool) {
+    ///
+    /// The spelling state in `colors` stays for the same text (a new font or
+    /// reading mode). Pass `keepsSpelling: false` when the text was replaced.
+    public func open(fontSize: CGFloat, textColor: PlatformColor, isEnabled: Bool, keepsSpelling: Bool = true) {
         guard let storage else {
             return
         }
@@ -117,8 +120,12 @@ public final class SourceStyler: NSObject, @preconcurrency NSTextContentStorageD
         opened = true
         let source = storage.string
         let whole = NSRange(location: 0, length: storage.length)
-        colors.removeAll()
-        colors.replaceCharacters(in: NSRange(location: 0, length: colors.length), length: whole.length)
+        // The same text keeps its spelling state; replaced text starts bare.
+        let keepsSpelling = keepsSpelling && colors.length == whole.length
+        colors.removeAll(keepingSpelling: keepsSpelling)
+        if !keepsSpelling {
+            colors.replaceCharacters(in: NSRange(location: 0, length: colors.length), length: whole.length)
+        }
         let runs = isEnabled ? SyntaxTree(source).map { SourceStyling.runs($0.nodes() ?? []) } ?? [] : []
         storage.beginEditing()
         storage.setAttributes(baseAttributes, range: whole)
