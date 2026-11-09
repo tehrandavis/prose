@@ -786,13 +786,42 @@ final class Workspace: ObservableObject {
         }
     }
 
+    /// Shows a file panel as a sheet on the window. The library sheet ("Your
+    /// writing…") closes first, because its own menu offers Open Folder and
+    /// Import; while another sheet is attached the panel opens as its own
+    /// window. A panel never fails silently.
     func present(_ panel: NSSavePanel, completion: @escaping @MainActor (URL) -> Void) {
-        guard let window = window ?? editor?.window, window.attachedSheet == nil else {
-            return
-        }
-        panel.beginSheetModal(for: window) { response in
+        let finish: (NSApplication.ModalResponse) -> Void = { response in
             if response == .OK, let url = panel.url {
                 completion(url)
+            }
+        }
+        guard let window = window ?? editor?.window else {
+            recordOperation("panel.unavailable", ["reason": "window"])
+            showMessage(L10n.text("Prose could not open the file panel. Try again from the File menu."))
+            return
+        }
+        guard let sheet = window.attachedSheet else {
+            panel.beginSheetModal(for: window, completionHandler: finish)
+            return
+        }
+        guard libraryOpen else {
+            recordOperation("panel.window", ["reason": "sheet"])
+            panel.begin(completionHandler: finish)
+            return
+        }
+        // The library sheet closes on SwiftUI's next update; present the panel
+        // once AppKit has ended that sheet (at most about 1 s later).
+        recordOperation("panel.afterLibrary")
+        libraryOpen = false
+        Task { @MainActor in
+            for _ in 0 ..< 50 where window.attachedSheet === sheet {
+                try? await Task.sleep(for: .milliseconds(20))
+            }
+            if window.attachedSheet == nil {
+                panel.beginSheetModal(for: window, completionHandler: finish)
+            } else {
+                panel.begin(completionHandler: finish)
             }
         }
     }

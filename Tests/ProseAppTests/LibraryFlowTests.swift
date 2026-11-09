@@ -355,4 +355,24 @@ extension WritingFlowTests {
         #expect(!app.workspace.library.cloudEnabled)
         #expect(app.workspace.editor?.isEditable == true)
     }
+
+    /// Open Folder from the library sheet's own menu used to do nothing: the
+    /// panel helper returned while a sheet was attached. The library sheet now
+    /// closes and the folder panel takes its place.
+    @Test func openFolderFromTheLibrarySheetShowsTheFolderPanel() async throws {
+        let app = try WritingFixture(text: "= Current writing\n", startService: false)
+        defer { app.close() }
+        app.window.orderFront(nil)
+        app.workspace.libraryOpen = true
+        try await app.wait { app.window.attachedSheet != nil }
+        let library = try #require(app.window.attachedSheet)
+        app.workspace.openFolderPanel()
+        try await app.wait { app.window.attachedSheet is NSOpenPanel }
+        #expect(!app.workspace.libraryOpen)
+        #expect(app.window.attachedSheet !== library)
+        let panel = try #require(app.window.attachedSheet as? NSOpenPanel)
+        #expect(panel.canChooseDirectories && !panel.canChooseFiles)
+        app.window.endSheet(panel, returnCode: .cancel)
+        try await app.wait { app.window.attachedSheet == nil }
+    }
 }
