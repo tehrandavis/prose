@@ -288,6 +288,16 @@ public final class SpellCheckModel {
         return result
     }
 
+    /// The misspelling that holds the character at `offset`, shown or not:
+    /// what a right-click on that character offers suggestions for.
+    public func misspelling(at offset: Int) -> NSRange? {
+        let index = firstMisspelling(endingAfter: offset)
+        guard index < misspellings.count, misspellings[index].location <= offset else {
+            return nil
+        }
+        return misspellings[index]
+    }
+
     /// The misspelling the caret is inside, ends included.
     private var hiddenMisspelling: NSRange? {
         guard let caret = hidingCaret else {

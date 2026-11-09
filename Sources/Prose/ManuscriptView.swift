@@ -84,6 +84,7 @@ struct ManuscriptView: NSViewRepresentable {
             }
             workspace.edited(editor.string, change: editor.takeCharacterEdit())
             editor.workspaceRevision = workspace.revision
+            editor.applySpelling()
             editor.writing.editDidEnd()
             editor.scheduleTypingAssistance()
         }
@@ -259,6 +260,13 @@ final class ManuscriptTextView: NSTextView {
     private(set) var loading = false
     /// Writing mode's layout model and fragments.
     lazy var writing = WritingController(editor: self)
+    /// Ranges whose spelling underline changed during an edit, drawn once
+    /// the text storage has finished processing it (`applySpelling`).
+    var spellingPending: [NSRange] = []
+    var spellingApplyScheduled = false
+    /// While NSTextView builds the context menu of a rendered block, which
+    /// must not change the selection (`contextMenuSelecting`).
+    var holdsSelection = false
     private var characterEditCount = 0
     private var characterEdit: TextReplacement?
 
@@ -347,6 +355,7 @@ final class ManuscriptTextView: NSTextView {
         }
         styler?.textDidChange(edited: range, delta: delta)
         writing.textDidChange(in: storage, edited: range, delta: delta)
+        spellingTextDidChange(edited: range, delta: delta)
         workspace?.spelling.textDidChange(edited: range, delta: delta, in: storage.string as NSString)
         characterEditCount += 1
         guard characterEditCount == 1, range.length - delta >= 0,
@@ -644,6 +653,9 @@ final class ManuscriptTextView: NSTextView {
     }
 
     override func setSelectedRanges(_ ranges: [NSValue], affinity: NSSelectionAffinity, stillSelecting: Bool) {
+        guard !holdsSelection else {
+            return
+        }
         let old = selectedRanges
         super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
         writing.selectionWillDraw(from: old, to: selectedRanges)
@@ -725,6 +737,7 @@ final class ManuscriptTextView: NSTextView {
         restyle()
         highlight()
         spellingDidLoad(content)
+        spellingChanged([NSRange(location: 0, length: (content as NSString).length)])
         // After the first layout pass. Revealing a distant caret before it
         // makes TextKit 2 lay out every paragraph above it, and each later
         // keystroke then pays for all of them (40 ms in War and Peace).

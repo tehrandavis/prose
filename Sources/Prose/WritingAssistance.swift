@@ -130,7 +130,9 @@ extension ManuscriptTextView {
     }
 
     override func menu(for event: NSEvent) -> NSMenu? {
-        let menu = super.menu(for: event) ?? NSMenu()
+        // Before NSTextView's menu, which selects the word under the pointer.
+        let misspelling = misspelledWord(at: convert(event.locationInWindow, from: nil))
+        let menu = contextMenuSelecting(misspelling, for: event) ?? NSMenu()
         menu.addItem(.separator())
         for (id, selector) in [
             ("quickHelp", #selector(explainAtCursor)),
@@ -145,6 +147,9 @@ extension ManuscriptTextView {
             item.target = self
             item.image = IconStore.image(command.icon)
             menu.addItem(item)
+        }
+        if let misspelling {
+            insertSpellingItems(into: menu, for: misspelling)
         }
         return menu
     }

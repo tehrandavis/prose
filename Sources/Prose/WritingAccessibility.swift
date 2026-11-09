@@ -207,7 +207,7 @@ extension ManuscriptTextView {
     }
 
     /// NSTextView's own answer for a parameterized attribute selector.
-    private func nativeAccessibility(_ selector: Selector, _ parameter: AnyObject?) -> AnyObject? {
+    func nativeAccessibility(_ selector: Selector, _ parameter: AnyObject?) -> AnyObject? {
         typealias Answer = @convention(c) (AnyObject, Selector, AnyObject?) -> Unmanaged<AnyObject>?
         guard let method = class_getInstanceMethod(NSTextView.self, selector) else {
             return nil

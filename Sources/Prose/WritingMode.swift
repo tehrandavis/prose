@@ -71,6 +71,8 @@ final class WritingController: NSObject {
     var refocused: [NSRange] = []
     /// Focus mode's dimmed copies of the rendered images in view.
     let dimmedImages = DimmedImageCache()
+    /// For tests: the rendered blocks the last spelling change laid out again.
+    private(set) var spellingRelaidOut: [NSRange] = []
 
     init(editor: ManuscriptTextView) {
         self.editor = editor
@@ -515,6 +517,30 @@ final class WritingController: NSObject {
             scheduleFlush()
         } else {
             flush()
+        }
+    }
+
+    /// Spell check's shown misspellings changed in `ranges`: the rendered
+    /// blocks among them lay out again, as a swap does, so their fragments
+    /// draw the new underlines (decision 9 of the Phase 4 note). Source
+    /// paragraphs need nothing here; TextKit draws their rendering attribute.
+    func spellingChanged(_ ranges: [NSRange]) {
+        guard let model, model.isRunning, let editor else {
+            return
+        }
+        let length = (editor.string as NSString).length
+        var spans: [NSRange] = []
+        for range in ranges where range.location >= 0 && NSMaxRange(range) <= length {
+            spans += model.drawnSpans(intersecting: range).filter {
+                if case .rendered = model.role(forParagraph: $0) {
+                    return true
+                }
+                return false
+            }
+        }
+        if !spans.isEmpty {
+            spellingRelaidOut = spans
+            changed(spans)
         }
     }
 

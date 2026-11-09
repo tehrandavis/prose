@@ -122,13 +122,13 @@ final class WritingFragment: NSTextLayoutFragment {
             dimming(layer: super.renderingSurfaceBounds, at: point, in: context) {
                 super.draw(at: point, in: context)
             }
-        case let .rendered(rendering, _):
+        case let .rendered(rendering, block):
             count("rendered")
             let dimmed = dimmed
             if dimmed {
                 count("dimmed")
             }
-            drawRendered(rendering, dimmed: dimmed, at: point, in: context)
+            drawRendered(rendering, block: block, dimmed: dimmed, at: point, in: context)
         case .collapsed:
             count("collapsed")
         case let .pill(pill):
@@ -192,13 +192,23 @@ final class WritingFragment: NSTextLayoutFragment {
         )
     }
 
-    /// Draws the block's image and, for a stale render, the amber bar. A
-    /// dimmed block draws its image's dimmed copy (`DimmedImageCache`): the
-    /// same pixels as the image at `WritingFocus.dimmedAlpha`, without the
-    /// slow blend a global alpha costs; the bar draws at that alpha.
-    private func drawRendered(_ rendering: WritingRendering, dimmed: Bool, at point: CGPoint, in context: CGContext) {
+    /// Draws the block's image, the spelling underlines over it and, for a
+    /// stale render, the amber bar. A dimmed block draws its image's dimmed
+    /// copy (`DimmedImageCache`): the same pixels as the image at
+    /// `WritingFocus.dimmedAlpha`, without the slow blend a global alpha
+    /// costs; the underlines and the bar draw at that alpha.
+    private func drawRendered(
+        _ rendering: WritingRendering,
+        block: NSRange,
+        dimmed: Bool,
+        at point: CGPoint,
+        in context: CGContext,
+    ) {
         let column = columnWidth
         let controller = controller
+        // How far the image moved to land on device pixels; the underlines
+        // move with it.
+        var shift = CGPoint.zero
         if var image = rendering.image {
             let rect = imageRect(rendering, column: column).offsetBy(dx: point.x, dy: point.y)
             context.saveGState()
@@ -211,6 +221,9 @@ final class WritingFragment: NSTextLayoutFragment {
                 }
             }
             let target = Self.imageTarget(image, in: rect, context: context)
+            if target.exact {
+                shift = CGPoint(x: target.rect.minX - rect.minX, y: target.rect.minY - rect.minY)
+            }
             context.interpolationQuality = target.exact ? .none : .high
             // TextKit draws with y pointing down; CGImage draws with y up.
             context.translateBy(x: target.rect.minX, y: target.rect.maxY)
@@ -218,6 +231,13 @@ final class WritingFragment: NSTextLayoutFragment {
             context.draw(image, in: CGRect(origin: .zero, size: target.rect.size))
             context.restoreGState()
         }
+        drawUnderlines(
+            rendering,
+            block: block,
+            dimmed: dimmed,
+            at: CGPoint(x: point.x + shift.x, y: point.y + shift.y),
+            in: context,
+        )
         guard let colors = MainActor.assumeIsolated({ controller?.staleColor() }) else {
             return
         }
@@ -229,6 +249,56 @@ final class WritingFragment: NSTextLayoutFragment {
         }
         context.setFillColor(colors)
         context.fill(bar)
+        context.restoreGState()
+    }
+
+    /// The spelling underlines of the block's shown misspellings (decision 9
+    /// of the Phase 4 note), over the image: under each misspelled range's
+    /// glyph boxes on each drawn line, in the system's dotted pattern and
+    /// colour (`SpellingUnderline`), with their tops on device pixels. The
+    /// misspellings are read from the controller at every draw, so they are
+    /// never older than the draw, whatever the role cache holds; when they
+    /// change, the controller lays the block out again, which draws it.
+    /// `point` is the fragment's origin moved as the image moved.
+    private func drawUnderlines(
+        _ rendering: WritingRendering,
+        block: NSRange,
+        dimmed: Bool,
+        at point: CGPoint,
+        in context: CGContext,
+    ) {
+        let controller = controller
+        guard let found = MainActor.assumeIsolated({ controller?.misspellings(in: block) }), !found.isEmpty,
+              let color = MainActor.assumeIsolated({ controller?.spellingColor() })
+        else {
+            return
+        }
+        count("underlined")
+        let snap: (CGFloat) -> CGFloat = { y in
+            let device = context.convertToDeviceSpace(CGPoint(x: 0, y: y))
+            return context.convertToUserSpace(CGPoint(x: device.x, y: device.y.rounded())).y
+        }
+        let path = CGMutablePath()
+        for line in glyphMap(rendering, block: block).underlines(for: found) {
+            let dots = SpellingUnderline.dots(
+                minX: point.x + line.minX,
+                maxX: point.x + line.maxX,
+                bottom: point.y + line.bottom,
+                boxHeight: line.height,
+                snap: snap,
+            )
+            let radius = SpellingUnderline.pattern(fontSize: line.height / SpellingUnderline.boxHeightPerPoint).radius
+            for dot in dots {
+                path.addRoundedRect(in: dot, cornerWidth: radius, cornerHeight: radius)
+            }
+        }
+        context.saveGState()
+        if dimmed {
+            context.setAlpha(WritingFocus.dimmedAlpha)
+        }
+        context.setFillColor(color)
+        context.addPath(path)
+        context.fillPath()
         context.restoreGState()
     }
 

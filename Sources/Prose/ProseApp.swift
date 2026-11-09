@@ -253,6 +253,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let spellingItem = NSMenuItem(title: spelling.title, action: nil, keyEquivalent: "")
         spellingItem.submenu = spelling
         edit.addItem(spellingItem)
+        item(L10n.text("Check Document Now"), #selector(checkDocumentNow), ";", spelling, target: self)
         item(L10n.text("Check Spelling While Typing"), #selector(toggleSpellCheck), "", spelling, target: self)
         for id in [
             "quickHelp",
@@ -447,6 +448,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc func toggleSpellCheck() {
         workspace.toggleSpellCheck()
+    }
+
+    @objc func checkDocumentNow() {
+        workspace.spellCheckDocumentNow()
     }
 
     @objc private func find() {

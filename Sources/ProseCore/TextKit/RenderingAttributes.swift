@@ -79,6 +79,49 @@ public final class RenderingAttributes {
         commit()
     }
 
+    /// Makes `.spellingState` with `value` cover exactly `misspellings`
+    /// inside `range`, and nothing else there. Only spans that differ from
+    /// what is drawn are written, so the same misspellings again write
+    /// nothing. Call `commit()` after.
+    public func setSpelling(_ misspellings: [NSRange], in range: NSRange, value: Int) {
+        let whole = NSRange(location: 0, length: mirror.length)
+        let range = NSIntersectionRange(range, whole)
+        guard range.length > 0 else {
+            return
+        }
+        let desired = NSMutableAttributedString(string: String(repeating: " ", count: range.length))
+        for misspelling in misspellings {
+            let piece = NSIntersectionRange(misspelling, range)
+            if piece.length > 0 {
+                desired.addAttribute(
+                    .spellingState,
+                    value: value,
+                    range: NSRange(location: piece.location - range.location, length: piece.length),
+                )
+            }
+        }
+        var changes: [(NSRange, Any?)] = []
+        desired.enumerateAttribute(.spellingState, in: NSRange(location: 0, length: range.length)) { wanted, span, _ in
+            var cursor = range.location + span.location
+            let end = range.location + NSMaxRange(span)
+            while cursor < end {
+                var current = NSRange()
+                let drawn = mirror.attribute(.spellingState, at: cursor, effectiveRange: &current)
+                let next = min(end, NSMaxRange(current))
+                guard next > cursor else {
+                    break
+                }
+                if (drawn as? NSObject)?.isEqual(wanted) != true, drawn != nil || wanted != nil {
+                    changes.append((NSRange(location: cursor, length: next - cursor), wanted))
+                }
+                cursor = next
+            }
+        }
+        for (span, wanted) in changes {
+            set(.spellingState, value: wanted, range: span)
+        }
+    }
+
     /// Number of UTF-16 units the mirror covers (the text length).
     public var length: Int {
         mirror.length

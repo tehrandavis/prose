@@ -102,3 +102,40 @@ private func sampleMap(scale: Double = 1, imageOrigin: CGPoint = .zero) -> Writi
     #expect(map.position(on: empty, nearest: 3) == .missed)
     #expect(empty.first == 0 && empty.last == 0)
 }
+
+/// Phase 4 step G: a misspelled range is underlined once per drawn line,
+/// under the union of its own glyph boxes; generated glyphs never are.
+@Test func writingGlyphMapUnderlinesEachRangePerLine() {
+    let map = sampleMap()
+    let underlines = map.underlines(for: [NSRange(location: 101, length: 3), NSRange(location: 100, length: 1)])
+    #expect(underlines == [
+        WritingGlyphMap.Underline(range: NSRange(location: 100, length: 1), minX: 0, maxX: 5, bottom: 10, height: 10),
+        WritingGlyphMap.Underline(range: NSRange(location: 101, length: 3), minX: 6, maxX: 17, bottom: 10, height: 10),
+        WritingGlyphMap.Underline(range: NSRange(location: 101, length: 3), minX: 0, maxX: 5, bottom: 30, height: 10),
+    ])
+    #expect(map.underlines(for: []).isEmpty)
+    #expect(map.underlines(for: [NSRange(location: 104, length: 0), NSRange(location: 0, length: 10)]).isEmpty)
+}
+
+/// The dotted pattern copies the one TextKit 2 draws for `.spellingState`
+/// (measured on macOS 27): 3 point dots 4 points apart for body text,
+/// larger from 23 points, small below 12; centred under the word, starting
+/// at the estimated baseline.
+@Test func spellingUnderlineCopiesTheSystemPattern() {
+    #expect(SpellingUnderline.pattern(fontSize: 10) == .init(width: 2.75, height: 2, radius: 0.74, period: 4))
+    for (size, side) in [(12.0, 3.0), (16, 3), (22.5, 3), (23, 4), (30, 4), (32, 5), (36, 5), (38, 6), (48, 6)] {
+        let pattern = SpellingUnderline.pattern(fontSize: size)
+        #expect(pattern.width == side && pattern.height == side && pattern.period == side + 1, "\(size)")
+        #expect(abs(pattern.radius - 0.37 * side) < 0.01)
+    }
+    // A 16 pt word 242.34 points wide holds 60 dots, 3.17 points in from each end.
+    let height = 16 * SpellingUnderline.boxHeightPerPoint
+    let dots = SpellingUnderline.dots(minX: 10, maxX: 252.34, bottom: 50, boxHeight: height)
+    #expect(dots.count == 60)
+    #expect(abs(dots[0].midX - 10 - 3.17) < 0.01 && abs(252.34 - dots[59].midX - 3.17) < 0.01)
+    #expect(dots.allSatisfy { $0.minY == 50 - SpellingUnderline.descenderShare * height && $0.width == 3 })
+    // Snapped to the device's pixels, and at least one dot under a short word.
+    let snapped = SpellingUnderline.dots(minX: 0, maxX: 2, bottom: 20, boxHeight: height) { ($0 * 2).rounded() / 2 }
+    #expect(snapped.count == 1 && snapped[0].minY * 2 == (snapped[0].minY * 2).rounded())
+    #expect(SpellingUnderline.dots(minX: 5, maxX: 5, bottom: 20, boxHeight: height).isEmpty)
+}

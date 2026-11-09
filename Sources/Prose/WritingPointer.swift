@@ -171,6 +171,29 @@ extension WritingController {
         return block.location
     }
 
+    /// For a right-click: whether `point` (container coordinates) lies in a
+    /// rendered fragment or a pill (`drawn`), and the source character whose
+    /// glyph box holds it, to within a point. Generated text, a pill and a
+    /// point between glyphs have none. Over source `drawn` is false.
+    func drawnCharacter(at point: CGPoint) -> (drawn: Bool, offset: Int?) {
+        guard isRunning, model != nil, let fragment = writingFragment(at: point) else {
+            return (false, nil)
+        }
+        let frame = fragment.layoutFragmentFrame
+        switch fragment.role {
+        case .source, .collapsed:
+            return (false, nil)
+        case .pill:
+            return (true, nil)
+        case let .rendered(rendering, range):
+            let local = CGPoint(x: point.x - frame.minX, y: point.y - frame.minY)
+            let box = fragment.glyphMap(rendering, block: range).boxes.first {
+                $0.offset != nil && $0.rect.insetBy(dx: -1, dy: -1).contains(local)
+            }
+            return (true, box?.offset)
+        }
+    }
+
     /// The glyph map's hit at `point` and the block under it, in a rendered
     /// fragment or a pill.
     private func drawnHit(at point: CGPoint) -> (hit: WritingGlyphMap.Hit, block: NSRange)? {

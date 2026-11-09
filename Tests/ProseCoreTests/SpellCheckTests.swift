@@ -629,3 +629,21 @@ private final class SpellHarness {
         model.close()
     }
 }
+
+/// Phase 4 step G: a right-click finds the misspelling that holds a
+/// character, shown or not.
+@Test @MainActor func spellCheckModelFindsTheMisspellingAtAnOffset() async {
+    let harness = SpellHarness("Some teh and wrold here.\n")
+    await harness.model.idle()
+    let teh = harness.range("teh"), wrold = harness.range("wrold")
+    #expect(harness.model.misspellings == [teh, wrold])
+    #expect(harness.model.misspelling(at: teh.location) == teh)
+    #expect(harness.model.misspelling(at: NSMaxRange(teh) - 1) == teh)
+    #expect(harness.model.misspelling(at: NSMaxRange(teh)) == nil)
+    #expect(harness.model.misspelling(at: 0) == nil)
+    #expect(harness.model.misspelling(at: wrold.location + 2) == wrold)
+    // The caret's word is not shown, but it is still found.
+    harness.model.selectionDidChange(NSRange(location: wrold.location + 2, length: 0))
+    #expect(!harness.model.shownMisspellings.contains(wrold))
+    #expect(harness.model.misspelling(at: wrold.location + 2) == wrold)
+}
