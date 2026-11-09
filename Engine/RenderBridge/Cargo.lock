@@ -1479,7 +1479,10 @@ dependencies = [
 name = "prose-render"
 version = "0.1.0"
 dependencies = [
+ "biblatex",
+ "hayagriva",
  "prose-syntax",
+ "serde_json",
  "ttf-parser",
  "typst",
  "typst-kit",

@@ -283,6 +283,40 @@ public actor BlockRenderer {
         }
     }
 
+    /// The bibliography files the document's `bibliography(...)` calls name,
+    /// relative to the project root, in the order found: the main file, then
+    /// each file it includes, depth first, from their current texts. Only
+    /// string literals count (`bibliography("a.bib")`,
+    /// `bibliography(("a.bib", "b.yml"))`), each path relative to the file
+    /// holding the call. Nothing is compiled.
+    public func bibliographyFiles() -> [String] {
+        guard let raw = engine.api.pointee.bibliography_files(engine.pointer) else {
+            return []
+        }
+        defer { engine.api.pointee.string_free(raw) }
+        let json = Data(bytes: raw, count: strlen(raw))
+        return (try? JSONDecoder().decode([String].self, from: json)) ?? []
+    }
+
+    /// The entries of bibliography files (paths relative to the root or
+    /// absolute), parsed with Hayagriva as Typst parses them. An editor buffer
+    /// set with `setText` wins over the disk, and a file changed on disk is read
+    /// again after `filesChanged`. The engine caches each file's parse by its
+    /// version, so an unchanged file is not parsed again. Problems (syntax
+    /// errors, fields Hayagriva cannot read, missing files, keys defined twice)
+    /// are in `errors`.
+    public func bibliography(_ files: [String]) -> BibliographyContents {
+        let raw = withCStrings(files) { paths, count in
+            engine.api.pointee.bibliography_entries(engine.pointer, paths, count)
+        }
+        guard let raw else {
+            return .empty
+        }
+        defer { engine.api.pointee.string_free(raw) }
+        let json = Data(bytes: raw, count: strlen(raw))
+        return (try? JSONDecoder().decode(BibliographyContents.self, from: json)) ?? .empty
+    }
+
     /// Compiles the whole document and keeps its counters and reference texts
     /// for later renders. Slow: up to a few seconds on a book. A failed compile
     /// keeps the previous context.

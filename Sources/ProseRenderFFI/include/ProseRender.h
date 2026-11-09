@@ -23,7 +23,7 @@
 #pragma clang assume_nonnull begin
 
 // Increment whenever PRRenderAPI or any struct below changes.
-#define PR_RENDER_ABI_VERSION 3u
+#define PR_RENDER_ABI_VERSION 4u
 // PRGlyphBox.source for generated text: numbers, reference text, text from
 // other files.
 #define PR_NO_SOURCE (-1)
@@ -223,6 +223,35 @@ typedef struct {
     // when 0, nothing shown can have changed and no refresh is needed.
     size_t (*_Nonnull files_changed)(PREngine *_Nullable engine, const char *_Nullable const *_Nullable paths,
                                      size_t count);
+    // The bibliography files the project's bibliography(...) calls name, as a
+    // JSON array of paths relative to the root ("refs.bib", "back/refs.yml"),
+    // in the order found: the main file, then each file it includes, depth
+    // first, from their current texts. Only string literals count:
+    // bibliography("a.bib") and bibliography(("a.bib", "b.yml")), each path
+    // relative to the file holding the call ("/x.bib" from the root). Nothing
+    // is compiled. "[]" when there is no call. NULL for a NULL engine.
+    // Release with string_free.
+    char *_Nullable (*_Nonnull bibliography_files)(PREngine *_Nullable engine);
+    // The entries of bibliography files (paths absolute or relative to the
+    // root; .bib is BibLaTeX, .yml and .yaml Hayagriva), parsed with Hayagriva
+    // as Typst parses them, read as a compile reads them: an editor buffer
+    // wins over the disk, and a file changed on disk is read again after
+    // files_changed. Each file's parse is cached by its version. Returns JSON,
+    // released with string_free, or NULL for a NULL engine or a non-UTF-8 path:
+    //   {"entries": [{"key", "type", "title"?, "authors": [{"family",
+    //     "given"?}], "year"?, "container"?, "doi"?, "url"?, "file", "line"}],
+    //    "errors": [{"file", "line", "message"}],
+    //    "files": [{"path", "entries", "accepted"}]}
+    // type is Hayagriva's entry type in kebab case. authors are the editors
+    // when there are no authors. container is the parent's title (journal,
+    // book). file is relative to the root; line counts from 1, 0 when
+    // unknown. A BibLaTeX or YAML syntax error yields one error and no entries
+    // for that file. A field Hayagriva cannot convert yields an error for that
+    // entry; the file's other entries are listed and the file is not
+    // accepted, because Typst rejects the whole file. A key already listed
+    // from an earlier file is left out and reported as a duplicate.
+    char *_Nullable (*_Nonnull bibliography_entries)(PREngine *_Nullable engine,
+                                                     const char *_Nullable const *_Nullable paths, size_t count);
 } PRRenderAPI;
 
 // The renderer's only exported symbol. The same library also exports

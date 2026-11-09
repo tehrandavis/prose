@@ -67,7 +67,10 @@ fn the_table_reports_its_version_and_sizes() {
     assert_eq!(std::mem::offset_of!(PRRenderAPI, options_size), 24);
     assert_eq!(std::mem::offset_of!(PRRenderAPI, engine_create), 32);
     assert_eq!(std::mem::offset_of!(PRRenderAPI, files_changed), 120);
-    assert_eq!(std::mem::size_of::<PRRenderAPI>(), 128);
+    assert_eq!(std::mem::offset_of!(PRRenderAPI, bibliography_files), 128);
+    assert_eq!(std::mem::offset_of!(PRRenderAPI, bibliography_entries), 136);
+    assert_eq!(std::mem::size_of::<PRRenderAPI>(), 144);
+    assert_eq!(ABI_VERSION, 4);
 }
 
 #[test]
@@ -292,4 +295,63 @@ fn the_syntax_table_is_linked_in() {
     assert!(!api.is_null());
     // SAFETY: the syntax bridge's static table.
     assert_eq!(unsafe { (*api).abi_version }, prose_syntax::ABI_VERSION);
+}
+
+#[test]
+fn the_bibliography_calls_return_json() {
+    let project = Project::new(&[
+        ("main.typ", "Text.\n\n#bibliography(\"refs.bib\")\n"),
+        (
+            "refs.bib",
+            "@article{k, author={Smith, John}, title={T \\\"{u}}, journal={J}, year={2020}, doi={10.1/x}}\n\n@book{bad, title={B}, year={nope}}\n",
+        ),
+    ]);
+    let api = api();
+    // No engine: NULL, never a crash.
+    assert!(unsafe { (api.bibliography_files)(std::ptr::null_mut()) }.is_null());
+    assert!(
+        unsafe { (api.bibliography_entries)(std::ptr::null_mut(), std::ptr::null(), 0) }.is_null()
+    );
+
+    let root = CString::new(project.root.to_str().unwrap()).unwrap();
+    let main = CString::new("main.typ").unwrap();
+    let engine = unsafe {
+        (api.engine_create)(
+            root.as_ptr(),
+            main.as_ptr(),
+            std::ptr::null(),
+            0,
+            std::ptr::null(),
+            0,
+            0,
+            std::ptr::null_mut(),
+        )
+    };
+    assert!(!engine.is_null());
+    let files = take_string(api, unsafe { (api.bibliography_files)(engine) }).unwrap();
+    assert_eq!(files, r#"["refs.bib"]"#);
+
+    let path = CString::new("refs.bib").unwrap();
+    let paths = [path.as_ptr()];
+    let json = take_string(api, unsafe {
+        (api.bibliography_entries)(engine, paths.as_ptr(), 1)
+    })
+    .unwrap();
+    let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(
+        value["entries"][0],
+        serde_json::json!({
+            "key": "k", "type": "article", "title": "T ü",
+            "authors": [{"family": "Smith", "given": "John"}],
+            "year": 2020, "container": "J", "doi": "10.1/x",
+            "file": "refs.bib", "line": 1,
+        })
+    );
+    assert_eq!(value["errors"][0]["file"], "refs.bib");
+    assert_eq!(value["errors"][0]["line"], 3);
+    assert_eq!(
+        value["files"],
+        serde_json::json!([{"path": "refs.bib", "entries": 1, "accepted": false}])
+    );
+    unsafe { (api.engine_free)(engine) };
 }

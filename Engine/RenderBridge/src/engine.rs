@@ -15,6 +15,7 @@ use typst_kit::fonts::{self, FontStore};
 use typst_kit::packages::FsPackages;
 use typst_layout::{Page, PagedDocument};
 
+use crate::bibliography::{self, display_path, BibError, BibIndex, Parsed};
 use crate::cache::{Cache, CacheStats, Dependencies};
 use crate::context::{
     block_document, reference_texts, BlockInputs, Citations, Counters, Shift, PROBE,
@@ -227,6 +228,8 @@ struct State {
     ids: HashMap<PathBuf, FileId>,
     next_version: u64,
     outlines: HashMap<FileId, (u64, Arc<Outline>)>,
+    /// Parsed bibliography files, by the version they were parsed at.
+    bibliographies: HashMap<FileId, (u64, Arc<Parsed>)>,
     shifts: HashMap<FileId, (u64, Shift)>,
     /// The main file with the probe appended, edited in place so Typst
     /// reparses only what changed.
@@ -353,6 +356,7 @@ impl Engine {
                 ids: HashMap::new(),
                 next_version: 1,
                 outlines: HashMap::new(),
+                bibliographies: HashMap::new(),
                 shifts: HashMap::new(),
                 probed: None,
                 context: Context::default(),
@@ -506,6 +510,26 @@ impl Engine {
         Ok(render)
     }
 
+    /// The bibliography files the project's `bibliography(...)` calls name,
+    /// relative to the root, in the order found: the main file first, then
+    /// each file it includes (`include "x.typ"`), depth first, from their
+    /// current texts. Only string literals count: `bibliography("a.bib")` and
+    /// `bibliography(("a.bib", "b.yml"))`, each path relative to the file
+    /// that holds the call. Nothing is compiled; a document that does not
+    /// compile still names its files.
+    pub fn bibliography_files(&self) -> Vec<String> {
+        self.lock().bibliography_files()
+    }
+
+    /// The entries of bibliography files (absolute or relative to the root),
+    /// parsed with Hayagriva as Typst parses them. Files are read as a
+    /// compile reads them: an editor buffer wins over the disk, and a file
+    /// changed on disk is read again after `files_changed`. Each file's parse
+    /// is cached by its version, so an unchanged file is not parsed again.
+    pub fn bibliography(&self, paths: &[PathBuf]) -> BibIndex {
+        self.lock().bibliography(paths)
+    }
+
     pub fn cache_stats(&self) -> CacheStats {
         self.lock().cache.stats()
     }
@@ -542,6 +566,97 @@ impl State {
             }
         }
         read
+    }
+
+    fn bibliography_files(&self) -> Vec<String> {
+        let mut found: Vec<String> = Vec::new();
+        let mut visited: HashSet<FileId> = HashSet::new();
+        let mut stack = vec![self.main];
+        while let Some(id) = stack.pop() {
+            if !visited.insert(id) {
+                continue;
+            }
+            let Ok(source) = self.shared.source(id) else {
+                continue;
+            };
+            let named = bibliography::named(id, source.root());
+            for path in named.bibliographies {
+                let path = path.get_without_slash().to_string();
+                if !found.contains(&path) {
+                    found.push(path);
+                }
+            }
+            // Depth first, in source order.
+            stack.extend(
+                named
+                    .includes
+                    .into_iter()
+                    .rev()
+                    .map(|vpath| RootedPath::new(VirtualRoot::Project, vpath).intern()),
+            );
+        }
+        found
+    }
+
+    fn bibliography(&mut self, paths: &[PathBuf]) -> BibIndex {
+        let mut parsed: Vec<(String, Arc<Parsed>)> = Vec::with_capacity(paths.len());
+        for path in paths {
+            let id = match self.id(path) {
+                Ok(id) => id,
+                Err(message) => {
+                    let file = path.to_string_lossy().into_owned();
+                    let failed = Parsed {
+                        errors: vec![BibError {
+                            file: file.clone(),
+                            line: 0,
+                            message,
+                        }],
+                        ..Parsed::default()
+                    };
+                    parsed.push((file, Arc::new(failed)));
+                    continue;
+                }
+            };
+            let file = display_path(id);
+            if parsed.iter().any(|(seen, _)| *seen == file) {
+                continue;
+            }
+            let version = Self::version(&self.versions, id);
+            let current = match self.bibliographies.get(&id) {
+                Some((at, result)) if *at == version => result.clone(),
+                _ => {
+                    let result = Arc::new(self.parse_bibliography(id, &file));
+                    self.bibliographies.insert(id, (version, result.clone()));
+                    result
+                }
+            };
+            parsed.push((file, current));
+        }
+        bibliography::merge(&parsed)
+    }
+
+    /// Reads and parses one bibliography file: the editor buffer if there is
+    /// one, otherwise the file store's bytes.
+    fn parse_bibliography(&self, id: FileId, file: &str) -> Parsed {
+        let failed = |message: String| Parsed {
+            errors: vec![BibError {
+                file: file.to_string(),
+                line: 0,
+                message,
+            }],
+            ..Parsed::default()
+        };
+        if let Some(source) = self.shared.texts.get(&id) {
+            return bibliography::parse(file, source.text());
+        }
+        match self.shared.files.file(id) {
+            Ok(bytes) => match std::str::from_utf8(&bytes) {
+                Ok(text) => bibliography::parse(file, text.trim_start_matches('\u{feff}')),
+                Err(_) => failed("the file is not valid UTF-8".into()),
+            },
+            Err(FileError::NotFound(_)) => failed("file not found".into()),
+            Err(error) => failed(file_error(error)),
+        }
     }
 
     fn id(&mut self, path: &Path) -> Result<FileId, String> {

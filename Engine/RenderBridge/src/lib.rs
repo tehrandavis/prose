@@ -26,6 +26,7 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
+mod bibliography;
 mod cache;
 mod context;
 mod engine;
@@ -35,6 +36,7 @@ mod outline;
 mod raster;
 mod world;
 
+pub use bibliography::{BibAuthor, BibEntry, BibError, BibFile, BibIndex};
 pub use cache::{CacheStats, DEFAULT_BUDGET};
 pub use context::PROBE;
 pub use engine::{

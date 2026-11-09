@@ -125,6 +125,34 @@ public enum ProjectTree {
         return matches.sorted { $0.url.path.localizedStandardCompare($1.url.path) == .orderedAscending }
     }
 
+    /// Every BibLaTeX (`.bib`) and Hayagriva (`.yml`, `.yaml`) file in the
+    /// project, relative to the root, in Finder's order. Hidden files and
+    /// symbolic links are skipped. The bibliography index's list when no
+    /// `#bibliography` call names a file.
+    public static func bibliographyFiles(in root: URL) -> [String] {
+        let base = root.standardizedFileURL.resolvingSymlinksInPath()
+        let keys: [URLResourceKey] = [.isSymbolicLinkKey, .isRegularFileKey]
+        guard let files = FileManager.default.enumerator(
+            at: base,
+            includingPropertiesForKeys: keys,
+            options: [.skipsHiddenFiles],
+        ) else {
+            return []
+        }
+        var found: [String] = []
+        for case let file as URL in files {
+            guard ["bib", "yml", "yaml"].contains(file.pathExtension.lowercased()),
+                  let values = try? file.resourceValues(forKeys: Set(keys)),
+                  values.isSymbolicLink != true, values.isRegularFile == true,
+                  let path = try? relativePath(of: file, in: base)
+            else {
+                continue
+            }
+            found.append(path)
+        }
+        return found.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
     public static func relativePath(of url: URL, in root: URL) throws -> String {
         let base = root.standardizedFileURL.resolvingSymlinksInPath().path
         let path = url.standardizedFileURL.resolvingSymlinksInPath().path

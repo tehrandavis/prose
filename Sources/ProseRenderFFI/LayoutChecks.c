@@ -24,4 +24,7 @@ _Static_assert(offsetof(PRRenderAPI, options_size) == 24, "PRRenderAPI layout is
 _Static_assert(offsetof(PRRenderAPI, engine_create) == 32, "PRRenderAPI layout is part of the ABI");
 _Static_assert(offsetof(PRRenderAPI, string_free) == 112, "PRRenderAPI layout is part of the ABI");
 _Static_assert(offsetof(PRRenderAPI, files_changed) == 120, "PRRenderAPI layout is part of the ABI");
-_Static_assert(sizeof(PRRenderAPI) == 128, "PRRenderAPI layout is part of the ABI");
+_Static_assert(offsetof(PRRenderAPI, bibliography_files) == 128, "PRRenderAPI layout is part of the ABI");
+_Static_assert(offsetof(PRRenderAPI, bibliography_entries) == 136, "PRRenderAPI layout is part of the ABI");
+_Static_assert(sizeof(PRRenderAPI) == 144, "PRRenderAPI layout is part of the ABI");
+_Static_assert(PR_RENDER_ABI_VERSION == 4u, "PR_RENDER_ABI_VERSION must match the Rust library");

@@ -9,6 +9,9 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use serde_json::{json, Map, Value};
+
+use crate::bibliography::{BibEntry, BibIndex};
 use crate::cache::CacheStats;
 use crate::engine::{Engine, Options, RenderOptions, Rendered};
 use crate::geometry::{GlyphBox, Rect};
@@ -19,7 +22,9 @@ use crate::raster::Bitmap;
 /// `render` takes options, and results carry the drawn area and a bitmap.
 /// Version 3 (Phase 5 step A): `files_changed`, and results carry the
 /// block's plain text.
-pub const ABI_VERSION: u32 = 3;
+/// Version 4 (Phase 5 step B): `bibliography_files` and
+/// `bibliography_entries`, which return JSON.
+pub const ABI_VERSION: u32 = 4;
 
 /// An engine, opaque to C.
 pub struct PREngine {
@@ -130,6 +135,9 @@ pub struct PRRenderAPI {
     pub last_error: unsafe extern "C" fn(*mut PREngine) -> *mut c_char,
     pub string_free: unsafe extern "C" fn(*mut c_char),
     pub files_changed: unsafe extern "C" fn(*mut PREngine, *const *const c_char, usize) -> usize,
+    pub bibliography_files: unsafe extern "C" fn(*mut PREngine) -> *mut c_char,
+    pub bibliography_entries:
+        unsafe extern "C" fn(*mut PREngine, *const *const c_char, usize) -> *mut c_char,
 }
 
 fn guarded<T>(fallback: impl FnOnce() -> T, body: impl FnOnce() -> T) -> T {
@@ -527,6 +535,81 @@ unsafe extern "C" fn files_changed(
     )
 }
 
+/// # Safety
+/// `engine` must be null or live.
+unsafe extern "C" fn bibliography_files(engine: *mut PREngine) -> *mut c_char {
+    guarded(std::ptr::null_mut, || {
+        // SAFETY: forwarded caller contract.
+        match unsafe { self::engine(engine) } {
+            Some(engine) => owned_string(&Value::from(engine.bibliography_files()).to_string()),
+            None => std::ptr::null_mut(),
+        }
+    })
+}
+
+/// # Safety
+/// `engine` must be null or live; `paths` null or `count` NUL-terminated strings.
+unsafe extern "C" fn bibliography_entries(
+    engine: *mut PREngine,
+    paths: *const *const c_char,
+    count: usize,
+) -> *mut c_char {
+    guarded(std::ptr::null_mut, || {
+        // SAFETY: forwarded caller contract.
+        let (Some(engine), Some(paths)) = (unsafe { self::engine(engine) }, unsafe {
+            c_paths(paths, count)
+        }) else {
+            return std::ptr::null_mut();
+        };
+        owned_string(&index_json(&engine.bibliography(&paths)).to_string())
+    })
+}
+
+fn entry_json(entry: &BibEntry) -> Value {
+    let mut object = Map::new();
+    object.insert("key".into(), entry.key.clone().into());
+    object.insert("type".into(), entry.kind.clone().into());
+    let authors: Vec<Value> = entry
+        .authors
+        .iter()
+        .map(|author| match &author.given {
+            Some(given) => json!({ "family": author.family, "given": given }),
+            None => json!({ "family": author.family }),
+        })
+        .collect();
+    object.insert("authors".into(), authors.into());
+    let optional = [
+        ("title", &entry.title),
+        ("container", &entry.container),
+        ("doi", &entry.doi),
+        ("url", &entry.url),
+    ];
+    for (name, value) in optional {
+        if let Some(value) = value {
+            object.insert(name.into(), value.clone().into());
+        }
+    }
+    if let Some(year) = entry.year {
+        object.insert("year".into(), year.into());
+    }
+    object.insert("file".into(), entry.file.clone().into());
+    object.insert("line".into(), entry.line.into());
+    Value::Object(object)
+}
+
+/// The index as `ProseRender.h` describes it.
+pub fn index_json(index: &BibIndex) -> Value {
+    json!({
+        "entries": index.entries.iter().map(entry_json).collect::<Vec<_>>(),
+        "errors": index.errors.iter().map(|e| json!({
+            "file": e.file, "line": e.line, "message": e.message,
+        })).collect::<Vec<_>>(),
+        "files": index.files.iter().map(|f| json!({
+            "path": f.path, "entries": f.entries, "accepted": f.accepted,
+        })).collect::<Vec<_>>(),
+    })
+}
+
 static API: PRRenderAPI = PRRenderAPI {
     abi_version: ABI_VERSION,
     block_size: std::mem::size_of::<PRBlock>() as u32,
@@ -547,6 +630,8 @@ static API: PRRenderAPI = PRRenderAPI {
     last_error,
     string_free,
     files_changed,
+    bibliography_files,
+    bibliography_entries,
 };
 
 /// The render engine's C function table.
