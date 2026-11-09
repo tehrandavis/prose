@@ -13,7 +13,8 @@ The interface is in English. Your documents can be in any language: Prose draws 
 | Search commands | `/` inside the command panel |
 | Go back or dismiss | `Esc` |
 | Move between inserted placeholders | `Tab` / `⇧Tab`; `Esc` to finish |
-| Code / Writing / Focus mode | `⌘1` / `⌘2` / `⌘3` (Focus arrives in a later version) |
+| Code / Writing / Focus mode | `⌘1` / `⌘2` / `⌘3`; `Esc` leaves Focus |
+| Next misspelled word | `⌘;` |
 | Show or hide the preview / read the preview | `⇧⌘P` / `⌥⌘P` |
 | Sidebar / document checks | `⌘0` / `⌘5` |
 | New / library / save | `⌘N` / `⌘O` / `⌘S` |
@@ -25,6 +26,10 @@ The interface is in English. Your documents can be in any language: Prose draws 
 | Universe packages | `⇧⌘U` |
 
 For example, `⌘J → i → t` opens the table form. Choose the row and column counts, insert, then move between cells with Tab. Select text and press `⌘J → s → b` to make it bold. Each insertion is one undoable edit. You can always write Typst directly.
+
+**Writing mode** (`⌘2`) shows your document typeset, block by block, with the document's own fonts. The paragraph that holds the caret shows its source, so you always edit the real text.
+
+**Focus mode** (`⌘3`) is Writing mode with nothing else on screen. The sidebar and the preview hide, the text is a little larger in a narrower column, and the paragraph you are in stays at full contrast while the others fade. The line you are typing stays 40 percent of the way down the window, as on a typewriter; scroll freely to read, and the next key brings you back. The title row shows only the breadcrumb and the status dot until you move the pointer over it, and the status bar appears when the pointer nears the bottom edge. Press `Esc` or `⌘2` to return to Writing mode. Showing the sidebar or the preview also leaves Focus.
 
 In Writing and Focus mode a small toolbar floats at the bottom of the text: Text Style, Table, Equation, Image and Insert. Each button does what its `⌘J` path does (hover over it to see the path), at the caret or on the selected text, and the keyboard stays in the text. In Focus mode it fades while you type and comes back when you move the pointer.
 
@@ -42,9 +47,17 @@ When documentation includes a Typst example, the hover card opens an **Example**
 
 **File → Open Folder** opens a folder of Typst files, such as a thesis, and edits the files where they are. Nothing is copied into the library, so Git, Dropbox and iCloud Drive keep working on the folder. The sidebar (`⌘0`) lists the folder's files, folders first, and nests the open file's headings under it. Click a heading to go to it. The search field filters files by name. The `+` button adds a Typst file or a folder, and each item's context menu offers Rename, Reveal in Finder, Set as Main Document and Move to Trash. A pin marks the main document: preview and export always compile it, whichever file is open. Other files, such as PDFs, images and `.bib` files, open in Quick Look. Recent folders appear on the library home and reopen after relaunch.
 
+If you keep references in Zotero, the Better BibTeX plugin can export a collection to a `.bib` file and keep it up to date automatically. Point its automatic export at a file in your project folder, such as `refs.bib`, and cite it with `#bibliography("refs.bib")`. You never copy the file by hand. If a new reference does not appear in the preview at once, make any edit in the document so it typesets again.
+
 The title row shows the file and its folder, a breadcrumb of the headings around the caret, and a status dot. Green means the preview matches your text, amber means it is typesetting, red means the document needs attention, and a hollow grey dot means the typesetting service is not running. Click the dot to see the checks.
 
 Without the sidebar, the outline appears in the left margin without moving the text. Hover to explore headings; its sidebar button opens the full sidebar. The command panel keeps a stable height through searching, selection and parameter entry; its guide stays in the same place.
+
+## Spelling
+
+Prose checks the spelling of your prose as you write, in every mode. It reads only text: it leaves code, math, raw text, labels, references, links and comments alone, and it checks footnotes and captions. A misspelled word gets a red dotted underline, in source and in typeset text. A word you are still typing is not marked until the caret leaves it.
+
+Right-click a marked word to see suggestions; choose one to replace the word (one undoable edit). **Ignore Spelling** stops marking the word in this file until you close it, and **Learn Spelling** adds it to your Mac's dictionary. Press `⌘;` (**Edit → Spelling and Grammar → Check Document Now**) to go to the next misspelled word. Turn checking off or on with **Edit → Spelling and Grammar → Check Spelling While Typing** or in the Writing tab of Settings; the choice covers all documents on this Mac. The spelling language follows your Mac's spelling setting.
 
 ## Completion and existing objects
 

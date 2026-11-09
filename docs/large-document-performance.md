@@ -85,8 +85,10 @@ scripts/test.sh
 scripts/benchmark-books.sh
 ```
 
-The second script reuses the instrumented test binary. It runs on each PR in CI
-and uploads `build/benchmarks` plus a job summary. No fixture download is required.
+The second script reuses the instrumented test binary and writes
+`build/benchmarks`, with a summary in `build/benchmarks/summary.md`. No fixture
+download is required. LeftBlank ran it on each PR in CI; GitHub Actions is
+disabled on Prose's repository, so run it locally.
 It runs each book three times: in Code mode (`war-and-peace.json`, `sicp.json`);
 with `PROSE_WRITING_MODE=1`, in Prose's Writing mode (`war-and-peace-writing.json`,
 `sicp-writing.json`; see the "Step H benchmark" section of the
@@ -153,22 +155,31 @@ these tests; it does not replace them.
 
 ## Writing and Focus modes
 
-Measured on 2026-11-09 (Phase 4 step D), Apple M4 Pro, macOS 27.2, the same
-instrumented debug build, with other processes keeping the load average at 10
-to 13. Full numbers and the profile are in "Step D outcome" of the
+Measured on 2026-11-09 (Phase 4 step G), Apple M4 Pro, macOS 27.2, the same
+instrumented debug build, with spell check on (the default) and a load average
+of 5 to 8 from other processes. Full numbers are in "Step G outcome" of the
 [Phase 4 note](plans/2026-11-09-phase-4-focus-toolbar-spellcheck.md).
 
-| Book | Mode | Typing median / p95 / max (ms) | Navigate + draw max (ms) | Scroll + draw p95 (ms) | Typewriter step median / p95 / max (ms) | Peak memory (MiB) |
-|---|---|---:|---:|---:|---:|---:|
-| war-and-peace | Code | 9.61 / 14.00 / 24.81 | 22.27 | 4.70 | | 230 |
-| war-and-peace | Writing | 12.02 / 12.75 / 14.18 | 13.17 | 16.97 | | 999 |
-| war-and-peace | Focus | 15.70 / 16.71 / 16.86 | 13.50 | 13.77 | 22.17 / 26.31 / 27.26 | 1,033 |
-| sicp | Code | 6.01 / 6.95 / 7.59 | 37.33 | 5.34 | | 247 |
-| sicp | Writing | 7.51 / 9.07 / 9.44 | 24.50 | 11.97 | | 1,004 |
-| sicp | Focus | 11.86 / 12.82 / 14.20 | 29.15 | 14.29 | 18.93 / 22.27 / 23.33 | 1,083 |
+| Book | Mode | Typing median / p95 / max (ms) | Scroll + draw p95 (ms) | Typewriter step median / p95 / max (ms) | Peak memory (MiB) |
+|---|---|---:|---:|---:|---:|
+| war-and-peace | Code | 5.09 / 5.55 / 7.20 | 3.32 | | 254 |
+| war-and-peace | Writing | 6.57 / 7.33 / 8.73 | 8.72 | | 1,004 |
+| war-and-peace | Focus | 9.89 / 10.73 / 11.69 | 8.57 | 13.24 / 21.49 / 22.20 | 1,045 |
+| sicp | Code | 4.15 / 4.62 / 5.32 | 2.59 | | 269 |
+| sicp | Writing | 4.56 / 5.15 / 5.68 | 3.86 | | 1,028 |
+| sicp | Focus | 7.74 / 8.51 / 8.78 | 6.76 | 16.55 / 21.73 / 25.75 | 1,154 |
+
+**Load matters.** These numbers change by a factor of two to three with
+machine load. The same gates measured in step D, at a load average of
+10 to 13, gave Writing-mode scroll and draw p95 of 13 to 17 ms in War and Peace
+and typewriter step p95 of 22 to 26 ms; in step E, at a load average of 12 to
+28, War and Peace's typewriter step p95 reached 60 ms and failed its gate,
+while Code mode, whose code had not changed, slowed by the same factor. Compare
+runs made on the same machine at similar load, and rerun a failure on a quiet
+machine before treating it as a regression.
 
 **Focus run.** The run enters Writing mode as before, then Focus mode
-(`setMode(.focus)`), and reports the entry window (126 and 106 ms; every block in
+(`setMode(.focus)`), and reports the entry window (in step D, 126 and 106 ms; every block in
 view had its render at the Focus width and scale after 342 and 244 ms), the
 footprint added by Focus (9 to 10 MiB) and the engine's share in Focus (652 to
 663 MiB). It fails unless it measured Focus: the mode is still Focus at the end,
@@ -191,9 +202,9 @@ Animation does before a frame, because the hidden test window's own display
 pass does not draw fragment layers. Renders that arrive between steps are drawn
 untimed the same way. The Returns are undone afterwards and the text must equal
 the source. **Gate: p95 under 33 ms** (two 60 Hz frames); 16.7 ms is the
-target. Down steps meet the target (median about 10 ms); Returns do not (about
-20 to 25 ms), mostly in the edit path every mode shares and in SwiftUI layout
-after the selection change. For comparison, a full-viewport redraw after a step
+target. In the step D profile, Down steps met the target (median about 10 ms)
+and Returns did not (about 20 to 25 ms), mostly in the edit path every mode
+shares and in SwiftUI layout after the selection change. For comparison, a full-viewport redraw after a step
 takes 4.7 to 5.5 ms p95.
 
 **What made Writing mode's drawing cheaper.** Scroll and draw p95 in War and
@@ -209,7 +220,8 @@ draw at their exact pixel size on whole device pixels, about 10 times faster,
 and their pixels arrive as the engine drew them. In Focus mode a dimmed block
 draws a copy of its image with the opacity applied, because a global alpha
 blend is about 17 times slower than a copy. Pixel format and colour space made
-no measurable difference. Scroll and draw p95 is now 13 to 17 ms in War and
-Peace and 7 to 12 ms in SICP. The scroll measurement still redraws the whole
+no measurable difference. Scroll and draw p95 fell to 13 to 17 ms in War and
+Peace and 7 to 12 ms in SICP under step D's load, and is 7 to 9 ms and about
+4 ms on a quieter machine (table above). The scroll measurement still redraws the whole
 viewport with `cacheDisplay`, so it remains an upper bound for a real frame.
 

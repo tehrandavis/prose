@@ -89,3 +89,21 @@ Open items (full list in the design note's Phase 3 outcome):
 - Table rules stay black in dark appearance; an external file change triggers no refresh; undo does not bring the caret back to the changed block.
 - Real key, mouse, input method and VoiceOver events in the running app are untested; live-resize centering is untested.
 - One preview test (`previewClicksOnFunctionTextJumpToTheCallArgument`) timed out once under load and passed on rerun.
+
+## 2026-11-09: Phase 4 (Focus mode, floating toolbar, spell check); English only
+
+- Tehran approved pushing `prose` and dropping the Simplified Chinese interface, then gave permission to build overnight. The design note (`docs/plans/2026-11-09-phase-4-focus-toolbar-spellcheck.md`) was accepted by delegation; choices are marked **Choice** in it.
+- Built by Opus subagents one step at a time; the main session reviewed each diff, reran lint, the release build, the full suite and the book benchmark, committed and pushed.
+- Step A (`50fda8f`): English only. zh-Hans resources, the language picker, Chinese keywords and the 17 MB NotoSansSC font are gone; both engines draw CJK text with the system fonts (tests guard it).
+- Step B (`d166592`): Focus view state (panes saved and restored, title row and status bar on hover, Esc as last owner, column 467 pt, scale 1.4625).
+- Step C (`4cb5b17`): dimming at 45 percent per block in the fragment; typewriter scrolling at 40 percent.
+- Step D (`003508b`): Focus benchmark run with a typewriter gate (p95 < 33 ms); pixel-exact image drawing, per-fragment role cache and dimmed image copies cut Writing-mode scroll and draw p95 in War and Peace from about 44 ms to 7 to 17 ms.
+- Step E (`bf30fd6`): floating toolbar (five `⌘J` actions, AppKit buttons that keep the editor first responder).
+- Steps F and G (`9dc6d4d`, `99a4a5a`): spell check: syntax-aware ranges, NSSpellChecker, native `.spellingState` underline in source, matching dotted underline in rendered blocks, context menu, Check Document Now (`⌘;`), AXMisspelled.
+- Step H: docs updated; three gate runs in a row passed (269 core and 190 app tests, coverage 89.38 to 89.42 percent, all benchmark gates in all three modes).
+
+Open items (full list in the design note's Phase 4 outcome):
+
+- Benchmark numbers vary two to three times with machine load (`mediaanalysisd` overnight); a step E run failed the typewriter gate under load and passed on a quiet machine.
+- A changed `.bib` on disk is not passed to the engines; settle in the proposed Citations phase.
+- Recommended next: a Citations phase (picker over project `.bib` files through Hayagriva in the Rust bridge, Better BibTeX auto-export guidance, then a Zotero local API spike) before Phase 5. Not started; awaits Tehran.

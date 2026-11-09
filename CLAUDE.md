@@ -11,7 +11,7 @@ A native macOS Typst writing app with three views of one source file: Code, Writ
 - The Preview channel has no Sparkle key yet. Generate one before publishing a Preview build.
 - Build and test with `scripts/build.sh release` and `PROSE_DISTRIBUTION=preview scripts/test.sh` (the coverage gate needs the Preview distribution). Run `scripts/build-render.sh` once before a plain `swift build`. Xcode 26 or later (verified on Xcode 27.0 beta, Swift 6.4), Rust 1.92.0 through rustup. The first build compiles Tinymist and takes about 15 minutes.
 - Coverage gate is 80 percent of production Swift lines. Keep it.
-- Book benchmark: `scripts/benchmark-books.sh` after `scripts/test.sh`. It runs SICP and War and Peace in Code and Writing mode (`PROSE_WRITING_MODE=1`) and writes `build/benchmarks/summary.md`.
+- Book benchmark: `scripts/benchmark-books.sh` after `scripts/test.sh`. It runs SICP and War and Peace in Code, Writing (`PROSE_WRITING_MODE=1`) and Focus mode (`PROSE_FOCUS_MODE=1`) and writes `build/benchmarks/summary.md`. The Focus runs add the typewriter step gate: p95 under 33 ms in the instrumented debug build (16.7 ms is the target, not a gate). Numbers vary two to three times with machine load (see "Benchmark after steps E and F" in the Phase 4 note); rerun a failure on a quiet machine before calling it a regression.
 - Native UI tests extend `WritingFlowTests` (the serialized suite). A new `@Suite` runs in parallel with the windows and menus and makes preview tests flaky.
 
 - Prose is Mac only (decided 2026-11-08). The inherited iPad code (`iPad/`, `Engine/TinymistBridge`, `Sources/Package.swift`, the iPad scripts and CI jobs) was removed on 2026-11-08.
@@ -35,10 +35,12 @@ Colours, type, radius and spacing come from Intent (`~/dev/Cadence/Cadence/Theme
 | 1 | Project model, sidebar tree with nested outline, title row with breadcrumb and status dot, mode control (Code only), preview page cards | Done 2026-11-08 |
 | 2 | `Engine/RenderBridge` Rust crate: per-block render with document context, cache, SVG with glyph rectangles | Done 2026-11-08 |
 | 3 | Writing mode in the editor, with selection, undo, IME and VoiceOver acceptance tests before it is on by default | Done 2026-11-09 |
-| 4 | Focus mode, floating toolbar, syntax-aware spell check | Not started |
+| 4 | Focus mode, floating toolbar, syntax-aware spell check | Done 2026-11-09 |
 | 5 | Info popover, export sheet, per-document mode memory, screenshots, writing guide | Not started |
 
 Phase 3 shipped editable: all 14 acceptance tests passed three full runs in a row, so the kill switch was not used. Writing mode costs about 650 to 710 MiB for the block engine on a book. The outcome and the open items are at the end of `docs/plans/2026-11-08-phase-3-writing-mode.md`.
+
+Phase 4 shipped Focus mode, the floating toolbar and spell check, and made the app English only. All 15 acceptance tests passed three gate runs in a row. Focus is Writing mode plus view state at scale 1.4625 in a 467 pt column; it adds about 10 MiB to Writing mode. Phase 4 also cut Writing mode's scroll and draw cost (images drawn on whole device pixels, a role cache per fragment). The typewriter step meets its 33 ms gate (p95 19 to 26 ms outside heavy load) but not the 16.7 ms target for Return. The outcome, the decision changes and the open items are at the end of `docs/plans/2026-11-09-phase-4-focus-toolbar-spellcheck.md`.
 
 ## Working agreements
 

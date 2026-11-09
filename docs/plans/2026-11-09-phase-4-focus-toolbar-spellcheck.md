@@ -1,7 +1,7 @@
 # Phase 4: Focus mode, the floating toolbar and spell check
 
 Date: 2026-11-09
-Status: accepted by delegation 2026-11-09. Tehran gave permission to build overnight without a separate review of this note. Every decision below that is a choice rather than a fact is marked **Choice** so it can be reversed.
+Status: Phase 4 done 2026-11-09. Focus mode, the floating toolbar and spell check work, and the app is English only. See "Phase 4 outcome" at the end. (Accepted by delegation 2026-11-09.) Tehran gave permission to build overnight without a separate review of this note. Every decision below that is a choice rather than a fact is marked **Choice** so it can be reversed.
 Spec: `docs/prose-spec.md`, Sections 3.2, 3.3, 4, 5.3 (spell check paragraph), 6 and 8. Builds on `docs/plans/2026-11-08-phase-3-writing-mode.md`.
 
 ## Goal
@@ -347,3 +347,92 @@ UI tests are `extension WritingFlowTests`, on the real window, editor and engine
   - When a viewport check reports many misspellings in rendered blocks (War and Peace's names on first entry), all their blocks are laid out again at once, as a swap does. The benchmark shows no regression, but this is not measured separately.
   - The underline colours are constants sampled on macOS 27 and do not follow a future system change.
 - Main-session rerun (load average about 7): lint (0 violations) and the release build pass; 269 core and 190 app tests pass with no failure, coverage 89.38 percent. Book benchmark, all gates pass. Typing p95 (Code / Writing / Focus): War and Peace 5.87 / 7.33 / 10.56 ms, SICP 4.80 / 5.71 / 8.72 ms. Scroll and draw p95: War and Peace 3.47 / 7.83 / 7.19 ms, SICP 2.51 / 3.87 / 6.99 ms. Typewriter step median / p95 / max: War and Peace 15.40 / 22.45 / 35.32 ms, SICP 14.59 / 19.13 / 20.93 ms.
+
+## Phase 4 outcome (2026-11-09)
+
+### What shipped
+
+- English only (step A). The Simplified Chinese interface, its language picker, the Chinese welcome template and example, and the Chinese command keywords are gone. `L10n` is a thin English lookup, so no call site changed. `NotoSansSC.ttf` is gone too: both engines find CJK faces among the macOS system fonts.
+- Focus mode (steps B and C). The segment, `⌘3`, the View menu item and the `modeFocus` command enter it from Code or Writing. It saves and restores the panes, ends for Writing mode when a pane is shown, draws at the Focus scale 1.4625 in a 467 pt column, dims every block but the focus blocks to 45 percent in the fragment, keeps the caret line at 40 percent of the visible height, hides the title items and the status bar until the pointer comes near, and leaves on `Esc` when nothing else owns the key.
+- Cheaper drawing in Writing and Focus modes (step D). Images draw at their exact pixel size on whole device pixels, each fragment keeps its role until `roleRevision` changes, and dimmed blocks draw a pre-dimmed copy of their image. The book benchmark has a Focus run (`PROSE_FOCUS_MODE=1`) with the typewriter step gate.
+- The floating toolbar (step E). Five AppKit buttons that refuse first responder (Text style, Table, Equation, Image, Insert), each making the same calls as its `⌘J` path through `Workspace.performToolbarAction(_:)`. It shows in Writing and Focus mode, fades while typing in Focus, and the editor keeps 64 pt below the text for it.
+- Spell check (steps F and G). `SpellCheckRanges` reads only prose through the syntax tree; `SpellCheckModel` checks the viewport and edited paragraphs with `NSSpellChecker`, caches per paragraph and moves results across edits. Source draws the system underline through the `.spellingState` rendering attribute; rendered blocks draw a copy of it under the glyph boxes. The context menu offers guesses, Learn Spelling and Ignore Spelling; Check Document Now is `⌘;`; the accessibility strings carry `AXMisspelled`. Edit › Spelling and Grammar › Check Spelling While Typing turns it off for all documents.
+- The storage holds the full source at all times. Every UI acceptance test checks it, with no attachment, and with TextKit 2 still on.
+
+### Acceptance tests
+
+All 15 pass. The main session ran the full suite and the book benchmark three times in a row with no change in between, and all three runs passed: 269 core and 190 app tests each time, coverage 89.38, 89.42 and 89.41 percent, every benchmark gate in Code, Writing and Focus on both books.
+
+| Test | Where |
+|-|-|
+| 1. Entering and leaving Focus, panes restored | `focusModeEntersByEveryRouteAndRestoresThePanes` and `focusModeEndsWhenAPaneIsShown` (`Tests/ProseAppTests/FocusModeFlowTests.swift`) |
+| 2. Ten round trips change nothing | `focusModeRoundTripsLeaveTheStorageSelectionAndUndoUntouched` (`FocusModeFlowTests.swift`) |
+| 3. Dimming at 45 percent, light and dark | `focusModeDimsEveryBlockButTheFocusBlocks` (`FocusModeFlowTests.swift`) |
+| 4. Typewriter line | `focusModeKeepsTheCaretLineOnTheTypewriterLine` (`FocusModeFlowTests.swift`) |
+| 5. `Esc` owners | `focusModeEscapeComesAfterEveryOtherOwner` (`FocusModeFlowTests.swift`) |
+| 6. Title row and status bar on hover | `focusModeShowsTheTitleRowAndStatusBarOnHover` (`FocusModeFlowTests.swift`) |
+| 7. Toolbar runs the `⌘J` commands | `floatingToolbarRunsTheSameCommandsAsTheCommandPanel` (`Tests/ProseAppTests/FloatingToolbarFlowTests.swift`) |
+| 8. Toolbar keeps the editor first responder | `floatingToolbarKeepsTheEditorFocusedAndFollowsFocusMode` (`FloatingToolbarFlowTests.swift`) |
+| 9. Checkable ranges and rebasing | `spellCheckRangesReadProseAndSkipEverythingElse` and `spellCheckModelRebasesSeededRandomEditsLikeAFreshCheck` (`Tests/ProseCoreTests/SpellCheckTests.swift`) |
+| 10. Underline in source | `spellingUnderlinesSourceAndFollowsTheText` and `textKitDrawsTheSpellingStateSetAsARenderingAttribute` (`Tests/ProseAppTests/SpellCheckFlowTests.swift`) |
+| 11. Underline in a rendered block | `spellingUnderlinesRenderedBlocks` (`SpellCheckFlowTests.swift`) |
+| 12. Context menu | `spellingContextMenuSuggestsIgnoresAndLearns` (`SpellCheckFlowTests.swift`) |
+| 13. Accessibility | `spellingMarksMisspellingsForAccessibility` (`SpellCheckFlowTests.swift`) |
+| 14. Underline follows edits; half-typed word | `spellCheckModelMovesMisspellingsWithTheTextAndChecksAfterThePause` (`SpellCheckTests.swift`), `spellCheckFollowsTheEditorAndTheSetting` and `spellingUnderlinesSourceAndFollowsTheText` (`SpellCheckFlowTests.swift`) |
+| 15. Book benchmark in Focus with the typewriter gate | `LargeDocumentBenchmark` with `PROSE_FOCUS_MODE=1` (`typewriterSteps`), through `scripts/benchmark-books.sh` |
+
+Other new tests: `checkDocumentNowMovesToTheNextMisspellingAndWraps`, `writingLayoutDrawsSourceUntilANewScaleRenders`, `writingLayoutRoleRevisionChangesWheneverARoleCan`, `writingImageTargetSnapsMatchingImagesToDevicePixels`, `writingFocusDimmedImageDrawsAsTheImageAtTheDimmedAlpha`, `dimmedImageCacheKeepsTheMostRecentlyUsedCopies`, `writingGlyphMapUnderlinesEachRangePerLine`, `spellingUnderlineCopiesTheSystemPattern`, and the core tests in `WritingFocusTests.swift` and `SpellCheckTests.swift`.
+
+### Decision changes
+
+1. `NotoSansSC.ttf` was removed, because CJK text renders through the system fonts in both engines; `WelcomeTemplateTests` fails on any "unknown font family" warning (step A).
+2. The floating outline button also hides in Focus, because it is a pane control (step B).
+3. A change of scale restates every block, and a block whose render has another scale draws source until it renders again; the entry hold waits for renders made for the final appearance (step B).
+4. `ManuscriptTextView.cancelOperation(_:)` is the last owner of `Esc`, because NSTextView has no `cancelOperation:` and beeps through `doCommandBySelector:` (step B).
+5. Every block that any non-empty selection touches is a focus block, not only for a pointer selection; for a keyboard selection the active block is one too (step C).
+6. Test 3 measures each block's contrast against itself at full contrast, because source and rendered ink have different colours (step C).
+7. Images that match the device's pixel size draw at exactly that size on whole device pixels with no interpolation; each fragment keeps its role until `roleRevision` changes; a dimmed rendered block draws a pre-dimmed copy (`DimmedImageCache`, 32 images) instead of a global alpha (step D). Pixel format and colour space were left alone: they made no difference.
+8. The typewriter step is timed through the action, the window's display pass and a walk of the editor's layer tree, because the hidden test window does not draw fragment layers (step D).
+9. The toolbar buttons are AppKit views (`ToolbarButtonView`) that refuse first responder, not SwiftUI buttons, because the test process has no SwiftUI accessibility tree and an AppKit view can prove it refuses focus. Hover help uses the app's existing key path format (`⌘J → i t`), not `⌘J I T` (step E).
+10. The 64 pt bottom clearance is kept by setting the container inset to the mean of top and bottom and overriding `textContainerOrigin`, so Writing mode keeps 42 pt above the text. In Focus the toolbar sits 35 pt higher while the status bar shows (step E).
+11. In Focus, a change of the visible height with the caret line in view moves the caret line back to the typewriter line instead of keeping the top line (step E).
+12. Spell check skips the code parts of a function call and checks the markup in its content blocks, not whole "function call ranges"; spec Section 5.3 changed with it (decision 7, step F).
+13. A word cut by markup with no space (`#emph[un]believable`, `*str*_ong_`) is not checked, so no half of it is reported (step F).
+14. Every `NSSpellChecker` call starts on the main actor through its asynchronous request, with the completion handler built in a `nonisolated` function; no checking runs on a queue of Prose's own. The parse for checkable ranges runs on the `SpellCheckSource` actor (step F).
+15. The spelling setting is local to the Mac, not synced, and also appears in the Writing tab of Settings (step F).
+16. TextKit 2 draws `.spellingState` set as a rendering attribute, so source needs no fragment drawing; `RenderingAttributes` keeps it through a full restyle (step F, the risk resolved).
+17. The rendered underline lies under the misspelled range's own glyph boxes, not the bottom of the line's boxes, so an inline equation on the same line does not push it down (step G).
+18. A right-click on a misspelled word in a rendered block or pill selects it as a pointer selection, so the block stays drawn; a separator follows the guesses, as in TextEdit (step G).
+19. `⌘;` in Focus puts the selected word's line on the typewriter line, the one selection with length that Focus places there (step G).
+20. Accessibility overrides both the public `accessibilityAttributedString(for:)` and NSTextView's own selector, because the attribute path never calls the public method; `AXMarkedMisspelled` goes only on the underlined misspellings (step G).
+
+### Costs
+
+- Memory: entering Focus adds 9 to 10 MiB to Writing mode. On a book the block engine's share in Focus is 652 to 663 MiB, and the app peaks at 1,023 to 1,154 MiB over the step runs (Writing mode 976 to 1,051 MiB). Tinymist's footprint does not change.
+- Typewriter step: p95 19 to 26 ms outside heavy load (gate 33 ms). Down steps meet the 16.7 ms target; Returns do not, mostly in the edit path every mode shares and in the SwiftUI layout of the title items after the selection change. One step reached 35.32 ms (War and Peace, step G main-session run); the gate is on p95. Under heavy outside load the p95 reached 60 ms and failed (step E); step D's commit failed the same way in the same minutes.
+- Typing in Focus costs 3 to 5 ms more per key than in Writing mode, for the typewriter `flush()`. All typing gates pass in every mode with spell check on.
+- Entry into Focus on a book: the entry window ends in 106 to 126 ms with the renders in view, and every block in view has its Focus render after 244 to 342 ms.
+- Spell check on a book, run alone: the first viewport after opening takes 81 to 111 ms, mostly the parse off the main thread; each later viewport check takes 18 to 24 ms of wall time and 1.3 to 3.0 ms of main-thread time.
+- Benchmark numbers vary by a factor of two to three with machine load (see "Benchmark after steps E and F").
+- Gate runs: 269 core and 190 app tests passed in each run with no failure, coverage 89.38, 89.42 and 89.41 percent; every benchmark gate passed in Code, Writing and Focus on both books (load average 4 to 6). Typewriter step median / p95 / max over the three runs: War and Peace 17.94 / 21.52 / 32.43, 17.12 / 22.49 / 25.48 and 18.06 / 22.95 / 53.46 ms; SICP 15.53 / 20.65 / 23.79, 16.36 / 23.49 / 28.44 and 16.07 / 24.50 / 34.94 ms. Peak app memory in Focus 1,035 to 1,058 MiB (War and Peace) and 1,096 to 1,127 MiB (SICP). Single steps up to 53 ms occur; the gate is on p95.
+
+### Open items for later phases
+
+- A change to a `.bib` file on disk is not passed to either engine: `projectFilesChanged` passes only `.typ` files to the block engine, and whether Tinymist rereads a changed `.bib` is unconfirmed. A Zotero export (Better BibTeX) therefore may need an edit before new references show. To settle in the Citations phase.
+- Preview test flakiness: `lazyPagesRestoreBeforePaintingAndScrollingSupersedesRestoration` failed in 2 of 4 full runs after step B (the preview page reported `visibility: hidden`, as an occluded window does) and passed alone each time. It was not seen after step B. If it returns, find whether a `WritingFlowTests` window covers the preview test's window (step B).
+- The typewriter Return misses the 16.7 ms target. Making the title items stop depending on the selection, and trimming the shared edit path, would help (step D).
+- The typewriter measure is the instrumented debug build on the CPU; it does not include Core Animation's compositing or the display's frame timing (step D).
+- A dimmed image copy is made on the main thread on first use (about 4 ms for a large block). An image kept across a change of backing scale resamples until its new render arrives (step D).
+- The click animation is a 120 Hz timer, not a display link, and a trackpad scroll during its 0.2 s is overridden until it ends (step C).
+- Entering Focus keeps the top line; the caret line moves to the typewriter line on the first caret change (step C, a choice).
+- Not tested: real pointer events, hover, live window resize with the typewriter on, and VoiceOver in Focus and on the toolbar. The title items' hiding is tested as `FocusChrome` state, not as pixels (steps B, C and E).
+- Full Keyboard Access cannot reach the toolbar buttons, on purpose; the `⌘J` paths are the keyboard route. The toolbar covers the text under it in the middle of a document (step E).
+- A command that leaves a placeholder selected (`table`, `equation` without a selection) does not scroll in Focus, because only an empty selection scrolls (step E).
+- Main-thread time per viewport check rose from about 1.3 to 3 ms over three checks on War and Peace, likely from the growing misspelling list; the per-keystroke cost of moving misspellings is not measured (step F).
+- Words cut by markup with no space are not checked. The spelling language is the system's, so a multilingual document gets whatever it decides (step F).
+- Pills draw no underline; a misspelling inside a pill shows only when it opens (step G).
+- The rendered underline's size and baseline are estimates from the glyph boxes, up to about a point off for fonts far from the system font's or Libertinus' metrics. The engine could return glyph baselines and sizes (step G).
+- A right-click in a rendered block on a correctly spelled word keeps the selection, and NSTextView's own items (Look Up, Translate) name the word in the hidden source line (step G; there before Phase 4).
+- When a viewport check reports many misspellings in rendered blocks, all their blocks are laid out again at once, as a swap does; not measured separately (step G).
+- The underline colours are constants sampled on macOS 27 and do not follow a later system change (step G).
+- An incremental build on another checkout can keep a stale `zh-Hans.lproj` in `.build/out/Products/*/Prose_ProseCore.bundle`; delete that folder before building (step A).
