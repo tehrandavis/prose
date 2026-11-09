@@ -259,16 +259,18 @@ extension WritingFlowTests {
         editor.undoManager?.undo()
         try await app.wait { app.workspace.compileStatus == .succeeded }
 
-        // Modes: only Code is available; the preview toggles beside the text.
+        // Modes: Focus hides the preview and Code brings it back; the preview
+        // toggles beside the text.
         app.workspace.layout = .writing
         try app.workspace.execute(#require(WritingCommand.all.first { $0.id == "togglePreview" }))
         #expect(app.workspace.layout == .split)
         #expect(app.workspace.previewShown)
         try app.workspace.execute(#require(WritingCommand.all.first { $0.id == "modeFocus" }))
-        #expect(app.workspace.editorMode == .code)
-        #expect(app.workspace.message != nil)
+        #expect(app.workspace.editorMode == .focus)
+        #expect(!app.workspace.previewShown)
         try app.workspace.execute(#require(WritingCommand.all.first { $0.id == "modeCode" }))
         #expect(app.workspace.editorMode == .code)
+        #expect(app.workspace.layout == .split)
         #expect(WritingCommand.all.first { $0.id == "togglePreview" }?.shortcuts.first?.label == "⇧⌘P")
         #expect(WritingCommand.all.first { $0.id == "preview" }?.shortcuts.first?.label == "⌥⌘P")
         #expect(WritingCommand.all.first { $0.id == "modeCode" }?.shortcuts.first?.label == "⌘1")

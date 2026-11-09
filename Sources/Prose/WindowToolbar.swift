@@ -64,13 +64,15 @@ final class WindowToolbar: NSObject, NSToolbarDelegate {
         let item = NSToolbarItem(itemIdentifier: identifier)
         if identifier == documentID {
             item.label = L10n.text("Current Document")
-            item.view = NSHostingView(rootView: AdaptiveDocumentTitle(workspace: workspace, size: titleSize))
+            item.view = NSHostingView(rootView: AdaptiveDocumentTitle(workspace: workspace, size: titleSize)
+                .modifier(FocusTitleItem(chrome: workspace.focusChrome)))
         } else if identifier == locationID {
             item.label = L10n.text("Location and Status")
             item.view = NSHostingView(rootView: TitleLocation(workspace: workspace).frame(height: 30))
         } else if identifier == actionsID {
             item.label = L10n.text("Writing Views and Export")
-            item.view = NSHostingView(rootView: WritingActions(workspace: workspace).frame(height: 30))
+            item.view = NSHostingView(rootView: WritingActions(workspace: workspace).frame(height: 30)
+                .modifier(FocusTitleItem(chrome: workspace.focusChrome)))
         } else {
             return nil
         }
@@ -192,7 +194,7 @@ private struct WritingActions: View {
     }
 }
 
-/// Code, Writing and Focus. Focus arrives in Phase 4.
+/// Code, Writing and Focus.
 struct ModeControl: View {
     @ObservedObject var workspace: Workspace
     var body: some View {
@@ -201,7 +203,7 @@ struct ModeControl: View {
                 let selected = workspace.editorMode == mode
                 Button { workspace.setMode(mode) } label: {
                     Text(L10n.text(mode.title)).font(.system(size: 11, weight: selected ? .semibold : .regular))
-                        .foregroundStyle(selected ? Theme.text : Theme.secondary.opacity(mode.isAvailable ? 1 : 0.55))
+                        .foregroundStyle(selected ? Theme.text : Theme.secondary)
                         .padding(.horizontal, 10).frame(minWidth: 26).frame(height: 26)
                         .background(selected ? Theme.editor : .clear, in: RoundedRectangle(cornerRadius: 6))
                         .contentShape(Rectangle())
@@ -212,7 +214,6 @@ struct ModeControl: View {
                     .learningHelp(
                         L10n.text(mode.title),
                         shortcut: "⌘\((EditorMode.allCases.firstIndex(of: mode) ?? 0) + 1)",
-                        detail: mode.isAvailable ? nil : L10n.text("Arrives in a later version"),
                     )
             }
         }.padding(2).background(Theme.border.opacity(0.45), in: RoundedRectangle(cornerRadius: 8)).frame(height: 30)
@@ -220,14 +221,6 @@ struct ModeControl: View {
 }
 
 extension EditorMode {
-    /// Focus arrives in Phase 4.
-    var isAvailable: Bool {
-        switch self {
-        case .code, .writing: true
-        case .focus: false
-        }
-    }
-
     var title: String {
         switch self {
         case .code: "Code"

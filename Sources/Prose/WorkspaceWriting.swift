@@ -38,10 +38,14 @@ extension Workspace {
         if let engine = writingEngine, engine.key != key {
             freeWritingEngine()
         }
-        guard editorMode == .writing else {
+        guard editorMode != .code else {
             editor.writing.stop()
+            editor.writing.setFocus(false)
             return
         }
+        // Focus changes the scale and the column of a running model through
+        // Writing mode's entry path; a model that starts later starts with it.
+        editor.writing.setFocus(editorMode == .focus)
         if let engine = writingEngine {
             editor.writing.start(renderer: engine.renderer, file: documentURL, reload: reload)
         } else if writingEngineRequest != key {
@@ -104,6 +108,7 @@ extension Workspace {
             case let .failure(error):
                 recordOperation("writing.engineFailed", ["error": error.message])
                 editorMode = .code
+                updateWritingMode()
                 showMessage(error.message, persistent: true)
             }
         }

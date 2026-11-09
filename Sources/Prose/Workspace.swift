@@ -14,7 +14,7 @@ struct DiagnosticItem: Identifiable {
 
 enum EditorLayout: String { case writing, split, preview }
 
-/// The three views of one source file (spec Section 3.2). Phase 1 ships Code only.
+/// The three views of one source file (spec Section 3.2).
 enum EditorMode: String, CaseIterable { case code, writing, focus }
 
 @MainActor
@@ -89,6 +89,9 @@ final class Workspace: ObservableObject {
     @Published var diagnostics: [DiagnosticItem] = []
     @Published var layout: EditorLayout = .writing {
         didSet {
+            if layout != oldValue {
+                paneChangedInFocus(sidebar: false)
+            }
             recordOperation("layout.changed", ["layout": layout.rawValue])
             dismissAssistance()
             editor?.isEditable = editorIsEditable
@@ -98,13 +101,28 @@ final class Workspace: ObservableObject {
         }
     }
 
-    /// Code, Writing or Focus. Only Code is available until Writing mode ships.
-    @Published var editorMode: EditorMode = .code
+    /// Code, Writing or Focus. Entering and leaving Focus saves and restores
+    /// the panes (`focusModeChanged(from:)`).
+    @Published var editorMode: EditorMode = .code {
+        didSet {
+            if editorMode != oldValue {
+                focusModeChanged(from: oldValue)
+            }
+        }
+    }
+
+    /// Focus mode's hidden title row items and status bar.
+    let focusChrome = FocusChrome()
+    /// The sidebar and layout Focus mode replaced, restored when it ends.
+    var focusSavedPanes: FocusPanes?
+    /// While Focus mode itself changes the panes.
+    var applyingFocusPanes = false
 
     /// The left column with the project's files and the outline.
     @Published var sidebarVisible = false {
         didSet {
             if sidebarVisible != oldValue {
+                paneChangedInFocus(sidebar: true)
                 recordOperation("sidebar.changed", ["visible": String(sidebarVisible)])
             }
         }

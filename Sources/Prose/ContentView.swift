@@ -79,7 +79,7 @@ struct ContentView: View {
                     HStack(spacing: 0) {
                         manuscript.frame(width: editorWidth).clipped()
                             .overlay(alignment: .topLeading) {
-                                if workspace.layout != .preview {
+                                if workspace.layout != .preview, workspace.editorMode != .focus {
                                     FloatingOutline(
                                         workspace: workspace,
                                         availableMargin: ManuscriptLayout.horizontalInset(for: editorWidth),
@@ -108,6 +108,10 @@ struct ContentView: View {
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 // A removed divider receives no exit event; do not keep its highlight.
                 .onChange(of: workspace.layout) { _, _ in dividerHovering = false }
+                // Focus mode shows the status bar over the text, on demand.
+                .overlay(alignment: .bottom) {
+                    FocusStatusBar(chrome: workspace.focusChrome, overlay: true) { statusBar }
+                }
             if let message = workspace.message {
                 messageBar(message)
             }
@@ -115,8 +119,7 @@ struct ContentView: View {
                 Rectangle().fill(Theme.accent.opacity(0.4)).frame(height: 1)
                 CommandPalette(workspace: workspace)
             }
-            Rectangle().fill(Theme.border.opacity(0.55)).frame(height: 1)
-            footer
+            FocusStatusBar(chrome: workspace.focusChrome, overlay: false) { statusBar }
         }
         .overlay {
             if workspace.checksOpen {
@@ -301,6 +304,13 @@ struct ContentView: View {
         }.padding(.horizontal, 20).padding(.vertical, 3).background(Theme.panel)
     }
 
+    private var statusBar: some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(Theme.border.opacity(0.55)).frame(height: 1)
+            footer
+        }.background(Theme.background)
+    }
+
     private var footer: some View {
         HStack(spacing: 16) {
             Button { workspace.togglePalette() } label: {
@@ -334,6 +344,25 @@ struct ContentView: View {
             )).foregroundStyle(Theme.muted).frame(minWidth: 35, alignment: .trailing)
             DocumentCheckButton(workspace: workspace)
         }.padding(.horizontal, 24).frame(height: 34)
+    }
+}
+
+/// The status bar's place: below the panes outside Focus mode (`overlay`
+/// false), over the bottom of the text while Focus mode shows it (`overlay`
+/// true).
+private struct FocusStatusBar<Bar: View>: View {
+    @ObservedObject var chrome: FocusChrome
+    let overlay: Bool
+    @ViewBuilder let bar: () -> Bar
+
+    private var shown: Bool {
+        overlay ? chrome.active && !chrome.hidesStatusBar : !chrome.active
+    }
+
+    var body: some View {
+        if shown {
+            bar()
+        }
     }
 }
 

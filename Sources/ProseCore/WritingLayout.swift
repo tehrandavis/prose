@@ -240,14 +240,21 @@ public final class WritingLayout {
     }
 
     /// A new width, scale or colour re-renders the blocks near the viewport.
-    /// Old images stay until their new ones arrive.
+    /// A new width or colour keeps the images shown until their new renders
+    /// arrive. A new scale (Focus mode, Phase 4 decision 3) does not: a block
+    /// whose render has another scale draws source until it renders again.
     public func setAppearance(_ appearance: WritingAppearance) {
         guard appearance != self.appearance else {
             return
         }
+        let rescaled = self.appearance.map { $0.scale != appearance.scale } ?? false
         self.appearance = appearance
         guard isRunning else {
             return
+        }
+        if rescaled {
+            restate(Array(entries.indices))
+            flush()
         }
         pump()
     }
@@ -496,7 +503,7 @@ public final class WritingLayout {
         if let failure = entry.failure {
             return .source(.failed(failure.message))
         }
-        guard let rendering = entry.rendering else {
+        guard let rendering = entry.rendering, rendering.scale == appearance?.scale ?? rendering.scale else {
             return .source(.waiting)
         }
         return rendering.blank ? .pill(WritingPill(text: label(index), muted: true)) : .rendered(rendering)

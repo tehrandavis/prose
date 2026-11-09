@@ -52,6 +52,9 @@ final class WritingController: NSObject {
     /// For tests: redraws of the highlight asked for by key state changes.
     var highlightRedraws = 0
     private(set) var enteredWithRenders: Bool?
+    /// Focus mode: blocks render at `WritingMetrics.focusScale` for the
+    /// editor's Focus column (decision 3 of the Phase 4 note).
+    private(set) var focused = false
 
     init(editor: ManuscriptTextView) {
         self.editor = editor
@@ -97,13 +100,32 @@ final class WritingController: NSObject {
         beginEntry()
     }
 
+    /// Enters or leaves Focus mode. A running model gets the new scale and
+    /// column width through the entry path: swaps wait up to `entryBudget`
+    /// for the viewport's renders, then blocks without one draw source and
+    /// swap in as they arrive, with the top line kept in place.
+    func setFocus(_ on: Bool) {
+        guard on != focused else {
+            return
+        }
+        focused = on
+        guard isRunning else {
+            return
+        }
+        beginEntry(keepingHeld: true)
+        sendAppearance()
+    }
+
     /// Holds swaps until the blocks in view have their renders, for at most
     /// `entryBudget`, so the switch does not draw source block by block.
-    private func beginEntry() {
+    /// `keepingHeld` keeps swaps an entry still in progress was holding.
+    private func beginEntry(keepingHeld: Bool = false) {
         entryTask?.cancel()
         entering = true
         enteredWithRenders = nil
-        held = []
+        if !keepingHeld {
+            held = []
+        }
         viewportDidChange()
         selectionDidChange()
         entryTask = Task { [weak self] in
@@ -323,18 +345,20 @@ final class WritingController: NSObject {
         }
     }
 
-    /// Column width = the text container's width, 1.3 times scale, a bitmap
-    /// with one pixel per screen pixel, and the dark text colour in dark mode.
+    /// Column width = the text container's width, 1.3 times scale (1.4625
+    /// in Focus mode), a bitmap with one pixel per screen pixel, and the dark
+    /// text colour in dark mode.
     func currentAppearance() -> WritingAppearance? {
         guard let editor, let container = editor.textContainer, container.size.width > 0 else {
             return nil
         }
         let backing = editor.window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
         let dark = editor.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        let scale = focused ? WritingMetrics.focusScale : WritingMetrics.scale
         return WritingAppearance(
             columnWidth: container.size.width,
-            bitmapScale: min(WritingMetrics.scale * backing, RenderOptions.maximumBitmapScale),
-            scale: WritingMetrics.scale,
+            bitmapScale: min(scale * backing, RenderOptions.maximumBitmapScale),
+            scale: scale,
             textColor: dark ? Self.darkTextColor : nil,
         )
     }
@@ -445,8 +469,10 @@ final class WritingController: NSObject {
         flush()
     }
 
-    /// Whether every block in view has what it draws: a render, a pill or a
-    /// reason to stay source.
+    /// Whether every block in view has what it draws: a render for today's
+    /// appearance, a pill or a reason to stay source. (Entering or leaving
+    /// Focus mode can change the column twice, once for the mode and once
+    /// when the panes are laid out; a render for the first width is not ready.)
     private func viewportReady() -> Bool {
         guard let model, model.lastError == nil else {
             return true
@@ -455,11 +481,19 @@ final class WritingController: NSObject {
         guard !blocks.isEmpty, let visible = visibleRange else {
             return false
         }
+        let appearance = currentAppearance()
         for (index, block) in blocks.enumerated()
             where NSMaxRange(block.range) >= visible.location && block.range.location <= NSMaxRange(visible)
         {
-            if case .source(.waiting) = model.state(ofBlockAt: index) {
+            switch model.state(ofBlockAt: index) {
+            case .source(.waiting):
                 return false
+            case let .rendered(rendering):
+                if let appearance, rendering.appearance != appearance {
+                    return false
+                }
+            default:
+                continue
             }
         }
         return true

@@ -387,8 +387,9 @@ struct WritingFlowTests {
         #expect(app.workspace.editorMode == .writing)
         #expect(app.workspace.message == nil)
         try choose("Focus")
-        #expect(app.workspace.editorMode == .writing, "Focus mode is not available yet")
-        #expect(app.workspace.message == L10n.text("Focus mode arrives in a later version of Prose."))
+        #expect(app.workspace.editorMode == .focus)
+        #expect(app.workspace.message == nil)
+        #expect(!app.workspace.sidebarVisible && app.workspace.layout == .writing)
         try choose("Code")
         #expect(app.workspace.editorMode == .code)
         let originalFont = app.workspace.fontSize

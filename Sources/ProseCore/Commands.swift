@@ -1209,7 +1209,7 @@ public struct WritingCommand: Identifiable, Sendable {
             "view",
             "3",
             "Focus Mode",
-            "Hide everything but the paragraph you are writing. Arrives in a later version.",
+            "Hide everything but the paragraph you are writing.",
             "focus mode",
         ),
         .init(

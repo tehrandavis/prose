@@ -767,6 +767,53 @@ private func expectOrdered(_ blocks: [RenderBlock], within length: Int) {
     #expect(await gate.renders.count == renders + 6)
 }
 
+/// Phase 4 decision 3: Focus mode changes the scale. A render made at another
+/// scale draws source until the block renders again, and the change is
+/// reported at once; going back renders at the first scale again.
+@Test @MainActor func writingLayoutDrawsSourceUntilANewScaleRenders() async throws {
+    let draft = try Draft()
+    let gate = try await GatedRenderer(draft.renderer())
+    let (layout, log) = await started(threeParagraphs, gate, draft)
+    #expect(renderedEverywhere(layout))
+    let renders = await gate.renders.count
+
+    await gate.holdRenders(true)
+    var focus = appearance
+    focus.scale = 1.4625
+    focus.bitmapScale = 2.925
+    let reported = log.calls.count
+    layout.setAppearance(focus)
+    #expect(log.calls.count == reported + 1, "The scale change was not reported at once")
+    for index in layout.blocks.indices {
+        #expect(layout.state(ofBlockAt: index) == .source(.waiting))
+        #expect(log.covers(layout.blocks[index].range.location))
+    }
+    await eventually("a held render") { await gate.heldRenderCount == 1 }
+    await gate.holdRenders(false)
+    await layout.idle()
+    #expect(renderedEverywhere(layout))
+    for index in layout.blocks.indices {
+        let rendering = try #require(layout.state(ofBlockAt: index).rendering)
+        #expect(rendering.scale == 1.4625)
+        #expect(abs(rendering.height - rendering.drawnRect.height * 1.4625) < 1e-9)
+    }
+    #expect(await gate.renders.count == renders + 3)
+
+    // A new width at the same scale keeps the images until they render.
+    var wider = focus
+    wider.columnWidth = 560
+    await gate.holdRenders(true)
+    layout.setAppearance(wider)
+    #expect(layout.blocks.indices.allSatisfy { layout.state(ofBlockAt: $0).rendering?.scale == 1.4625 })
+    await gate.holdRenders(false)
+    await layout.idle()
+
+    layout.setAppearance(appearance)
+    #expect(layout.blocks.indices.allSatisfy { layout.state(ofBlockAt: $0) == .source(.waiting) })
+    await layout.idle()
+    #expect(layout.blocks.indices.allSatisfy { layout.state(ofBlockAt: $0).rendering?.scale == 1.3 })
+}
+
 @Test @MainActor func writingLayoutReRendersEveryBlockWhenAContextLineChanges() async throws {
     let draft = try Draft()
     let gate = try await GatedRenderer(draft.renderer())

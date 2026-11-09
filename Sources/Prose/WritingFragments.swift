@@ -5,6 +5,8 @@ import ProseCore
 enum WritingMetrics {
     /// Blocks render at column width ÷ 1.3 and draw at 1.3 times (spec decision 2).
     static let scale = 1.3
+    /// Focus mode draws 18/16 larger: 1.4625 (decision 3 of the Phase 4 note).
+    static let focusScale = scale * 18 / 16
     /// A pill's rounded rectangle and the space above and below it.
     static let pillHeight: CGFloat = 24
     static let pillSpacing: CGFloat = 6

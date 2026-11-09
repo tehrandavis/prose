@@ -29,12 +29,10 @@ extension Workspace {
         layout = layout == .writing ? .split : .writing
     }
 
-    /// Code or Writing. Focus arrives in Phase 4.
+    /// Code, Writing or Focus. Focus is Writing mode plus view state: entering
+    /// it from Code enters Writing mode with the same model, engine and
+    /// fragments (decision 2 of the Phase 4 note).
     func setMode(_ mode: EditorMode) {
-        guard mode.isAvailable else {
-            showMessage(L10n.text("Focus mode arrives in a later version of Prose."))
-            return
-        }
         recordOperation("mode.changed", ["mode": mode.rawValue])
         guard mode != editorMode else {
             return

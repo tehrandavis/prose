@@ -57,7 +57,7 @@ The segmented control at the top right switches the center column. The sidebar a
 | Writing | Rendered blocks. Headings, paragraphs, lists, equations, figures and tables are drawn as typeset fragments from the real engine. The block that holds the caret shows its source. | New: Section 5 |
 | Focus | Writing mode with the sidebar and preview hidden, a narrower measure, the current paragraph at full contrast and other paragraphs dimmed, a fixed typewriter scroll position | New, mostly view state |
 
-Shortcuts: `⌘1` Code, `⌘2` Writing, `⌘3` Focus. `⌘⇧P` toggles the preview pane, and `⌘⌥P` fills the window with the preview for reading. `⌘0` toggles the sidebar. `⌘J` keeps command discovery. The mode is saved per document. (Until Phase 4, Focus explains that it arrives later. Until Phase 5, every document opens in Code mode. LeftBlank's `⌘4` outline pin is gone, because the sidebar holds the outline.)
+Shortcuts: `⌘1` Code, `⌘2` Writing, `⌘3` Focus. `⌘⇧P` toggles the preview pane, and `⌘⌥P` fills the window with the preview for reading. `⌘0` toggles the sidebar. `⌘J` keeps command discovery. The mode is saved per document. (Until Phase 5, every document opens in Code mode. LeftBlank's `⌘4` outline pin is gone, because the sidebar holds the outline.)
 
 ### 3.3 Window anatomy
 

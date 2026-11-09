@@ -367,8 +367,8 @@ extension WritingFlowTests {
     }
 
     /// Decision 11: with no default set, a newly opened document starts in
-    /// Code mode, the Writing segment switches to Writing mode, and Focus
-    /// still refuses with its message (Phase 4).
+    /// Code mode and the Writing segment switches to Writing mode. Since
+    /// Phase 4 step B the Focus segment works too, from Code and from Writing.
     @Test func newDocumentStartsInCodeAndTheWritingSegmentWorksWithoutADefault() async throws {
         #expect(
             UserDefaults.standard.object(forKey: "WritingModeEnabled") == nil,
@@ -383,14 +383,15 @@ extension WritingFlowTests {
         #expect(!editor.writing.isRunning)
         #expect(app.workspace.writingEngine == nil && app.workspace.writingEngineRequest == nil)
         #expect(editor.textLayoutManager?.delegate == nil)
-        #expect(EditorMode.code.isAvailable && EditorMode.writing.isAvailable && !EditorMode.focus.isAvailable)
 
-        // The Focus segment refuses and names only Focus.
+        // The Focus segment works from Code: it enters Writing mode's model.
         app.workspace.message = nil
         app.workspace.setMode(.focus)
-        #expect(app.workspace.editorMode == .code)
-        #expect(app.workspace.message == L10n.text("Focus mode arrives in a later version of Prose."))
-        #expect(!editor.writing.isRunning)
+        #expect(app.workspace.editorMode == .focus)
+        #expect(app.workspace.message == nil)
+        try await app.wait { editor.writing.isRunning && editor.writing.focused }
+        app.workspace.setMode(.code)
+        #expect(app.workspace.editorMode == .code && !editor.writing.isRunning && !editor.writing.focused)
 
         // The Writing segment works with no default set.
         app.workspace.message = nil
@@ -402,11 +403,13 @@ extension WritingFlowTests {
         let anyRendered = writingFragments(manager).contains(where: \.isRendered)
         #expect(anyRendered, "No block was drawn rendered")
 
-        // Focus still refuses while Writing runs, and Writing stays on.
+        // Focus works from Writing with the same model, and leaves for it.
         app.workspace.setMode(.focus)
-        #expect(app.workspace.editorMode == .writing)
-        #expect(app.workspace.message == L10n.text("Focus mode arrives in a later version of Prose."))
-        #expect(editor.writing.isRunning)
+        #expect(app.workspace.editorMode == .focus)
+        #expect(app.workspace.message == nil)
+        #expect(editor.writing.isRunning && editor.writing.focused && editor.writing.model === model)
+        app.workspace.setMode(.writing)
+        #expect(editor.writing.isRunning && !editor.writing.focused && editor.writing.model === model)
         expectPlainStorage(editor)
 
         app.workspace.setMode(.code)

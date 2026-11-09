@@ -408,10 +408,7 @@ final class ManuscriptTextView: NSTextView {
         let widened = newSize.width != frame.width
         let anchor = widened ? resizeAnchor ?? topLine() : nil
         super.setFrameSize(newSize)
-        let inset = NSSize(width: ManuscriptLayout.horizontalInset(for: newSize.width), height: 42)
-        if textContainerInset != inset {
-            textContainerInset = inset
-        }
+        updateColumnInset()
         if let anchor {
             resizeAnchor = anchor
             keepAtTop(anchor)
@@ -419,6 +416,35 @@ final class ManuscriptTextView: NSTextView {
         if widened {
             writing.appearanceDidChange(coalesced: true)
         }
+    }
+
+    /// Focus mode's column (decision 3 of the Phase 4 note): narrower than
+    /// Code and Writing mode's. Changing it re-wraps the source and keeps the
+    /// top line in place, as a resize does.
+    var focusColumn = false {
+        didSet {
+            guard focusColumn != oldValue else {
+                return
+            }
+            let anchor = resizeAnchor ?? topLine()
+            guard updateColumnInset(), let anchor else {
+                return
+            }
+            resizeAnchor = anchor
+            keepAtTop(anchor)
+        }
+    }
+
+    /// Sets the margins beside the column for the view's width and mode.
+    /// Returns whether they changed.
+    @discardableResult
+    private func updateColumnInset() -> Bool {
+        let inset = NSSize(width: ManuscriptLayout.horizontalInset(for: frame.width, focus: focusColumn), height: 42)
+        guard textContainerInset != inset else {
+            return false
+        }
+        textContainerInset = inset
+        return true
     }
 
     /// Lays out the text around `anchor` and scrolls its line back to where it
@@ -750,6 +776,23 @@ final class ManuscriptTextView: NSTextView {
             return
         }
         super.keyDown(with: event)
+    }
+
+    /// `Esc` reaches the editor as `cancelOperation:` after every other owner
+    /// (marked text, the command panel, the assistance and checks popups,
+    /// hover, completion and placeholders) has passed on it. In Focus mode it
+    /// leaves for Writing mode. Otherwise it does what it did before this
+    /// override: NSTextView has no `cancelOperation:`, so its
+    /// `doCommandBySelector:` sends the command up the responder chain and
+    /// beeps when nothing there performs it.
+    override func cancelOperation(_ sender: Any?) {
+        if !hasMarkedText(), let workspace, workspace.editorMode == .focus {
+            workspace.setMode(.writing)
+            return
+        }
+        if nextResponder?.tryToPerform(#selector(NSResponder.cancelOperation(_:)), with: sender) != true {
+            NSSound.beep()
+        }
     }
 
     func setCompletionPlaceholders(_ selections: [NSRange]) {
