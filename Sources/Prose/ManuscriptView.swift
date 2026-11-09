@@ -521,6 +521,59 @@ final class ManuscriptTextView: NSTextView {
         writing.selectionWillDraw(from: old, to: selectedRanges)
     }
 
+    /// Writing mode moves the caret by a page of drawn content. NSTextView's
+    /// own page commands moved nothing with TextKit 2 in the test harness.
+    override func pageDown(_ sender: Any?) {
+        if !writing.page(down: true, extending: false) {
+            super.pageDown(sender)
+        }
+    }
+
+    override func pageUp(_ sender: Any?) {
+        if !writing.page(down: false, extending: false) {
+            super.pageUp(sender)
+        }
+    }
+
+    override func pageDownAndModifySelection(_ sender: Any?) {
+        if !writing.page(down: true, extending: true) {
+            super.pageDownAndModifySelection(sender)
+        }
+    }
+
+    override func pageUpAndModifySelection(_ sender: Any?) {
+        if !writing.page(down: false, extending: true) {
+            super.pageUpAndModifySelection(sender)
+        }
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        writing.keyStateDidChange()
+        return became
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        writing.keyStateDidChange()
+        return resigned
+    }
+
+    /// A window became or stopped being key: NSTextView changes its selection
+    /// colour, and Writing mode's highlight follows it.
+    @objc func windowKeyStateChanged(_ notification: Notification) {
+        guard let changed = notification.object as? NSWindow, let window else {
+            return
+        }
+        var current: NSWindow? = changed
+        while let candidate = current, candidate !== window {
+            current = candidate.parent
+        }
+        if current != nil {
+            writing.keyStateDidChange()
+        }
+    }
+
     override func drawBackground(in rect: NSRect) {
         super.drawBackground(in: rect)
         // Under the fragments: rendered blocks are transparent outside ink,

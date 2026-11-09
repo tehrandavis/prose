@@ -69,8 +69,8 @@ public final class WritingLayout {
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
     /// Replies received, for tests.
-    private(set) var syncReplies = 0
-    private(set) var renderReplies = 0
+    public private(set) var syncReplies = 0
+    public private(set) var renderReplies = 0
 
     private struct RenderRequest {
         let id: Int

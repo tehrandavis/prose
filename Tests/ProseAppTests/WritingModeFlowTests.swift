@@ -683,6 +683,17 @@ struct WritingCanvas {
         return total > 0 && amber * 2 > total
     }
 
+    /// The most common colour in `rect`, in sRGB components from 0 to 255: the
+    /// background a selection draws under text.
+    func commonColor(in rect: CGRect) -> [Int]? {
+        var counts: [[Int]: Int] = [:]
+        _ = pixels(in: rect) { red, green, blue in
+            counts[[red, green, blue], default: 0] += 1
+            return true
+        }
+        return counts.max { $0.value < $1.value }?.key
+    }
+
     /// The colour in the middle of `rect`, for messages.
     func color(at rect: CGRect) -> String {
         var found = ""

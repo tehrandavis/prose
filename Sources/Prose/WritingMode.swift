@@ -32,9 +32,16 @@ final class WritingController: NSObject {
     /// The moving end of the selection, as last sent to the model.
     private(set) var caret: Int?
     /// The selection's fixed end, to tell which end moved.
-    private var selectionAnchor: Int?
-    /// The last selection the pointer made that opened no block (decision 6).
-    private var pointerSelection: NSRange?
+    var selectionAnchor: Int?
+    /// The last selection the pointer made that opened no block (decision 6),
+    /// or the keyboard's extension of one.
+    private(set) var pointerSelection: NSRange?
+    /// The selection a keyboard move is about to make from `pointerSelection`,
+    /// and its fixed end; it opens no block either.
+    var pointerExtension: (range: NSRange, fixed: Int)?
+    /// The x a run of vertical keyboard moves keeps, and the selection the
+    /// last one made.
+    var verticalGoal: (range: NSRange, x: CGFloat)?
     /// The caret's line in the viewport before the model changed roles.
     private var caretLine: (offset: Int, y: CGFloat)?
     private var entering = false
@@ -48,6 +55,8 @@ final class WritingController: NSObject {
     /// For tests: swaps applied, and whether entry drew the viewport's renders
     /// at once (true) or ran out of time (false).
     private(set) var swapCount = 0
+    /// For tests: redraws of the highlight asked for by key state changes.
+    var highlightRedraws = 0
     private(set) var enteredWithRenders: Bool?
 
     init(editor: ManuscriptTextView) {
@@ -128,6 +137,8 @@ final class WritingController: NSObject {
         caret = nil
         selectionAnchor = nil
         pointerSelection = nil
+        pointerExtension = nil
+        verticalGoal = nil
     }
 
     /// Stops and lets go of the engine.
@@ -223,12 +234,20 @@ final class WritingController: NSObject {
     /// A selection the pointer made (`byPointer`: a click, shift-click or drag
     /// has ended) opens no block unless it is empty, so the text under the
     /// pointer does not move (decision 6); `anchor` is its fixed end when known.
-    /// Later calls for the same selection leave it so.
+    /// Later calls for the same selection leave it so, and so does the
+    /// keyboard extending it (`keyboardDestination`, `page`).
     func selectionDidChange(byPointer: Bool = false, anchor: Int? = nil) {
         guard let model, model.isRunning, let editor, !editor.loading else {
             return
         }
         let selection = editor.selectedRange()
+        let extended = pointerExtension
+        pointerExtension = nil
+        if !byPointer, selection.length > 0, let extended, extended.range == selection {
+            pointerSelection = selection
+            selectionAnchor = extended.fixed
+            return
+        }
         if selection.length > 0, byPointer || selection == pointerSelection {
             if byPointer {
                 pointerSelection = selection

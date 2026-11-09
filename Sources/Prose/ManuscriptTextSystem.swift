@@ -30,6 +30,14 @@ extension ManuscriptTextView {
             name: NSTextView.willSwitchToNSLayoutManagerNotification,
             object: editor,
         )
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification] {
+            NotificationCenter.default.addObserver(
+                editor,
+                selector: #selector(windowKeyStateChanged),
+                name: name,
+                object: nil,
+            )
+        }
         return editor
     }
 

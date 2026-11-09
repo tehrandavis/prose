@@ -65,6 +65,9 @@ extension WritingFlowTests {
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
+        // The highlight is checked in the key window's colour (step F).
+        let restoreKey = giveKeyAppearance(app.window)
+        defer { restoreKey() }
         let text = editor.string as NSString
         let pill = text.range(of: "#set par").location
         let heading = text.range(of: "= Numbered heading").location
@@ -276,6 +279,9 @@ extension WritingFlowTests {
         let app = try WritingFixture(text: selectionSource, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
+        // The highlight is checked in the key window's colour (step F).
+        let restoreKey = giveKeyAppearance(app.window)
+        defer { restoreKey() }
         let text = editor.string as NSString
         let general = NSPasteboard.general
         let restorePasteboard = savedPasteboard(general)
@@ -374,125 +380,7 @@ extension WritingFlowTests {
     }
 }
 
-// MARK: - Fixture text and helpers
-
-private let selectionFiller = (1 ... 30)
-    .map { "Filler paragraph \($0), plain text that fills the column so the document scrolls.\n\n" }
-    .joined()
-
-private let selectionSource = """
-#set heading(numbering: "1.")
-#set par(justify: false)
-
-= Numbered heading
-
-A short paragraph of one line.
-
-A paragraph with inline math $a^2 + b^2 = c^2$ on its first source line, long enough
-that Typst wraps it, then continues on a second source line with more words for the
-engine to set, and ends on a third source line.
-
-$ integral_0^1 x^2 dif x = 1/3 $
-
-```py
-def raw(): return 1
-```
-
-// A comment on its own.
-
-Plain paragraph after the code.
-
-\(selectionFiller)The last paragraph.
-
-"""
-
-/// Opens `selectionSource` in Writing mode, light, scrolled to the top, with
-/// the caret in the raw block (always source), so every other block renders.
-@MainActor
-private func openSelectionDocument(_ app: WritingFixture) async throws
-    -> (ManuscriptTextView, NSTextLayoutManager, WritingLayout)
-{
-    app.window.appearance = NSAppearance(named: .aqua)
-    app.window.orderFront(nil)
-    await app.layout()
-    let editor = try #require(app.workspace.editor)
-    let manager = try #require(editor.textLayoutManager)
-    park(editor)
-    let model = try await enterWritingMode(app)
-    writingScrollToTop(editor)
-    await app.layout()
-    writingScrollToTop(editor)
-    return (editor, manager, model)
-}
-
-/// Puts the caret in the raw block; the block it leaves renders again.
-@MainActor
-private func park(_ editor: ManuscriptTextView) {
-    let raw = (editor.string as NSString).range(of: "def raw()").location
-    editor.setSelectedRange(NSRange(location: raw + 2, length: 0))
-    editor.prepareForPointerInteraction()
-}
-
-@MainActor
-private func role(_ model: WritingLayout, _ text: NSString, _ offset: Int) -> WritingRole {
-    model.role(forParagraph: text.paragraphRange(for: NSRange(location: offset, length: 0)))
-}
-
-private struct RenderedBlockInfo {
-    let info: WritingFragmentInfo
-    let rendering: WritingRendering
-    let block: NSRange
-}
-
-@MainActor
-private func renderedBlock(_ manager: NSTextLayoutManager, at offset: Int) -> RenderedBlockInfo? {
-    guard let info = writingFragments(manager).first(where: { $0.offset == offset }),
-          case let .rendered(rendering, block) = info.role
-    else {
-        return nil
-    }
-    return RenderedBlockInfo(info: info, rendering: rendering, block: block)
-}
-
-private struct GlyphBox {
-    /// In container coordinates.
-    let box: CGRect
-    /// Nil for generated text and sources outside the block.
-    let offset: Int?
-}
-
-/// The block's glyph boxes on screen, from the engine's geometry: 1.3 times
-/// from the fragment's origin, the image's top at the fragment's top.
-private func glyphBoxes(_ shown: RenderedBlockInfo) -> [GlyphBox] {
-    let rendering = shown.rendering, frame = shown.info.frame, scale = rendering.scale
-    return rendering.glyphs.compactMap { glyph in
-        guard glyph.rect.width > 0.5, glyph.rect.height > 0.5 else {
-            return nil
-        }
-        let box = CGRect(
-            x: frame.minX + glyph.rect.minX * scale,
-            y: frame.minY + (glyph.rect.minY - rendering.drawnRect.minY) * scale,
-            width: glyph.rect.width * scale,
-            height: glyph.rect.height * scale,
-        )
-        let offset = rendering.offset(of: glyph, blockAt: shown.block.location)
-            .flatMap { NSLocationInRange($0, shown.block) ? $0 : nil }
-        return GlyphBox(box: box, offset: offset)
-    }
-}
-
-/// The centre of the glyph box of the character at `offset` in the rendered
-/// block that starts at `block`.
-@MainActor
-private func glyphCentre(_ manager: NSTextLayoutManager, block: Int, offset: Int) throws -> CGPoint {
-    let shown = try #require(renderedBlock(manager, at: block), "Block \(block) is not rendered")
-    let boxes = glyphBoxes(shown)
-    let glyph = try #require(
-        boxes.first { $0.offset == offset },
-        "No glyph for \(offset) in block \(shown.block): sources \(boxes.compactMap(\.offset))",
-    )
-    return CGPoint(x: glyph.box.midX, y: glyph.box.midY)
-}
+// MARK: - Helpers
 
 /// Just inside the left edge of the source character at `offset`.
 @MainActor
@@ -519,68 +407,6 @@ private func selectedRange(_ selections: [NSTextSelection], _ manager: NSTextLay
     }
     let start = TextKit2Geometry.offset(of: range.location, in: manager)
     return NSRange(location: start, length: TextKit2Geometry.offset(of: range.endLocation, in: manager) - start)
-}
-
-/// Presses at `point` (container coordinates) through `mouseDown(with:)`,
-/// drags through `path` and lets go at its end. Prose's tracking loop reads
-/// the drags and the release from `pointerEvents`; `record` sees the
-/// selection each time the loop asks for its next event.
-@MainActor
-private func writingPress(
-    _ editor: ManuscriptTextView,
-    at point: CGPoint,
-    clicks: Int = 1,
-    modifiers: NSEvent.ModifierFlags = [],
-    through path: [CGPoint] = [],
-    record: ((NSRange) -> Void)? = nil,
-) throws {
-    let window = try #require(editor.window)
-    let origin = editor.textContainerOrigin
-    func event(_ type: NSEvent.EventType, _ point: CGPoint) throws -> NSEvent {
-        try #require(NSEvent.mouseEvent(
-            with: type,
-            location: editor.convert(CGPoint(x: point.x + origin.x, y: point.y + origin.y), to: nil),
-            modifierFlags: modifiers,
-            timestamp: ProcessInfo.processInfo.systemUptime,
-            windowNumber: window.windowNumber,
-            context: nil,
-            eventNumber: 0,
-            clickCount: clicks,
-            pressure: 1,
-        ))
-    }
-    var script = try path.map { try event(.leftMouseDragged, $0) } + [event(.leftMouseUp, path.last ?? point)]
-    editor.pointerEvents = {
-        record?(editor.selectedRange())
-        return script.isEmpty ? nil : script.removeFirst()
-    }
-    defer { editor.pointerEvents = nil }
-    let unhandled = editor.unhandledScriptedClicks
-    try editor.mouseDown(with: event(.leftMouseDown, point))
-    #expect(editor.unhandledScriptedClicks == unhandled, "The press at \(point) went to AppKit's tracking")
-    #expect(script.isEmpty, "Prose's loop did not read every scripted event")
-}
-
-/// An empty selection lies in a paragraph drawn as source, and the caret's
-/// rectangle lies in that paragraph's fragment.
-@MainActor
-private func expectCaretInSource(_ editor: ManuscriptTextView, _ manager: NSTextLayoutManager, _ model: WritingLayout) {
-    let caret = editor.selectedRange()
-    guard caret.length == 0 else {
-        return
-    }
-    let text = editor.string as NSString
-    let paragraph = text.paragraphRange(for: NSRange(location: caret.location, length: 0))
-    #expect(model.role(forParagraph: paragraph) == .source, "The caret \(caret.location) is in a rendered paragraph")
-    guard let rect = TextKit2Geometry.caretRect(at: caret.location, in: manager),
-          let location = TextKit2Geometry.location(paragraph.location, in: manager),
-          let fragment = manager.textLayoutFragment(for: location)
-    else {
-        Issue.record("No caret rectangle at \(caret.location)")
-        return
-    }
-    let frame = fragment.layoutFragmentFrame
-    #expect(rect.midY >= frame.minY && rect.midY <= frame.maxY, "Caret \(rect) outside its paragraph \(frame)")
 }
 
 /// Saves a pasteboard's items and returns a closure that puts them back.

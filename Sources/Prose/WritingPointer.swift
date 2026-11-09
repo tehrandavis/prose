@@ -74,6 +74,63 @@ final class WritingSelectionNavigation: NSTextSelectionNavigation {
         }
         return mapped ?? native
     }
+
+    /// Keyboard moves. Inside rendered blocks and pills TextKit steps
+    /// through the hidden source lines; while the keyboard extends a selection
+    /// the pointer made, Writing mode moves its moving end itself
+    /// (`WritingController.keyboardDestination`). Everything else is TextKit's.
+    override func destinationSelection(
+        for textSelection: NSTextSelection,
+        direction: NSTextSelectionNavigation.Direction,
+        destination: NSTextSelectionNavigation.Destination,
+        extending: Bool,
+        confined: Bool,
+    ) -> NSTextSelection? {
+        guard extending, let controller, Thread.isMainThread else {
+            return super.destinationSelection(
+                for: textSelection,
+                direction: direction,
+                destination: destination,
+                extending: extending,
+                confined: confined,
+            )
+        }
+        // NSTextSelection is not Sendable; this runs on the main thread.
+        nonisolated(unsafe) var result: NSTextSelection?
+        nonisolated(unsafe) var handled = false
+        nonisolated(unsafe) let navigation = self
+        MainActor.assumeIsolated {
+            let move = WritingKeyboardMove(direction: direction, destination: destination, confined: confined)
+            if let found = controller.keyboardDestination(
+                move,
+                native: { navigation.nativeDestination(from: $0, move) },
+            ) {
+                result = found
+                handled = true
+            }
+        }
+        guard handled else {
+            return super.destinationSelection(
+                for: textSelection,
+                direction: direction,
+                destination: destination,
+                extending: extending,
+                confined: confined,
+            )
+        }
+        return result
+    }
+
+    /// Where TextKit moves a caret at `location` for `move`.
+    private func nativeDestination(from location: NSTextLocation, _ move: WritingKeyboardMove) -> NSTextLocation? {
+        super.destinationSelection(
+            for: NSTextSelection(location, affinity: .downstream),
+            direction: move.direction,
+            destination: move.destination,
+            extending: false,
+            confined: move.confined,
+        )?.textRanges.first?.location
+    }
 }
 
 extension WritingController {
@@ -207,10 +264,44 @@ extension WritingController {
         editor.needsDisplay = true
     }
 
+    /// The window's key state or the first responder changed: the editor
+    /// redraws its highlight when the selection touches a rendered block or a
+    /// pill in view.
+    func keyStateDidChange() {
+        guard isRunning, let editor, !drawnSpansInView(of: editor.selectedRanges.map(\.rangeValue)).isEmpty else {
+            return
+        }
+        highlightRedraws += 1
+        editor.needsDisplay = true
+    }
+
+    /// The colour NSTextView draws its selection with. `-[NSTextView
+    /// _selectionBackgroundColor]` returns the background of
+    /// `selectedTextAttributes` while the window has key appearance and the
+    /// text view is its first responder, and
+    /// `NSColor.unemphasizedSelectedTextBackgroundColor` otherwise; nil when
+    /// the attributes have no background. Key appearance here is the public
+    /// part of `-[NSWindow hasKeyAppearance]`: the window is key, or a child
+    /// window of it is (a popover keeps its parent's key appearance).
+    func selectionColor() -> NSColor? {
+        guard let editor, let active = editor.selectedTextAttributes[.backgroundColor] as? NSColor else {
+            return nil
+        }
+        func keyAppearance(_ window: NSWindow) -> Bool {
+            window.isKeyWindow || (window.childWindows ?? []).contains(where: keyAppearance)
+        }
+        guard let window = editor.window, keyAppearance(window),
+              (window.firstResponder as? NSTextView)?.textLayoutManager === editor.textLayoutManager
+        else {
+            return .unemphasizedSelectedTextBackgroundColor
+        }
+        return active
+    }
+
     /// Fills the selection colour over the selected glyphs of rendered blocks
     /// and over selected pills in view. Collapsed lines draw nothing.
     func drawSelection(in dirty: NSRect) {
-        guard isRunning, let editor, let manager = editor.textLayoutManager else {
+        guard isRunning, let editor, let manager = editor.textLayoutManager, let color = selectionColor() else {
             return
         }
         let selected = editor.selectedRanges.map(\.rangeValue).filter { $0.length > 0 }
@@ -220,7 +311,7 @@ extension WritingController {
         }
         let origin = editor.textContainerOrigin
         context.saveGState()
-        context.setFillColor(resolved(Theme.selection))
+        context.setFillColor(resolved(color))
         var drawn = Set<Int>()
         for span in spans where drawn.insert(span.location).inserted {
             guard let location = TextKit2Geometry.location(span.location, in: manager),

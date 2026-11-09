@@ -130,6 +130,92 @@ public struct WritingGlyphMap: Sendable {
         return rects
     }
 
+    // MARK: - Lines for the keyboard
+
+    /// A drawn line that holds source glyphs: its vertical extent, generated
+    /// glyphs included, and its source glyphs from left to right.
+    public struct Line: Equatable, Sendable {
+        public let minY: CGFloat
+        public let maxY: CGFloat
+        public let boxes: [Box]
+
+        public var midY: CGFloat {
+            (minY + maxY) / 2
+        }
+
+        /// The smallest and the largest source offset on the line.
+        public var first: Int {
+            boxes.compactMap(\.offset).min() ?? 0
+        }
+
+        public var last: Int {
+            boxes.compactMap(\.offset).max() ?? 0
+        }
+    }
+
+    /// The lines that hold source glyphs, top to bottom. Keyboard moves inside
+    /// a rendered block step through these, not through TextKit's source lines.
+    public func sourceLines() -> [Line] {
+        lines().compactMap { line in
+            let boxes = line.filter { $0.offset != nil }.sorted { $0.rect.minX < $1.rect.minX }
+            guard !boxes.isEmpty else {
+                return nil
+            }
+            return Line(
+                minY: line.map(\.rect.minY).min() ?? 0,
+                maxY: line.map(\.rect.maxY).max() ?? 0,
+                boxes: boxes,
+            )
+        }
+    }
+
+    /// Where a caret at `offset` sits among `lines`: before the first glyph of
+    /// its character, else after the last glyph of an earlier character, else
+    /// before the block's first glyph. Nil when `lines` is empty.
+    public func caret(at offset: Int, in lines: [Line]) -> (line: Int, x: CGFloat)? {
+        guard let start = lines.first?.boxes.first else {
+            return nil
+        }
+        var before: (line: Int, offset: Int, x: CGFloat)?
+        for (index, line) in lines.enumerated() {
+            for box in line.boxes {
+                guard let source = box.offset else {
+                    continue
+                }
+                if source == offset {
+                    return (index, box.rect.minX)
+                }
+                if source < offset, before.map({ source >= $0.offset }) ?? true {
+                    before = (index, source, box.rect.maxX)
+                }
+            }
+        }
+        return before.map { ($0.line, $0.x) } ?? (0, start.rect.minX)
+    }
+
+    /// The insertion position on `line` nearest `x`: its glyph and whether the
+    /// caret goes after the character, as a click at that x would put it.
+    public func position(on line: Line, nearest x: CGFloat) -> Hit {
+        func across(_ rect: CGRect) -> CGFloat {
+            max(rect.minX - x, 0, x - rect.maxX)
+        }
+        var best: Box?
+        for box in line.boxes {
+            guard let current = best else {
+                best = box
+                continue
+            }
+            let score = (across(box.rect), abs(box.rect.midX - x))
+            if score < (across(current.rect), abs(current.rect.midX - x)) {
+                best = box
+            }
+        }
+        guard let best, let offset = best.offset else {
+            return .missed
+        }
+        return .glyph(offset: offset, trailing: x > best.rect.midX + 0.5)
+    }
+
     /// The boxes grouped into lines: boxes whose vertical extents overlap.
     func lines() -> [[Box]] {
         let sorted = boxes.filter { $0.rect.height > 0 }.sorted { $0.rect.minY < $1.rect.minY }

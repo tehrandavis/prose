@@ -76,3 +76,29 @@ private func sampleMap(scale: Double = 1, imageOrigin: CGPoint = .zero) -> Writi
     #expect(map.selectionRects(for: [NSRange(location: 0, length: 5)]).isEmpty)
     #expect(map.lines().map(\.count) == [3, 3])
 }
+
+@Test func writingGlyphMapGivesTheKeyboardItsDrawnLines() {
+    let map = sampleMap()
+    let lines = map.sourceLines()
+    #expect(lines.count == 2)
+    #expect(lines.map(\.boxes.count) == [3, 1])
+    #expect(lines[0].minY == 0 && lines[0].maxY == 10 && lines[0].midY == 5)
+    #expect(lines[0].first == 100 && lines[0].last == 102)
+    #expect(lines[1].first == 103 && lines[1].last == 103)
+    // A caret before a glyph, after the last glyph of a line, before the block.
+    func caret(_ offset: Int, _ lines: [WritingGlyphMap.Line]) -> [CGFloat]? {
+        map.caret(at: offset, in: lines).map { [CGFloat($0.line), $0.x] }
+    }
+    #expect(caret(101, lines) == [0, 6])
+    #expect(caret(104, lines) == [1, 5])
+    #expect(caret(90, lines) == [0, 0])
+    #expect(caret(101, []) == nil)
+    // The nearest glyph at an x, before or after its character.
+    #expect(map.position(on: lines[0], nearest: 7) == .glyph(offset: 101, trailing: false))
+    #expect(map.position(on: lines[0], nearest: 9.5) == .glyph(offset: 101, trailing: true))
+    #expect(map.position(on: lines[0], nearest: 30) == .glyph(offset: 102, trailing: true))
+    #expect(map.position(on: lines[1], nearest: 30) == .glyph(offset: 103, trailing: true))
+    let empty = WritingGlyphMap.Line(minY: 0, maxY: 0, boxes: [])
+    #expect(map.position(on: empty, nearest: 3) == .missed)
+    #expect(empty.first == 0 && empty.last == 0)
+}
