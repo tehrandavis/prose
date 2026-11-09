@@ -199,6 +199,21 @@ final class Workspace: ObservableObject {
     let resourceStore = DocumentResourceStore()
     @Published var commandError: String?
     @Published var selectedCommandIndex = 0
+    /// The citation picker in the command panel, while it is open.
+    @Published var citationPicker: CitationPicker?
+    /// The project's bibliography entries for the picker, read through
+    /// Writing mode's engine.
+    let bibliographyIndex = BibliographyIndex()
+    var bibliographyIndexGeneration = 0
+    /// The index was read at least once, so edits and changes on disk keep
+    /// it current.
+    var bibliographyIndexUsed = false
+    var bibliographyReloadTask: Task<Void, Never>?
+    /// Reloads of the index that finished, for tests.
+    var bibliographyReloads = 0
+    /// Main files whose writer declined adding a `#bibliography` call.
+    var declinedBibliographyOffers: Set<URL> = []
+    var citationResultsCache: (query: String, revision: Int, entries: [BibliographyEntry])?
     @Published var exporting = false
     @Published var previewZoom: CGFloat = 1
     @Published var previewDark = false
@@ -580,6 +595,11 @@ final class Workspace: ObservableObject {
         }
         history.willEdit(previous: text)
         dismissAssistance()
+        if bibliographyIndexUsed,
+           change.map({ CitationInsertion.mayChangeBibliography(text as NSString, $0) }) ?? true
+        {
+            scheduleBibliographyReload()
+        }
         var updatedMetrics: DocumentMetrics?
         if let change, var current = textMetrics, current.apply(change, to: text) {
             updatedMetrics = current
@@ -1061,6 +1081,7 @@ final class Workspace: ObservableObject {
         recordOperation("palette.close")
         paletteOpen = false
         activeCommand = nil
+        citationPicker = nil
         resourceSelection = nil
         availableResources = []
         availableLibraryDocuments = []
@@ -1073,6 +1094,16 @@ final class Workspace: ObservableObject {
 
     func backPalette() {
         commandError = nil
+        if let picker = citationPicker {
+            if picker.stage == .list {
+                citationPicker = nil
+                query = picker.returnQuery
+                selectedCommandIndex = 0
+            } else {
+                citationPicker?.stage = .list
+            }
+            return
+        }
         if activeCommand != nil {
             activeCommand = nil
         } else if searchMode {
@@ -1119,6 +1150,9 @@ final class Workspace: ObservableObject {
         if event.keyCode == 53 {
             backPalette()
             return true
+        }
+        if citationPicker != nil {
+            return handleCitationKey(event)
         }
         guard event.modifierFlags.isDisjoint(with: [.command, .control, .option]) else {
             return false
@@ -1276,6 +1310,7 @@ final class Workspace: ObservableObject {
             goToDefinition()
         case "navigateBack": closePalette()
             navigateBack()
+        case "cite": openCitationPicker()
         default: insert(command)
         }
     }

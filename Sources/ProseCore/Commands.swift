@@ -284,6 +284,7 @@ public struct WritingCommand: Identifiable, Sendable {
         "contents": "list-dashes",
         "bibliography": "books",
         "citation": "book-bookmark",
+        "cite": "file-text",
         "include": "files",
         "import": "package",
         "variable": "code",
@@ -986,6 +987,15 @@ public struct WritingCommand: Identifiable, Sendable {
             "cite citation bibliography",
             fields: [.init("name", "Citation key", "example")],
             documentation: "model/cite/",
+        ),
+        .init(
+            "cite",
+            "references",
+            "s",
+            "Cite a Source",
+            "Search the project's bibliography files by author, year, title or key, and cite the entry at the caret.",
+            "cite citation source reference bibliography author year search zotero",
+            isInsertion: false,
         ),
         .init(
             "include",

@@ -192,6 +192,12 @@ final class WritingController: NSObject {
         model?.filesChangedOnDisk()
     }
 
+    /// Compiles the document as soon as the engine has the editor's text
+    /// (`WritingLayout.refreshNow`).
+    func refreshNow() {
+        model?.refreshNow()
+    }
+
     /// Stops and lets go of the engine.
     func detach() {
         stop()

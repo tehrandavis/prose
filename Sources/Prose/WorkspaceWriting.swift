@@ -70,7 +70,7 @@ extension Workspace {
         editor?.writing.detach()
     }
 
-    private func createWritingEngine(for key: WritingEngineKey) {
+    func createWritingEngine(for key: WritingEngineKey) {
         writingEngineTask?.cancel()
         writingEngineGeneration += 1
         let generation = writingEngineGeneration
@@ -174,6 +174,11 @@ extension Workspace {
             }
             let read = await renderer.filesChanged(changed)
             writingChangeReports += 1
+            if bibliographyIndexUsed, changed.contains(where: {
+                ["bib", "yml", "yaml"].contains($0.pathExtension.lowercased())
+            }) {
+                reloadBibliographyIndex()
+            }
             recordOperation("writing.filesChanged", ["files": String(changed.count), "read": String(read)])
             guard read > 0, writingEngine?.renderer === renderer else {
                 return

@@ -78,6 +78,9 @@ public final class WritingLayout {
     private var refreshDue = false
     /// Files the document reads changed on disk since the last refresh began.
     private var filesChanged = false
+    /// The next refresh runs as soon as the engine has the text, before any
+    /// render (`refreshNow`).
+    private var urgentRefresh = false
     /// Replies that waited for a composition to end.
     private var deferredBlocks: (revision: Int, blocks: [RenderBlock])?
     private var deferredRenders: [(request: RenderRequest, result: Result<RenderedBlock, BlockRendererError>)] = []
@@ -156,6 +159,7 @@ public final class WritingLayout {
         failedRevision = -1
         refreshDue = false
         filesChanged = false
+        urgentRefresh = false
         deferredBlocks = nil
         deferredRenders = []
         restateWaits = false
@@ -296,6 +300,23 @@ public final class WritingLayout {
         }
         filesChanged = true
         refreshDue = true
+        pump()
+    }
+
+    /// An edit whose final text only the full compile gives, such as a
+    /// citation the picker inserted (citations note, decision 4): compiles
+    /// the document as soon as the engine has the new text, before any
+    /// render and without waiting for the pause after edits. The renders that
+    /// follow then carry the new citation texts; until then the edited block
+    /// draws source, as the caret is in it.
+    public func refreshNow() {
+        guard isRunning else {
+            return
+        }
+        refreshTask?.cancel()
+        refreshTask = nil
+        refreshDue = true
+        urgentRefresh = true
         pump()
     }
 
@@ -677,6 +698,9 @@ public final class WritingLayout {
         guard engineRevision == revision else {
             return nil
         }
+        if urgentRefresh, refreshDue {
+            return .refresh(filesChanged: filesChanged)
+        }
         if let request = nextRender() {
             return .render(request)
         }
@@ -703,6 +727,7 @@ public final class WritingLayout {
         if case .refresh = job {
             refreshDue = false
             filesChanged = false
+            urgentRefresh = false
         }
         Task {
             switch job {

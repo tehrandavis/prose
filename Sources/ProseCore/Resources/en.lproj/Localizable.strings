@@ -888,3 +888,31 @@
 "Use a name without slashes that does not start with a dot." = "Use a name without slashes that does not start with a dot.";
 "An item with that name already exists. Choose a different name." = "An item with that name already exists. Choose a different name.";
 "The folder is no longer available. It may have been moved, renamed or deleted." = "The folder is no longer available. It may have been moved, renamed or deleted.";
+
+/* Citation picker */
+"%@ entries could not be read" = "%@ entries could not be read";
+"1 entry could not be read" = "1 entry could not be read";
+"Add %@ at the end of %@?" = "Add %@ at the end of %@?";
+"Add Bibliography and Cite" = "Add Bibliography and Cite";
+"Add a .bib or .yml file to the project, or create the bibliography call now." = "Add a .bib or .yml file to the project, or create the bibliography call now.";
+"Add a Bibliography…" = "Add a Bibliography…";
+"Cite Only" = "Cite Only";
+"Cite a Source" = "Cite a Source";
+"Search the project's bibliography files by author, year, title or key, and cite the entry at the caret." = "Search the project's bibliography files by author, year, title or key, and cite the entry at the caret.";
+"Entries come from the project's .bib and .yml files. Prose never changes them." = "Entries come from the project's .bib and .yml files. Prose never changes them.";
+"Insert Citation" = "Insert Citation";
+"No matching sources" = "No matching sources";
+"Page or section" = "Page or section";
+"Reading bibliography files…" = "Reading bibliography files…";
+"Search Sources" = "Search Sources";
+"Search by author, year, title or key…" = "Search by author, year, title or key…";
+"This document has no bibliography yet, so the citation would not compile." = "This document has no bibliography yet, so the citation would not compile.";
+"This project has no bibliography file." = "This project has no bibliography file.";
+"Try an author's family name, a year, a title word or a key." = "Try an author's family name, a year, a title word or a key.";
+"could not be read" = "could not be read";
+"et al." = "et al.";
+"line %@" = "line %@";
+"lines %@" = "lines %@";
+"↑ ↓ to select · ↵ to cite · ⌥↵ to add a page or section" = "↑ ↓ to select · ↵ to cite · ⌥↵ to add a page or section";
+"↵ to add the bibliography · N to cite only · Esc to go back" = "↵ to add the bibliography · N to cite only · Esc to go back";
+"↵ to cite · Esc to go back" = "↵ to cite · Esc to go back";

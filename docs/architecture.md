@@ -101,7 +101,7 @@ flowchart LR
 
 One registry holds stable IDs, English labels, English keywords, groups, group keys, help, parameters, direct shortcuts and actions. Browsing and search share this registry. Labels resolve through `L10n` (English only); the normalized search index covers titles, keywords, descriptions and shortcuts.
 
-The panel has closed, category, search and parameter-entry states. `⌘J` toggles it, letters enter categories, `/` begins search and `Esc` returns through levels. Ordinary spaces and input-method candidate keys are not intercepted during editing.
+The panel has closed, category, search, parameter-entry and citation-picker states. `⌘J` toggles it, letters enter categories, `/` begins search and `Esc` returns through levels. Ordinary spaces and input-method candidate keys are not intercepted during editing.
 
 | Group | Key | Examples |
 |---|---|---|
@@ -110,7 +110,7 @@ The panel has closed, category, search and parameter-entry states. `⌘J` toggle
 | Page Setup | p | Paper, margins, fonts, page numbers |
 | Mathematics | m | Basic operations b, structures s, symbols y |
 | Typesetting | l | Columns, grids, alignment, containers, spacing |
-| References | r | Bibliography, citations, contents |
+| References | r | Bibliography, citation by key, Cite a Source (picker), contents |
 | Editing & Code | c | Editing, modules, variables, Universe, formatting |
 | Workspace | v | Writing, split, preview, outline, checks, text size |
 | Documents | f | Create, open, save, save as, PDF export |
@@ -118,6 +118,8 @@ The panel has closed, category, search and parameter-entry states. `⌘J` toggle
 Commands produce explicit text transformations and placeholder ranges. They do not independently write files or refresh preview. String parameters are escaped; numbers and enumerations are validated. Real Typst compilation verifies the insertion catalog.
 
 Insertion queries Tinymist for both selection endpoints. Math helpers accept one mathematical region and omit outer `$` delimiters there; body commands reject math, code and raw-text positions. Explicit inline/block/preamble metadata controls placement. Document settings follow contiguous `#set` rules at the start of a file, without rewriting arbitrary functions or `#show` scopes; later rules can still override them.
+
+**Citation picker (Phase 5 step C).** **Cite a Source** (`cite`, `⌘J R S`, not an insertion command in the registry's sense) opens a picker state inside the panel: `Workspace.citationPicker` (`CitationPicker` in `WorkspaceCitations.swift`) holds the stage (list, supplement field, offer to add a `#bibliography` call), and the picker reuses the panel's `query` and `selectedCommandIndex`. `handlePaletteKey` passes keys to `handleCitationKey` while the picker is open; `Esc` returns from a stage to the list, then from the list to the References group with the command search restored. The entries come from `Workspace.bibliographyIndex` (`BibliographyIndex`), read through Writing mode's engine. In Code mode the picker creates that engine, as Writing mode would, and the editor's text goes to it with `setText` before each read, so an unsaved `#bibliography` call counts. The index reads again when the picker opens, when `projectFilesChanged` reports a `.bib`, `.yml` or `.yaml` file, and 400 ms after an edit whose line mentions `bibliography` or a bibliography extension (`CitationInsertion.mayChangeBibliography`). Insertion uses the same `insertionContext` check as other commands, at the end of the selection, and inserts `CitationInsertion.text` (spacing after a word or a citation, `#cite(label("…"))` for keys that `@` cannot hold) with `insertSnippet`. The offer to add `#bibliography` uses the `bibliography` command's snippet and is made only when the index is not linked, the entry's file is unlinked and the open file is the main file, because commands edit only the open buffer. The call goes in as a second undoable edit after the run loop closes AppKit's undo group for the citation. After an insertion `WritingLayout.refreshNow()` runs the full compile as soon as the engine has the new text, before any render, so a citing block never renders with `??`. Problems in linked files show under the list as one line per file (`BibliographyContents.problemSummaries`); problems in unlinked YAML files that list no entry are hidden.
 
 `WritingWindow.sendEvent` uses AppKit's normal dispatch path and responder chain. There is no application-wide `NSEvent` monitor or `MainActor.assumeIsolated` shortcut. File dialogs suspend main-window command handling.
 

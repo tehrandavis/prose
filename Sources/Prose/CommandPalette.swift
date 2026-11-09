@@ -6,6 +6,7 @@ struct CommandPalette: View {
     @ObservedObject var workspace: Workspace
     private var root: Bool {
         workspace.paletteGroup == nil && !workspace.searchMode && workspace.activeCommand == nil
+            && workspace.citationPicker == nil
     }
 
     var body: some View {
@@ -16,7 +17,9 @@ struct CommandPalette: View {
                     groupGrid(CommandGroup.roots)
                 } else {
                     Group {
-                        if let command = workspace.activeCommand {
+                        if let picker = workspace.citationPicker {
+                            CitationPickerPane(workspace: workspace, picker: picker)
+                        } else if let command = workspace.activeCommand {
                             parameterForm(command)
                         } else if !workspace.paletteGroups.isEmpty {
                             groupGrid(workspace.paletteGroups)
@@ -25,7 +28,13 @@ struct CommandPalette: View {
                         }
                     }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     Rectangle().fill(Theme.border.opacity(0.7)).frame(width: 1)
-                    commandGuide.frame(width: 254).padding(.horizontal, 20)
+                    Group {
+                        if workspace.citationPicker != nil {
+                            CitationGuide(workspace: workspace)
+                        } else {
+                            commandGuide
+                        }
+                    }.frame(width: 254).padding(.horizontal, 20)
                 }
             }.frame(maxWidth: 1120, maxHeight: .infinity).padding(.horizontal, 24)
             footer.frame(height: 40)
@@ -40,7 +49,18 @@ struct CommandPalette: View {
                 QuietButton(icon: "arrow-left", help: L10n.text("Go Back"), shortcut: "Esc") { workspace.backPalette()
                 }
             }
-            if workspace.searchMode, workspace.activeCommand == nil {
+            if let picker = workspace.citationPicker {
+                if picker.stage == .list {
+                    PaletteTextField(
+                        text: $workspace.query,
+                        label: L10n.text("Search Sources"),
+                        placeholder: L10n.text("Search by author, year, title or key…"),
+                    )
+                    .frame(height: 22).onChange(of: workspace.query) { _, _ in workspace.selectedCommandIndex = 0 }
+                } else {
+                    Text(breadcrumb).font(.system(size: 12, weight: .medium))
+                }
+            } else if workspace.searchMode, workspace.activeCommand == nil {
                 PaletteTextField(
                     text: $workspace.query,
                     label: L10n.text("Search Commands"),
@@ -51,7 +71,7 @@ struct CommandPalette: View {
                 Text(breadcrumb).font(.system(size: 12, weight: .medium))
             }
             Spacer(minLength: 8)
-            if !workspace.searchMode, workspace.activeCommand == nil {
+            if !workspace.searchMode, workspace.activeCommand == nil, workspace.citationPicker == nil {
                 Button { workspace.searchMode = true
                     workspace.selectedCommandIndex = 0
                 } label: {
@@ -72,6 +92,9 @@ struct CommandPalette: View {
     }
 
     private var breadcrumb: String {
+        if workspace.citationPicker != nil {
+            return L10n.format("Commands  /  %@", L10n.text("Cite a Source"))
+        }
         if let command = workspace.activeCommand {
             return L10n.format("Commands  /  %@", command.title)
         }
@@ -309,6 +332,9 @@ struct CommandPalette: View {
             if let error = workspace.commandError {
                 PhosphorIcon(name: "warning-circle", size: 13).foregroundStyle(Theme.red)
                 Text(error).font(.system(size: 10)).foregroundStyle(Theme.redText).lineLimit(2)
+            } else if let picker = workspace.citationPicker {
+                Text(CitationPickerPane.hint(picker.stage))
+                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
             } else {
                 Text(workspace.activeCommand == nil ? L10n
                     .text("Letters to explore · ↑ ↓ to select · ↵ to confirm") : L10n
