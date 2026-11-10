@@ -124,18 +124,84 @@ extension WritingRendering: Equatable {
     }
 }
 
-/// The collapsed label of a block that does not render.
-public struct WritingPill: Equatable, Sendable {
-    /// The first `WritingLayout.pillLength` characters of the block's first line.
+/// The collapsed label of a block that does not render, or of a closed fold.
+public struct WritingPill: Hashable, Sendable {
+    /// What a closed fold with no `context` block stands for.
+    public enum Mark: Hashable, Sendable {
+        /// Every block of the fold is a comment.
+        case comment
+        /// Some block of the fold is a call with no ink, such as `#v(7mm)`.
+        case code
+    }
+
+    public enum Style: Hashable, Sendable {
+        /// One block drawn as a pill: an `include` block once folds are on,
+        /// and every block that does not render while they are off.
+        case plain
+        /// A closed fold with one or more `context` blocks. `lines` counts
+        /// its source lines that are not blank; `document` is true when no
+        /// block of a rendering kind comes before it in the file.
+        case setup(lines: Int, document: Bool)
+        /// A closed fold with no `context` block: a mark in the margin.
+        case mark(Mark)
+    }
+
+    /// For a plain pill or a mark, the first `WritingLayout.pillLength`
+    /// characters of the first block's first line; for a setup row, its label
+    /// ("Document setup · 16 lines").
     public let text: String
-    /// Comment-only blocks and renders with no ink.
+    /// Comment-only blocks and renders with no ink. Setup rows and marks are
+    /// always muted.
     public let muted: Bool
+    public let style: Style
+
+    public init(text: String, muted: Bool, style: Style = .plain) {
+        self.text = text
+        self.muted = muted
+        self.style = style
+    }
+
+    /// A setup row of `lines` source lines that are not blank.
+    static func setup(lines: Int, document: Bool) -> WritingPill {
+        let name = document ? "Document setup" : "Setup"
+        let count = lines == 1 ? "1 line" : "\(lines) lines"
+        return WritingPill(text: "\(name) · \(count)", muted: true, style: .setup(lines: lines, document: document))
+    }
+}
+
+/// A run of quiet blocks (`context` and `comment` blocks and blocks whose
+/// render has no ink) with nothing but blank text between them, as
+/// `WritingLayout` draws it now. Values describe one moment; ask again after
+/// `onChange`.
+public struct WritingFold: Hashable, Sendable {
+    /// From the first block's first paragraph to the last block's last
+    /// paragraph, its terminator included. A mark's span also takes the
+    /// blank paragraphs after it, up to the next block.
+    public let span: NSRange
+    /// Open folds draw every paragraph as source.
+    public let isOpen: Bool
+    /// What a closed fold draws on its first paragraph: style `setup` or `mark`.
+    public let pill: WritingPill
+    /// A closed setup row that Focus mode hides: every paragraph collapsed.
+    public let isHidden: Bool
+
+    /// The fold's first character, where the caret rests without opening it.
+    public var restingPosition: Int {
+        span.location
+    }
+
+    /// The first offset after the fold.
+    public var end: Int {
+        NSMaxRange(span)
+    }
 }
 
 /// Why a block lays out as source.
 public enum WritingSourceReason: Equatable, Sendable {
     /// It holds the caret.
     case active
+    /// It lies in an open fold (whether or not it holds the caret).
+    case fold
     case raw
     /// More than `WritingLayout.longBlockLines` source lines.
     case long
@@ -195,6 +261,24 @@ struct WritingEntry {
     var label: String?
     /// What the delegate sees; changes only when no text is marked.
     var shown: WritingBlockState = .source(.waiting)
+    /// The last render had no ink. Kept when an edit drops the render, so the
+    /// block stays in its fold until its next render says otherwise.
+    var wasBlank = false
+}
+
+/// One fold as the model keeps it: entry indices, which stay valid across
+/// rebasing and are rebuilt with every new block list.
+struct FoldRecord {
+    var first: Int
+    var last: Int
+    /// One or more `context` blocks: a setup row, else a mark.
+    var setup: Bool
+    /// The blank UTF-16 units after the last block's span that a mark takes.
+    var trail: Int
+    var pill: WritingPill
+    /// Opened by the pointer or by an edit; only `setFold(open: false, ...)`
+    /// and closing every fold clear it.
+    var pinned = false
 }
 
 extension NSString {
@@ -211,6 +295,40 @@ extension NSString {
             }
         }
         return true
+    }
+
+    /// The lines `range` covers that hold a character other than white space.
+    func nonBlankLineCount(in range: NSRange) -> Int {
+        var count = 0
+        var inked = false
+        for index in range.location ..< NSMaxRange(range) {
+            let unit = character(at: index)
+            if unit == 0x0A || unit == 0x0D || unit == 0x2029 || unit == 0x2028 {
+                if inked {
+                    count += 1
+                }
+                inked = false
+            } else if !inked, unit != 0x20, unit != 0x09,
+                      !(Unicode.Scalar(unit).map(CharacterSet.whitespaces.contains) ?? false)
+            {
+                inked = true
+            }
+        }
+        return count + (inked ? 1 : 0)
+    }
+
+    /// The length of the blank paragraphs from `location` on, whole
+    /// paragraphs only, ending at or before `limit`.
+    func blankParagraphsLength(from location: Int, limit: Int) -> Int {
+        var position = location
+        while position < limit {
+            let paragraph = paragraphRange(for: NSRange(location: position, length: 0))
+            guard NSMaxRange(paragraph) <= limit, NSMaxRange(paragraph) > position, isBlank(paragraph) else {
+                break
+            }
+            position = NSMaxRange(paragraph)
+        }
+        return position - location
     }
 
     /// The paragraphs `range` covers, counted up to `limit + 1`.

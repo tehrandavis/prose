@@ -274,3 +274,20 @@ Tehran accepted the note and every recommendation:
 9. `⌘W` on the home window keeps quitting the app.
 
 Answers 6 to 8 are step F.
+
+## Step A outcome (2026-11-09)
+
+The fold model is in `WritingLayout`, behind `foldsEnabled`, which is off until step B draws folds. With it off, every role is what it was, and no existing test changed.
+
+- `WritingPill` has a style: plain, setup row (line count, and whether it is the document setup) or mark (comment or code). `WritingFold` describes one fold now: its span, whether it is open, its pill, and whether Focus hides it. `WritingSourceReason.fold` marks the blocks of an open fold.
+- Calls for step B: `fold(holding:)`, `folds(intersecting:)`, `setFold(open:at:)`, `toggleFold(at:)`, and the property `hidesSetupRows` for Focus. `drawnSpans(intersecting:)` returns a closed fold's whole span once; `spans(intersecting:)` returns a fold's whole span, open or closed.
+- Choices the step made:
+  - A fold holds the caret from its first character through the end of its last line's text.
+  - Open state is a pin on the fold (set by the pointer or an edit) plus the state of the one fold that holds the caret. A pin follows the fold's blocks across edits and its text across a new block list. A split fold pins both parts.
+  - An edit pins a closed fold when it removes or replaces characters in it, or inserts from the resting position through the end of its last line. An edit before the fold only moves it.
+  - A fold closed by the pointer with the caret inside stays closed until the caret leaves and comes back.
+  - A no-ink block that is edited stays in its fold until a render shows ink, so the fold does not split while it waits.
+  - A mark's trailing blank lines stop at the first line that is not blank.
+  - While text is marked, folds are not rebuilt and the pointer calls do nothing; a composition inside a closed fold opens and pins it at once.
+- Cost: caret moves, role reads and the pointer calls use binary searches over the folds; edits and renders rebuild only the folds near the change. On 4,000 blocks in the debug build a caret move takes 11 to 15 µs.
+- Checks (main session): lint and the release build pass; 303 core and 210 app tests pass; coverage 89.85 percent (`WritingLayout.swift` 99.4 percent, `WritingLayoutTypes.swift` 95.5 percent, the subagent's figures). New tests: `Tests/ProseCoreTests/WritingFoldTests.swift` (12), with a seeded random run of edits, caret moves and pointer calls compared against a fresh model.
