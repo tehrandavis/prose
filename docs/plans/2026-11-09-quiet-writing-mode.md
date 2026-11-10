@@ -390,3 +390,56 @@ The three earlier answers. From this step on the checks are lighter, at Tehran's
 - Existing tests changed: the citation tests expect `style: "apa"`; `narrowWindowCommandFormsAndIconsRemainAvailable` leaves choice fields out of its text-field count; two Rust tests of the mapping have new bounds (mapped red is no longer darker than the original, so the test checks its green and blue instead); the spelling fixture's heading is `= Write in Typst`.
 - Checks (main session, load average 6 to 7): lint and the release build pass; 318 core and 228 app tests pass; coverage 90.18 percent. The subagent's `cargo test --release`: 63 passed.
 - Not tested: a real click on the style menu (tests set the field's value).
+
+## Spike results (2026-11-10)
+
+Step E ran on the branch `quiet-writing-spike` (commit `ab08d8e`, local, not pushed). The spike code is `Sources/ProseCore/TypesetTypingSpike.swift` and `Sources/Prose/TypesetTypingSpike.swift`, behind a switch that only tests turn on; the measurements are `Tests/ProseAppTests/TypesetTypingSpikeFlowTests.swift`, printed with the prefix `SPIKE`. Nothing from it is on `prose`. Instrumented debug build; the load average is given with each timing.
+
+**Result: latency fails on every document, the welcome guide included. That is one of the three results decision 9 named as ending the idea. The caret is exact.**
+
+### Pass marks
+
+| Question | Pass mark | Measured | Result |
+|-|-|-|-|
+| Latency, welcome guide | p95 under 16.7 ms | Typeset, five variants: median 18.5 to 24.2 ms, p95 21.2 to 26.8 ms. Today's open block in the same runs: median 3.7 to 5.0 ms, p95 5.2 to 6.3 ms. Load 4.7 to 10.8 | FAIL |
+| Latency, 20-page paper | p95 under 16.7 ms | Typeset: median 20.2 to 25.0 ms, p95 23.0 to 31.7 ms. Open block: p95 6.0 to 6.5 ms. Load 4.5 to 7.8 | FAIL |
+| Latency, SICP | p95 under 33 ms | Typeset: median 104 to 144 ms, p95 113 to 177 ms. Open block in the same harness: p95 45.1 ms. Load 4.6 to 7.8 | FAIL |
+| Latency, War and Peace | p95 under 33 ms | Typeset: median 417 to 454 ms, p95 505 to 514 ms. Open block in the same harness: p95 169 ms. Load 5 to 33 | FAIL |
+| Caret | 2,000 keys, 0 errors | 2,150 keys, 0 errors, every listed case in the run except a hyphenated word, which the fixture never produced. NSTextView's own insertion indicator matched in 86 of 86 checks | PASS, with the limits below |
+| Between key and render | The old image stays, no source frame, the caret never on the wrong line | One frame of the old image per key, then the new one (2 to 3 frames at load 13). 0 frames drew source | PASS |
+| Edges of the block | Split and join typeset within one render | Join: 1 to 5.7 ms, the image throughout. Split: both halves typeset after 16 to 64 ms, but both draw as source for about 25 to 45 ms first | FAIL (split) |
+| Opening | Opens exactly at markers, math and calls; the caret's line kept within 1 pt | 14 of 14 places and 13 of 13 typed characters correct. The caret stays on its line, 2.4 to 3.0 pt off. It moves sideways 12 to 145 pt, because source shows markers the render hides | Rule PASS, 1 pt mark FAIL |
+| Undo | Groups as in Code mode | One undo and one redo, the caret on its glyph after each | PASS |
+| Input methods | The composition opens the block, commits once | It does, and the candidate rectangle is on the caret's line. The block is typeset again 285 to 662 ms after the commit. Phase 3's tests 9 to 11 fail with the switch on only where they expect the caret's block to be source before composing | Not met as written |
+| VoiceOver | The insertion point's frame is the glyph caret | Equal; the value and strings are the source | PASS |
+| Focus | Typewriter step p95 under 33 ms | 36.3 ms with the spike, 58.2 ms without, in the same run at load 14 to 17 | Unproven |
+| Rules | Source in the storage, no attachment, TextKit 2 | Held in every test | PASS |
+
+### Where the time goes
+
+- The engine is not the cost. Per key on the welcome guide: `setText` 0.1 ms, the block list 0.05 ms, the render 2 to 4 ms, applying it 0.1 to 0.2 ms. The whole-file `setText` costs 1.4 ms on SICP and 3.8 ms on War and Peace.
+- The main thread is. In the debug build each key carries about 10 to 13 ms of app work (SwiftUI updates, the Core Animation commit, `Workspace` updates). The open block pays it after its text is drawn; a typeset block's new image must wait behind it.
+- Three retries: all engine work in one task off the main actor (median about 20 ms); the key waits up to 8 ms for the render, which then arrives in the key's own turn 60 of 60 times, but the swap's layout (6 to 7 ms) lands there too (median 18.5 ms); laying out only the first line when the height is unchanged (no gain).
+- On books the swap and anchor work costs 31 to 39 ms per key (SICP) and about 110 ms (War and Peace). The harness's book baselines are far above the book benchmark's, so the book rows compare only within the harness.
+- Not measured: a release build. The marks were set for the instrumented debug build, as the benchmark's gates are.
+
+### The caret
+
+- Placed from the glyph boxes through the layout manager hook step B added: the trailing edge of the last glyph of the character before the caret; a space with no glyph goes before the next glyph, or after the previous glyph by one natural space width; a ligature part goes to the end of its glyph.
+- Limits: the expected x position comes from the same glyph boxes, so only the line, the order and NSTextView's caret are independent checks. Spaces at a line's end and a paragraph's end are estimated, because the engine reports no glyph there. A caret cannot sit inside a ligature. A hyphenated word was not tested.
+
+### What a writer would notice that the marks do not name
+
+- **Justified lines re-space on most keys.** The character before the caret moved by a median of 1.5 pt and p95 18.8 pt (41 pt at most); 990 of 1,780 keys moved it more than 1 pt.
+- Both halves of a split paragraph flash as source.
+- After an input method commits, the block is typeset again 0.3 to 0.7 s later.
+- When the block opens at a marker, the caret jumps sideways by up to 145 pt.
+- Up and Down need a handler that moves by drawn line.
+
+### What a full build would need
+
+About the size of Phase 3 or larger: an engine call that applies a text range and renders in one step; applying a render with a redraw and no layout; less main-thread work per key in the app; a one-step split; Up and Down by drawn line; engine data for spaces at line ends; and a way to stop justified lines from moving under the caret, which the spike did not find.
+
+### Recommendation
+
+Do not build step 3 now. Steps 1 and 2 already remove most of the code look, and the open block types at a p95 of 5 to 6 ms where typeset typing reaches 21 to 27 ms. Two findings would still hurt after the latency was fixed: the line re-spaces under the caret on most keys, and the caret jumps sideways each time the block opens at a marker. Tehran decides.
