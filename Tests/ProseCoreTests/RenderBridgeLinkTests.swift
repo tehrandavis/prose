@@ -13,9 +13,10 @@ struct RenderBridgeLinkTests {
         #expect(Int(api.refresh_size) == MemoryLayout<PRRefreshInfo>.size)
         #expect(Int(api.stats_size) == MemoryLayout<PRCacheStats>.size)
         #expect(Int(api.options_size) == MemoryLayout<PRRenderOptions>.size)
-        #expect(MemoryLayout<PRRenderResult>.size == 184 && MemoryLayout<PRRenderOptions>.size == 16)
-        #expect(MemoryLayout<PRRenderAPI>.size == 144)
-        #expect(PR_RENDER_ABI_VERSION == 5)
+        #expect(MemoryLayout<PRRenderResult>.size == 208 && MemoryLayout<PRRenderOptions>.size == 16)
+        #expect(MemoryLayout<PRRenderAPI>.size == 168)
+        #expect(PR_RENDER_ABI_VERSION == 6)
+        #expect(PR_NO_FONT == UInt32.max)
     }
 
     @Test func callsWithoutAnEngineFailSafely() throws {
@@ -33,5 +34,13 @@ struct RenderBridgeLinkTests {
         #expect(api.files_changed(nil, nil, 0) == 0)
         #expect(api.bibliography_files(nil) == nil)
         #expect(api.bibliography_entries(nil, nil, 0) == nil)
+        #expect(result.pointee.font == PR_NO_FONT && result.pointee.font_size == 0)
+        var bytes: UnsafePointer<UInt8>?
+        var length = 1
+        var index: UInt32 = 1
+        #expect(!api.font_data(nil, 0, &bytes, &length, &index))
+        #expect(bytes == nil && length == 0 && index == 0)
+        #expect(api.font_face(nil, 0, true, true) == PR_NO_FONT)
+        #expect(api.font_info(nil, 0) == nil)
     }
 }

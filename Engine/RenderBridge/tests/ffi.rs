@@ -7,7 +7,7 @@ use std::ffi::{CStr, CString};
 use common::{utf16_index, Project};
 use prose_render::ffi::{
     prose_render_api, PRBlock, PRRefreshInfo, PRRenderAPI, PRRenderOptions, PRRenderResult,
-    ABI_VERSION,
+    ABI_VERSION, NO_FONT,
 };
 use prose_render::{CacheStats, GlyphBox, Rect};
 
@@ -53,8 +53,11 @@ fn the_table_reports_its_version_and_sizes() {
     assert_eq!(std::mem::size_of::<Rect>(), 32);
     assert_eq!(std::mem::size_of::<PRRefreshInfo>(), 28);
     assert_eq!(std::mem::size_of::<CacheStats>(), 40);
-    assert_eq!(std::mem::size_of::<PRRenderResult>(), 184);
+    assert_eq!(std::mem::size_of::<PRRenderResult>(), 208);
     assert_eq!(std::mem::offset_of!(PRRenderResult, text), 168);
+    assert_eq!(std::mem::offset_of!(PRRenderResult, font_size), 184);
+    assert_eq!(std::mem::offset_of!(PRRenderResult, line_pitch), 192);
+    assert_eq!(std::mem::offset_of!(PRRenderResult, font), 200);
     assert_eq!(std::mem::offset_of!(PRRenderResult, ink), 48);
     assert_eq!(std::mem::offset_of!(PRRenderResult, drawn), 80);
     assert_eq!(std::mem::offset_of!(PRRenderResult, glyphs), 112);
@@ -69,8 +72,12 @@ fn the_table_reports_its_version_and_sizes() {
     assert_eq!(std::mem::offset_of!(PRRenderAPI, files_changed), 120);
     assert_eq!(std::mem::offset_of!(PRRenderAPI, bibliography_files), 128);
     assert_eq!(std::mem::offset_of!(PRRenderAPI, bibliography_entries), 136);
-    assert_eq!(std::mem::size_of::<PRRenderAPI>(), 144);
-    assert_eq!(ABI_VERSION, 5);
+    assert_eq!(std::mem::offset_of!(PRRenderAPI, font_data), 144);
+    assert_eq!(std::mem::offset_of!(PRRenderAPI, font_face), 152);
+    assert_eq!(std::mem::offset_of!(PRRenderAPI, font_info), 160);
+    assert_eq!(std::mem::size_of::<PRRenderAPI>(), 168);
+    assert_eq!(ABI_VERSION, 6);
+    assert_eq!(NO_FONT, u32::MAX);
 }
 
 #[test]
@@ -211,6 +218,7 @@ fn a_round_trip_through_the_c_abi() {
         // Errors come back as results and as last_error.
         let bad = (api.render)(engine, path.as_ptr(), 5, 2, 300.0, std::ptr::null());
         assert!(!(*bad).error.is_null());
+        assert_eq!((*bad).font, NO_FONT);
         assert!((*bad).svg.is_null() && (*bad).glyph_count == 0);
         assert!((*bad).text.is_null() && (*bad).text_length == 0);
         let message = CStr::from_ptr((*bad).error).to_string_lossy().into_owned();
@@ -281,6 +289,25 @@ fn null_and_invalid_arguments_fail_safely() {
         assert_eq!((api.cache_stats)(null), CacheStats::default());
         assert!((api.last_error)(null).is_null());
         assert_eq!((api.files_changed)(null, std::ptr::null(), 0), 0);
+        let mut bytes: *const u8 = [1u8].as_ptr();
+        let (mut length, mut index) = (5usize, 5u32);
+        assert!(!(api.font_data)(
+            null,
+            0,
+            &mut bytes,
+            &mut length,
+            &mut index
+        ));
+        assert!(bytes.is_null() && length == 0 && index == 0);
+        assert!(!(api.font_data)(
+            null,
+            0,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            std::ptr::null_mut()
+        ));
+        assert_eq!((api.font_face)(null, 0, true, true), NO_FONT);
+        assert!((api.font_info)(null, 0).is_null());
         (api.engine_free)(null);
         (api.blocks_free)(std::ptr::null_mut(), 0);
         (api.result_free)(std::ptr::null_mut());
@@ -353,4 +380,94 @@ fn the_bibliography_calls_return_json() {
         serde_json::json!([{"path": "refs.bib", "entries": 1, "accepted": false}])
     );
     unsafe { (api.engine_free)(engine) };
+}
+
+#[test]
+fn the_font_calls_describe_the_text_font() {
+    let text = "A paragraph in the default font.\n";
+    let project = Project::new(&[("main.typ", text)]);
+    let api = api();
+    let root = CString::new(project.root.to_str().unwrap()).unwrap();
+    let main = CString::new("main.typ").unwrap();
+    let path = CString::new(project.path("main.typ").to_str().unwrap()).unwrap();
+    unsafe {
+        let engine = (api.engine_create)(
+            root.as_ptr(),
+            main.as_ptr(),
+            std::ptr::null(),
+            0,
+            std::ptr::null(),
+            0,
+            0,
+            std::ptr::null_mut(),
+        );
+        assert!(!engine.is_null());
+        let end = text.trim_end().len() as u32;
+        let mut fonts = vec![];
+        for _ in 0..2 {
+            let result = (api.render)(engine, path.as_ptr(), 0, end, 300.0, std::ptr::null());
+            let r: &PRRenderResult = &*result;
+            assert!(r.error.is_null());
+            assert_eq!(r.font_size, 11.0);
+            assert_eq!(r.line_pitch, 0.0);
+            fonts.push((r.font, r.cached));
+            (api.result_free)(result);
+        }
+        assert_eq!(fonts[0].0, fonts[1].0);
+        assert!(
+            !fonts[0].1 && fonts[1].1,
+            "the second render is a cache hit"
+        );
+        let font = fonts[0].0;
+        assert_ne!(font, NO_FONT);
+
+        let info = take_string(api, (api.font_info)(engine, font)).unwrap();
+        let info: serde_json::Value = serde_json::from_str(&info).unwrap();
+        assert_eq!(
+            info,
+            serde_json::json!({
+                "family": "Libertinus Serif", "weight": 400, "style": "normal", "embedded": true,
+            })
+        );
+        let bold = (api.font_face)(engine, font, true, false);
+        let bold_info = take_string(api, (api.font_info)(engine, bold)).unwrap();
+        assert!(bold_info.contains("\"weight\":700"), "{bold_info}");
+        assert_eq!((api.font_face)(engine, font, false, false), font);
+        assert_eq!((api.font_face)(engine, NO_FONT, true, false), NO_FONT);
+        assert!((api.font_info)(engine, NO_FONT).is_null());
+
+        let mut bytes = std::ptr::null();
+        let (mut length, mut index) = (0usize, 9u32);
+        assert!((api.font_data)(
+            engine,
+            font,
+            &mut bytes,
+            &mut length,
+            &mut index
+        ));
+        assert!(!bytes.is_null() && length > 100_000);
+        let data = std::slice::from_raw_parts(bytes, length);
+        let face = ttf_parser::Face::parse(data, index).unwrap();
+        assert!(face.number_of_glyphs() > 100);
+        // The same borrowed bytes on every call.
+        let mut again = std::ptr::null();
+        assert!((api.font_data)(
+            engine,
+            font,
+            &mut again,
+            std::ptr::null_mut(),
+            std::ptr::null_mut()
+        ));
+        assert_eq!(again, bytes);
+        assert!(!(api.font_data)(
+            engine,
+            NO_FONT,
+            &mut again,
+            &mut length,
+            &mut index
+        ));
+        assert!(again.is_null() && length == 0 && index == 0);
+
+        (api.engine_free)(engine);
+    }
 }

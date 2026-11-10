@@ -259,6 +259,11 @@ extension WritingFlowTests {
             let top = editor.containerVisibleRect().minY
             let before = try caretY() - top
             let offset = editor.selectedRange().location
+            // How far the view can still scroll. Measured before the key:
+            // swaps during it change the text's height, so near the text's
+            // end the view after the key cannot tell a full page from a
+            // clamped one (seen under load on page 4: 322 pt of an 807 pt page).
+            let room = bottom() - editor.containerVisibleRect().maxY
             editor.pageDown(nil)
             downs += 1
             let visible = editor.containerVisibleRect()
@@ -274,7 +279,7 @@ extension WritingFlowTests {
                 after >= visible.minY && after <= visible.maxY,
                 "Page down \(downs): caret \(after) out of \(visible)",
             )
-            if visible.maxY < bottom() - 1 {
+            if room > page + 40 {
                 // Swaps above the caret move the text by a line or so; the
                 // caret keeps its place in the view.
                 #expect(abs(visible.minY - top - page) < 40, "Page down \(downs) scrolled \(visible.minY - top)")
@@ -282,7 +287,7 @@ extension WritingFlowTests {
                     abs(after - visible.minY - before) < 40,
                     "Page down \(downs): caret \(before) -> \(after - visible.minY) from the top",
                 )
-            } else {
+            } else if room < page - 40 {
                 // The view stops at the text's end; the caret moves on down it.
                 #expect(after - visible.minY > before, "Page down \(downs) did not move the caret down the view")
             }

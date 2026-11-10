@@ -23,10 +23,13 @@
 #pragma clang assume_nonnull begin
 
 // Increment whenever PRRenderAPI or any struct below changes.
-#define PR_RENDER_ABI_VERSION 5u
+#define PR_RENDER_ABI_VERSION 6u
 // PRGlyphBox.source for generated text: numbers, reference text, text from
 // other files.
 #define PR_NO_SOURCE (-1)
+// PRRenderResult.font for a block with no text of its own, and what
+// font_face returns for an unknown font.
+#define PR_NO_FONT UINT32_MAX
 // PRBlock.kind values. Codes are never reused; new kinds are appended.
 #define PR_BLOCK_HEADING 1u
 // A display equation ($ x $ with a space or newline after the opening $).
@@ -138,6 +141,22 @@ typedef struct {
     // and measurement.
     const uint8_t *_Nullable text;
     size_t text_length;
+    // The block's text font (version 6): the font and size of the text runs
+    // that hold the most of the block's own glyphs (glyphs with a source;
+    // generated text does not count), grouped by font and size, the first
+    // group on a tie. font is the font's index in the engine's font book: the
+    // same face has the same index for the engine's life (the book is built
+    // once, at engine_create, and refresh never changes it), and each face of
+    // a collection has its own. Pass it to font_data, font_face and font_info
+    // of the same engine only. PR_NO_FONT, with font_size and line_pitch 0,
+    // when the block has no own glyph. Cached results carry it too.
+    double font_size;
+    // The smallest distance in points between consecutive baselines of that
+    // font's runs, baselines closer than half the size counting as one line;
+    // 0 when its text is on one line. The smallest, because a line with tall
+    // inline math is pushed down and list items have spacing between them.
+    double line_pitch;
+    uint32_t font;
 } PRRenderResult;
 
 // What the last refresh found. headings, equations and references describe
@@ -252,6 +271,29 @@ typedef struct {
     // from an earlier file is left out and reported as a duplicate.
     char *_Nullable (*_Nonnull bibliography_entries)(PREngine *_Nullable engine,
                                                      const char *_Nullable const *_Nullable paths, size_t count);
+    // The bytes of the font file that holds font, and the face's index in it
+    // (non-zero only in a collection). The bytes are borrowed: they stay
+    // valid, unchanged and at the same address until engine_free, and must
+    // not be freed or written. Returns false, with *bytes NULL and *length
+    // and *index 0, for an unknown font or a NULL engine. Any out-parameter
+    // may be NULL.
+    bool (*_Nonnull font_data)(PREngine *_Nullable engine, uint32_t font, const uint8_t *_Nullable *_Nullable bytes,
+                               size_t *_Nullable length, uint32_t *_Nullable index);
+    // The face Typst's font book selects in font's family for weight 700 when
+    // strong (else font's own weight) and italic style when emphasis (else
+    // font's own style), font's stretch kept. font itself when that selection
+    // has font's own weight and style, as for a family with one face.
+    // PR_NO_FONT for an unknown font or a NULL engine.
+    uint32_t (*_Nonnull font_face)(PREngine *_Nullable engine, uint32_t font, bool strong, bool emphasis);
+    // What font is, as JSON released with string_free, or NULL for an unknown
+    // font or a NULL engine:
+    //   {"family": "Libertinus Serif", "weight": 400, "style": "normal",
+    //    "embedded": true}
+    // weight is 100 to 900; style is "normal", "italic" or "oblique";
+    // embedded is true for Typst's embedded fonts (Libertinus Serif, New
+    // Computer Modern, New Computer Modern Math, DejaVu Sans Mono), which
+    // macOS does not have.
+    char *_Nullable (*_Nonnull font_info)(PREngine *_Nullable engine, uint32_t font);
 } PRRenderAPI;
 
 // The renderer's only exported symbol. The same library also exports

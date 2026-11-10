@@ -45,9 +45,10 @@ pub use cache::{CacheStats, DEFAULT_BUDGET};
 pub use context::PROBE;
 pub use dark::{dark_color, DARK_PAGE, DARK_TEXT};
 pub use engine::{
-    BlockRange, Engine, Options, RefreshInfo, Render, RenderOptions, Rendered, MAX_BITMAP_SCALE,
+    BlockRange, Engine, FontDescription, Options, RefreshInfo, Render, RenderOptions, Rendered,
+    MAX_BITMAP_SCALE,
 };
-pub use geometry::{GlyphBox, Rect};
+pub use geometry::{GlyphBox, Rect, TextFont};
 pub use outline::{split, Block, BlockKind, Outline};
 pub use raster::{Bitmap, MAX_BITMAP_PIXELS};
 

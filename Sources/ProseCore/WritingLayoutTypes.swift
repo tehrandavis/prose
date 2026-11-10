@@ -86,6 +86,9 @@ public struct WritingRendering: Sendable {
     let fingerprint: Int
     /// What the block shows as plain text (`RenderedBlock.text`).
     public internal(set) var text = ""
+    /// The font of the block's own text (`RenderedBlock.textFont`), in engine
+    /// points: multiply the size and pitch by `scale` to draw.
+    public internal(set) var textFont: BlockTextFont?
 
     /// `drawnRect`'s size in points.
     public var size: CGSize {
@@ -258,6 +261,10 @@ struct WritingEntry {
     var aligned: Bool
     var rendering: WritingRendering?
     var failure: (message: String, key: WritingRenderKey)?
+    /// The text font of the block's last render that reported one. Kept when
+    /// an edit drops the render, so the block that holds the caret keeps the
+    /// font it was drawn in while its next render is on the way.
+    var textFont: BlockTextFont?
     var label: String?
     /// What the delegate sees; changes only when no text is marked.
     var shown: WritingBlockState = .source(.waiting)

@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use typst::diag::{FileError, Warned};
 use typst::syntax::{FileId, Lines, RootedPath, Source, Span, VirtualPath, VirtualRoot};
+use typst::text::{Font, FontStyle, FontVariant, FontWeight};
 use typst::utils::LazyHash;
 use typst::{Library, LibraryExt};
 use typst_kit::files::{FileStore, FsRoot};
@@ -21,7 +22,9 @@ use crate::context::{
     block_document, reference_texts, BlockInputs, Citations, Counters, Shift, PROBE,
 };
 use crate::dark::darken_frame;
-use crate::geometry::{first_baseline, walk, GlyphBounds, GlyphBox, Rect};
+use crate::geometry::{
+    first_baseline, same_font, text_font, walk, GlyphBounds, GlyphBox, Rect, TextFont,
+};
 use crate::outline::{split_tree, BlockKind, Outline};
 use crate::raster::{drawn_page, frame_bytes, rasterize, Bitmap};
 use crate::world::{Loader, Shared, View};
@@ -143,6 +146,22 @@ pub struct Rendered {
     /// The plain text of the block's text runs, separated by spaces. For tests
     /// and measurement.
     pub text: String,
+    /// The font and size of the text runs that hold most of the block's own
+    /// glyphs (not generated text), with the distance between its lines; None
+    /// when the block has no own glyph. See `geometry::text_font`.
+    pub text_font: Option<TextFont>,
+}
+
+/// What a font is, for `Engine::font_info`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FontDescription {
+    pub family: String,
+    /// 100 to 900.
+    pub weight: u16,
+    pub style: FontStyle,
+    /// One of Typst's embedded fonts (Libertinus Serif, New Computer Modern,
+    /// New Computer Modern Math, DejaVu Sans Mono), which macOS does not have.
+    pub embedded: bool,
 }
 
 impl Rendered {
@@ -239,6 +258,12 @@ struct State {
     last: RefreshInfo,
     cache: Cache,
     glyph_bounds: GlyphBounds,
+    /// Font identifiers by the address of the font's data and its face index.
+    /// The font store loads each face once and keeps it for the engine's life,
+    /// so the address is stable.
+    font_ids: HashMap<(usize, u32), u32>,
+    /// Fonts below this index in the font book are Typst's embedded fonts.
+    embedded_fonts: usize,
     error: Option<String>,
     /// Renders that compiled since the last eviction.
     compiled_renders: usize,
@@ -326,7 +351,9 @@ impl Engine {
         }
         let main = Self::id_in(&root, &options.main)?;
         let mut fonts = FontStore::new();
-        fonts.extend(fonts::embedded());
+        let embedded: Vec<_> = fonts::embedded().collect();
+        let embedded_fonts = embedded.len();
+        fonts.extend(embedded);
         fonts.extend(fonts::system());
         for dir in options.font_dirs.iter().filter(|dir| dir.is_dir()) {
             fonts.extend(fonts::scan(dir));
@@ -364,6 +391,8 @@ impl Engine {
                 last: RefreshInfo::default(),
                 cache: Cache::new(options.cache_budget),
                 glyph_bounds: GlyphBounds::default(),
+                font_ids: HashMap::new(),
+                embedded_fonts,
                 error: None,
                 compiled_renders: 0,
             }),
@@ -533,6 +562,64 @@ impl Engine {
 
     pub fn cache_stats(&self) -> CacheStats {
         self.lock().cache.stats()
+    }
+
+    /// The font with this identifier (`TextFont::font`, its index in the
+    /// engine's font book), loaded. Identifiers stay the same for the
+    /// engine's life: the font book is built once, when the engine starts,
+    /// and `refresh` never changes it. The font's data stays alive, at the
+    /// same address, until the engine is dropped: the font store keeps every
+    /// face it loads.
+    pub fn font(&self, font: u32) -> Option<Font> {
+        self.lock().shared.fonts.font(font as usize)
+    }
+
+    /// The face Typst would choose in the same family as `font` with weight
+    /// 700 when `strong` (else the face's own weight) and italic style when
+    /// `emphasis` (else the face's own style), through the font book's own
+    /// selection. `font` itself when the family has no face closer to that
+    /// variant. None for an unknown identifier.
+    pub fn font_face(&self, font: u32, strong: bool, emphasis: bool) -> Option<u32> {
+        let state = self.lock();
+        let book = state.shared.fonts.book();
+        let info = book.info(font as usize)?;
+        let base = info.variant;
+        let wanted = FontVariant::new(
+            if emphasis {
+                FontStyle::Italic
+            } else {
+                base.style
+            },
+            if strong {
+                FontWeight::BOLD
+            } else {
+                base.weight
+            },
+            base.stretch,
+        );
+        if wanted == base {
+            return Some(font);
+        }
+        let chosen = book
+            .select(&info.family.to_lowercase(), wanted)
+            .and_then(|index| book.info(index).map(|info| (index, info.variant)));
+        Some(match chosen {
+            Some((index, variant)) if variant != base => index as u32,
+            _ => font,
+        })
+    }
+
+    /// The family, weight and style of a font, and whether it is one of
+    /// Typst's embedded fonts. None for an unknown identifier.
+    pub fn font_info(&self, font: u32) -> Option<FontDescription> {
+        let state = self.lock();
+        let info = state.shared.fonts.book().info(font as usize)?;
+        Some(FontDescription {
+            family: info.family.clone(),
+            weight: info.variant.weight.to_number(),
+            style: info.variant.style,
+            embedded: (font as usize) < state.embedded_fonts,
+        })
     }
 
     /// The most recent error from any call, if there was one.
@@ -927,7 +1014,7 @@ impl State {
         let block_len = range.len();
         let map = utf16_map(&source.text()[range.clone()]);
         let mut spans: HashMap<Span, Option<(FileId, usize)>> = HashMap::new();
-        let glyphs = walked
+        let glyphs: Vec<GlyphBox> = walked
             .glyphs
             .iter()
             .map(|raw| {
@@ -956,6 +1043,9 @@ impl State {
                 }
             })
             .collect();
+        let sources: Vec<i32> = glyphs.iter().map(|glyph| glyph.source).collect();
+        let (fonts, font_ids) = (&self.shared.fonts, &mut self.font_ids);
+        let text_font = text_font(&walked, &sources, |font| font_id(fonts, font_ids, font));
         let rendered = Arc::new(Rendered {
             svg,
             width: page.frame.width().to_pt(),
@@ -966,6 +1056,7 @@ impl State {
             page: drawn_page,
             relative_glyphs: glyphs,
             text: walked.text,
+            text_font,
         });
         let dependencies: Dependencies = view
             .files_read()
@@ -993,6 +1084,34 @@ impl State {
         }
         Ok(start..end)
     }
+}
+
+/// The identifier of a font a layout used: its index in the font book. Looks
+/// among the faces of the font's family with the same variant first, then the
+/// whole family, and remembers the answer by the data's address.
+fn font_id(fonts: &FontStore, ids: &mut HashMap<(usize, u32), u32>, font: &Font) -> Option<u32> {
+    let key = (font.data().as_slice().as_ptr() as usize, font.index());
+    if let Some(id) = ids.get(&key) {
+        return Some(*id);
+    }
+    let book = fonts.book();
+    let family: Vec<usize> = book
+        .select_family(&font.info().family.to_lowercase())
+        .collect();
+    let variant = font.info().variant;
+    let likely = family
+        .iter()
+        .copied()
+        .filter(|&i| book.info(i).is_some_and(|info| info.variant == variant));
+    let rest = family
+        .iter()
+        .copied()
+        .filter(|&i| book.info(i).is_some_and(|info| info.variant != variant));
+    let id = likely
+        .chain(rest)
+        .find(|&i| fonts.font(i).is_some_and(|f| same_font(&f, font)))? as u32;
+    ids.insert(key, id);
+    Some(id)
 }
 
 /// A file id beside `near`, for a document that exists only in memory, so

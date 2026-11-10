@@ -499,6 +499,36 @@ public final class WritingLayout {
         entry(holding: offset).map { entries[$0].range }
     }
 
+    /// How many blocks above `textFont(at:)` looks through for a paragraph's font.
+    public static let textFontSearchLimit = 64
+
+    /// The document font to draw the block that holds `offset` in, in engine
+    /// points: the font of that block's last render that reported one (kept
+    /// across edits, so a block being typed in keeps its font), else the font
+    /// of the nearest paragraph above it that has one, looking at no more than
+    /// `textFontSearchLimit` blocks. An offset between blocks looks above
+    /// itself. Nil when none is found: use the editor's font.
+    public func textFont(at offset: Int) -> BlockTextFont? {
+        let holding = entry(holding: offset)
+        if let holding, let font = entries[holding].textFont {
+            return font
+        }
+        // The block that holds the offset, or else the last one above it.
+        guard let last = lastEntry(spanAtMost: offset) else {
+            return nil
+        }
+        var index = holding == nil ? last : last - 1
+        var looked = 0
+        while index >= 0, looked < Self.textFontSearchLimit {
+            if entries[index].kind == .paragraph, let font = entries[index].textFont {
+                return font
+            }
+            index -= 1
+            looked += 1
+        }
+        return nil
+    }
+
     /// The blocks in order, with ranges in today's text.
     public var blocks: [RenderBlock] {
         entries.map { RenderBlock(range: $0.range, kind: $0.kind) }
@@ -1300,6 +1330,7 @@ public final class WritingLayout {
                 key: request.key,
                 fingerprint: block.svg.hashValue,
                 text: block.text,
+                textFont: block.textFont,
             )
             if var old = entries[index].rendering, old.image != nil || old.blank, old.draws(like: rendering) {
                 // The same picture: keep the one the view holds.
@@ -1310,6 +1341,9 @@ public final class WritingLayout {
             }
             entries[index].failure = nil
             entries[index].wasBlank = blank
+            if let font = block.textFont {
+                entries[index].textFont = font
+            }
         case .success:
             entries[index].rendering = nil
             entries[index].failure = ("The block is too large to draw.", request.key)

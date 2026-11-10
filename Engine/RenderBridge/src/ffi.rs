@@ -16,6 +16,7 @@ use crate::cache::CacheStats;
 use crate::engine::{Engine, Options, RenderOptions, Rendered};
 use crate::geometry::{GlyphBox, Rect};
 use crate::raster::Bitmap;
+use typst::text::FontStyle;
 
 /// `PR_RENDER_ABI_VERSION`. Increment whenever the table or a struct changes.
 /// Version 2 (Phase 3): blocks cover the whole file with four more kinds,
@@ -26,7 +27,12 @@ use crate::raster::Bitmap;
 /// `bibliography_entries`, which return JSON.
 /// Version 5 (fixes after Phase 5): `PRRenderOptions.dark` replaces the
 /// default text colour; dark appearance maps the laid-out page's paints.
-pub const ABI_VERSION: u32 = 5;
+/// Version 6 (Phase 6 step C): results carry the block's text font, and
+/// `font_data`, `font_face` and `font_info` describe fonts.
+pub const ABI_VERSION: u32 = 6;
+
+/// `PR_NO_FONT`: a block with no own glyph, or no such face.
+pub const NO_FONT: u32 = u32::MAX;
 
 /// An engine, opaque to C.
 pub struct PREngine {
@@ -85,6 +91,9 @@ pub struct PRRenderResult {
     pub cached: bool,
     pub text: *const u8,
     pub text_length: usize,
+    pub font_size: f64,
+    pub line_pitch: f64,
+    pub font: u32,
 }
 
 /// The result handed to C, with what keeps its pointers alive. The C struct
@@ -139,6 +148,10 @@ pub struct PRRenderAPI {
     pub bibliography_files: unsafe extern "C" fn(*mut PREngine) -> *mut c_char,
     pub bibliography_entries:
         unsafe extern "C" fn(*mut PREngine, *const *const c_char, usize) -> *mut c_char,
+    pub font_data:
+        unsafe extern "C" fn(*mut PREngine, u32, *mut *const u8, *mut usize, *mut u32) -> bool,
+    pub font_face: unsafe extern "C" fn(*mut PREngine, u32, bool, bool) -> u32,
+    pub font_info: unsafe extern "C" fn(*mut PREngine, u32) -> *mut c_char,
 }
 
 fn guarded<T>(fallback: impl FnOnce() -> T, body: impl FnOnce() -> T) -> T {
@@ -381,6 +394,9 @@ fn error_result(message: &str) -> ResultBox {
             cached: false,
             text: std::ptr::null(),
             text_length: 0,
+            font_size: 0.0,
+            line_pitch: 0.0,
+            font: NO_FONT,
         },
         rendered: None,
         glyphs: Vec::new(),
@@ -462,6 +478,9 @@ unsafe extern "C" fn render(
                             cached: render.cached,
                             text: r.text.as_ptr(),
                             text_length: r.text.len(),
+                            font_size: r.text_font.map_or(0.0, |f| f.size),
+                            line_pitch: r.text_font.map_or(0.0, |f| f.line_pitch),
+                            font: r.text_font.map_or(NO_FONT, |f| f.font),
                         },
                         rendered: Some(render.rendered.clone()),
                         glyphs: render.glyphs,
@@ -566,6 +585,89 @@ unsafe extern "C" fn bibliography_entries(
     })
 }
 
+/// # Safety
+/// `engine` must be null or live; `bytes`, `length` and `index` null or
+/// writable.
+unsafe extern "C" fn font_data(
+    engine: *mut PREngine,
+    font: u32,
+    bytes: *mut *const u8,
+    length: *mut usize,
+    index: *mut u32,
+) -> bool {
+    let found = guarded(
+        || None,
+        || {
+            // SAFETY: forwarded caller contract.
+            let engine = unsafe { self::engine(engine) }?;
+            let font = engine.font(font)?;
+            let data = font.data().as_slice();
+            // The engine's font store keeps this font, so the bytes stay
+            // where they are until the engine is freed.
+            Some((data.as_ptr(), data.len(), font.index()))
+        },
+    );
+    let (pointer, count, face) = found.unwrap_or((std::ptr::null(), 0, 0));
+    // SAFETY: each out-parameter is null or writable.
+    unsafe {
+        if let Some(out) = bytes.as_mut() {
+            *out = pointer;
+        }
+        if let Some(out) = length.as_mut() {
+            *out = count;
+        }
+        if let Some(out) = index.as_mut() {
+            *out = face;
+        }
+    }
+    found.is_some()
+}
+
+/// # Safety
+/// `engine` must be null or live.
+unsafe extern "C" fn font_face(
+    engine: *mut PREngine,
+    font: u32,
+    strong: bool,
+    emphasis: bool,
+) -> u32 {
+    guarded(
+        || NO_FONT,
+        || {
+            // SAFETY: forwarded caller contract.
+            unsafe { self::engine(engine) }
+                .and_then(|engine| engine.font_face(font, strong, emphasis))
+                .unwrap_or(NO_FONT)
+        },
+    )
+}
+
+/// # Safety
+/// `engine` must be null or live.
+unsafe extern "C" fn font_info(engine: *mut PREngine, font: u32) -> *mut c_char {
+    guarded(std::ptr::null_mut, || {
+        // SAFETY: forwarded caller contract.
+        let Some(info) = unsafe { self::engine(engine) }.and_then(|engine| engine.font_info(font))
+        else {
+            return std::ptr::null_mut();
+        };
+        let style = match info.style {
+            FontStyle::Normal => "normal",
+            FontStyle::Italic => "italic",
+            FontStyle::Oblique => "oblique",
+        };
+        owned_string(
+            &json!({
+                "family": info.family,
+                "weight": info.weight,
+                "style": style,
+                "embedded": info.embedded,
+            })
+            .to_string(),
+        )
+    })
+}
+
 fn entry_json(entry: &BibEntry) -> Value {
     let mut object = Map::new();
     object.insert("key".into(), entry.key.clone().into());
@@ -633,6 +735,9 @@ static API: PRRenderAPI = PRRenderAPI {
     files_changed,
     bibliography_files,
     bibliography_entries,
+    font_data,
+    font_face,
+    font_info,
 };
 
 /// The render engine's C function table.

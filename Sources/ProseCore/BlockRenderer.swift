@@ -96,6 +96,52 @@ public struct RenderedGlyph: Equatable, Sendable {
     public let source: Int?
 }
 
+/// The font a block's own text is set in (C ABI version 6): the font and size
+/// of the text runs that hold most of the block's glyphs with a source.
+/// Generated text (numbers, reference and bibliography text) does not count.
+public struct BlockTextFont: Hashable, Sendable {
+    /// The font's identifier in the engine that rendered the block, the same
+    /// for the same face for that engine's life. Pass it to
+    /// `BlockRenderer.fontData(_:)`, `fontFace(_:strong:emphasis:)` and
+    /// `fontInfo(_:)` of that renderer only.
+    public let id: Int
+    /// The size in points.
+    public let size: Double
+    /// The distance between two lines of that text in points: the smallest
+    /// distance between consecutive baselines. Nil when the text sits on one line.
+    public let linePitch: Double?
+
+    public init(id: Int, size: Double, linePitch: Double?) {
+        self.id = id
+        self.size = size
+        self.linePitch = linePitch
+    }
+}
+
+/// What a font is (`BlockRenderer.fontInfo(_:)`).
+public struct BlockFontInfo: Equatable, Sendable, Decodable {
+    public enum Style: String, Sendable, Decodable {
+        case normal
+        case italic
+        case oblique
+    }
+
+    public let family: String
+    /// 100 to 900.
+    public let weight: Int
+    public let style: Style
+    /// One of Typst's embedded fonts (Libertinus Serif, New Computer Modern,
+    /// New Computer Modern Math, DejaVu Sans Mono), which macOS does not have.
+    public let embedded: Bool
+}
+
+/// A font file's bytes, copied out of the engine, and the face's index in it
+/// (non-zero only in a collection).
+public struct BlockFontData: Sendable {
+    public let data: Data
+    public let faceIndex: Int
+}
+
 /// A typeset block. Geometry is in points from the block's top-left corner.
 public struct RenderedBlock: Equatable, Sendable {
     /// SVG of `drawnRect`, UTF-8. Transparent outside ink.
@@ -121,6 +167,9 @@ public struct RenderedBlock: Equatable, Sendable {
     /// The plain text of the block's text runs, separated by spaces: what it
     /// shows, numbers and citations included. For tests and measurement.
     public let text: String
+    /// The font of the block's own text; nil when it has none (only generated
+    /// text, or no text).
+    public var textFont: BlockTextFont?
 }
 
 /// The engine's result cache, for tests and tuning. Sizes are in bytes.
@@ -153,6 +202,9 @@ private final class RenderEngine: @unchecked Sendable {
 /// call at a time. Offsets are UTF-16, as `NSString` uses.
 public actor BlockRenderer {
     private let engine: RenderEngine
+    /// This engine, among every engine the process starts: font identifiers
+    /// mean something only to the engine that gave them.
+    public nonisolated let engineID = UUID()
 
     /// Scans fonts (Typst's embedded fonts, the system fonts, then
     /// `fontDirectories`) and opens the project. `main` must exist inside `root`.
@@ -385,7 +437,52 @@ public actor BlockRenderer {
             bitmap: Self.image(result),
             cached: result.cached,
             text: Self.text(result),
+            textFont: result.font == PR_NO_FONT ? nil : BlockTextFont(
+                id: Int(result.font),
+                size: result.font_size,
+                linePitch: result.line_pitch > 0 ? result.line_pitch : nil,
+            ),
         ))
+    }
+
+    /// A copy of the font file that holds face `font`, with the face's index
+    /// in it. Nil for an identifier this engine did not give. Several MB for
+    /// a large font; call once per face and keep what it makes.
+    public func fontData(_ font: Int) -> BlockFontData? {
+        guard let id = UInt32(exactly: font) else {
+            return nil
+        }
+        var bytes: UnsafePointer<UInt8>?
+        var length = 0
+        var index: UInt32 = 0
+        guard engine.api.pointee.font_data(engine.pointer, id, &bytes, &length, &index), let bytes else {
+            return nil
+        }
+        // The engine keeps the bytes until it is freed; copy them so the data
+        // does not depend on its life.
+        return BlockFontData(data: Data(bytes: bytes, count: length), faceIndex: Int(index))
+    }
+
+    /// The face Typst would choose in `font`'s family with weight 700 when
+    /// `strong` and italic style when `emphasis` (else the face's own weight
+    /// and style), through Typst's font book. `font` when the family has no
+    /// closer face; nil for an identifier this engine did not give.
+    public func fontFace(_ font: Int, strong: Bool, emphasis: Bool) -> Int? {
+        guard let id = UInt32(exactly: font) else {
+            return nil
+        }
+        let face = engine.api.pointee.font_face(engine.pointer, id, strong, emphasis)
+        return face == PR_NO_FONT ? nil : Int(face)
+    }
+
+    /// The family, weight and style of face `font`, and whether Typst embeds
+    /// it. Nil for an identifier this engine did not give.
+    public func fontInfo(_ font: Int) -> BlockFontInfo? {
+        guard let id = UInt32(exactly: font), let raw = engine.api.pointee.font_info(engine.pointer, id) else {
+            return nil
+        }
+        defer { engine.api.pointee.string_free(raw) }
+        return try? JSONDecoder().decode(BlockFontInfo.self, from: Data(bytes: raw, count: strlen(raw)))
     }
 
     /// The result's plain text.
