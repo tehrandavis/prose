@@ -134,3 +134,16 @@ Open items (full list in the note's Phase 5 outcome): the `style: "ieee"` defaul
 - No code yet. `td-e987b5` tracks the phase.
 
 Open: nine questions at the end of the note (phase number, arrow keys over a fold, no-ink blocks and `#include`, equations, the faint colour, and the four questions left from Phase 5).
+
+## 2026-11-10: Phase 6, Quiet Writing mode
+
+- Tehran accepted the note and every recommendation (2026-11-09). Built by Opus subagents one step at a time; the main session reviewed each diff and reran the checks.
+- Step A (`e58e0f6`) and step B (`ea77359`): folds. Setup lines, comments and no-ink calls draw as one row ("Document setup · 16 lines") or a margin icon; clicks, arrow keys, Focus and accessibility follow.
+- Step C (`70d91ef`): the engine reports each block's font (C ABI 6); `DocumentFonts` makes it from the engine's bytes.
+- Step D (`9f2875b`): the open block draws in the document's font with faint markers; the storage's attributes never change. The benchmark found that one undo in Focus laid out 7,700 paragraphs; fixed.
+- Step F (`0a651a3`): APA as the bibliography default, brighter mid greys in dark appearance, spell check skips "Typst".
+- Step E (`d200929`, spike on local branch `quiet-writing-spike`, `ab08d8e`): typing in the rendered paragraph. Caret exact over 2,150 keys; latency fails (p95 21 to 27 ms on the welcome guide against 16.7 ms). Recommendation: do not build it now.
+- Tehran asked for lighter checks on 2026-11-10: one full check per step, the benchmark only for layout changes, one gate run. Saved to memory and to `CLAUDE.md`.
+- The Mac was under heavy outside load for much of the session (CleanMyMac, Spotlight, FastFolderFinder, another project's tests); step C took 7.7 hours for that reason.
+
+Open: Tehran's decision on step 3; one benchmark run on a quiet machine (the gate run's benchmark was at load 22 to 40 and is not valid; step D's passed every gate); the open items at the end of the note.

@@ -171,11 +171,11 @@ extension WritingFlowTests {
         // the suite's assertion compares it with closing the block, which
         // rebuilds and lays out the same ten paragraphs in the editor's font
         // in the same loop: the document's fonts may cost no more than twice
-        // that, and never more than 8 ms.
+        // that. No absolute bound holds here: at load 30 the same work took
+        // more than 8 ms of CPU time.
         let closeMedian = closing.sorted()[closing.count / 2]
         print(String(format: "CHECK cost closeCpuMedianMs=%.3f openToClose=%.2f", closeMedian, cpuMedian / closeMedian))
         #expect(cpuMedian < 2 * closeMedian, "Opening took \(cpuMedian) ms, closing \(closeMedian) ms")
-        #expect(cpuMedian < 8, "Opening a ten-line paragraph took \(cpuMedian) ms of main-thread CPU time")
         #expect(block.length > 0)
         expectPlainStorage(editor)
         #expect(!editor.switchedToTextKit1)
