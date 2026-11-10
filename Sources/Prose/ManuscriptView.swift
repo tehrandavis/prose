@@ -635,8 +635,12 @@ final class ManuscriptTextView: NSTextView {
             workspace?.goToDefinition()
             return
         }
-        // Writing mode: a press in a rendered block or a pill maps through
-        // the glyph boxes and runs Prose's own tracking loop.
+        // Writing mode: a press on a fold's row or margin icon opens or
+        // closes it; a press in a rendered block or a pill maps through the
+        // glyph boxes and runs Prose's own tracking loop.
+        if writing.handleFoldPress(event, at: containerPoint(of: event)) {
+            return
+        }
         if trackWritingPointer(event) {
             return
         }
@@ -659,6 +663,20 @@ final class ManuscriptTextView: NSTextView {
         let old = selectedRanges
         super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
         writing.selectionWillDraw(from: old, to: selectedRanges)
+    }
+
+    /// Writing mode steps over a closed fold (Phase 6 decision 3); every
+    /// other vertical move is NSTextView's.
+    override func moveDown(_ sender: Any?) {
+        if !writing.stepOverFold(down: true) {
+            super.moveDown(sender)
+        }
+    }
+
+    override func moveUp(_ sender: Any?) {
+        if !writing.stepOverFold(down: false) {
+            super.moveUp(sender)
+        }
     }
 
     /// Writing mode moves the caret by a page of drawn content. NSTextView's

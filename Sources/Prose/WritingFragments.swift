@@ -23,6 +23,42 @@ enum WritingMetrics {
         pillHeight + 2 * pillSpacing
     }
 
+    /// Phosphor icons of folds (Phase 6 decision 2): the setup row's
+    /// `caret-right`, and in the margin a closed mark and an open fold's
+    /// `caret-down`.
+    static let foldIconSize: CGFloat = 12
+    /// Between a setup row's icon and its label.
+    static let foldIconGap: CGFloat = 6
+    /// The left edge of a margin icon, from the column's left edge: left of
+    /// the stale bar (`staleBar`, 9 pt left of the column) and inside the
+    /// narrowest margin (`ManuscriptLayout.minimumInset`, 36 pt).
+    static let marginIconX: CGFloat = -30
+    /// How far around a margin icon a click still hits it.
+    static let marginHitSlop: CGFloat = 5
+
+    /// Where a closed setup row with `label` draws its icon and label, from
+    /// its fragment's top-left corner, in a column `column` wide: the
+    /// rectangle the pointer, the highlight and accessibility use.
+    static func setupRowRect(label: String, column: CGFloat) -> CGRect {
+        let size = NSAttributedString(string: label, attributes: [.font: pillFont]).size()
+        let width = min(column, foldIconSize + foldIconGap + ceil(size.width))
+        return CGRect(x: 0, y: pillSpacing, width: max(width, foldIconSize), height: pillHeight)
+    }
+
+    /// The caret at a closed setup row's resting position, from its
+    /// fragment's top-left corner: at the row's left edge, as tall as the
+    /// label's line, centred on the row.
+    static var setupCaretRect: CGRect {
+        let font = pillFont
+        let height = ceil(font.ascender - font.descender + font.leading)
+        return CGRect(x: 0, y: pillSpacing + (pillHeight - height) / 2, width: 0, height: height)
+    }
+
+    /// A margin icon centred on `midY`, from its fragment's top-left corner.
+    static func marginIconRect(midY: CGFloat) -> CGRect {
+        CGRect(x: marginIconX, y: midY - foldIconSize / 2, width: foldIconSize, height: foldIconSize)
+    }
+
     /// Where a pill with `label` draws its rounded rectangle, from its
     /// fragment's top-left corner, in a column `column` wide.
     static func pillRect(label: String, column: CGFloat) -> CGRect {
@@ -74,6 +110,56 @@ final class WritingFragment: NSTextLayoutFragment {
     /// The role last read, with the model's `roleRevision` it was read at.
     private var cachedRole: (revision: Int, role: WritingRole)?
 
+    /// What the paragraph draws in the left margin: a closed fold's mark, or
+    /// the `caret-down` of an open fold's first paragraph. Kept with the
+    /// role's revision, as the role is.
+    var marginIcon: WritingMarginIcon? {
+        guard let controller, let revision = MainActor.assumeIsolated({ controller.roleRevision }) else {
+            return nil
+        }
+        if let cachedMargin, cachedMargin.revision == revision {
+            return cachedMargin.icon
+        }
+        let role = role
+        guard let offset else {
+            return nil
+        }
+        let icon = MainActor.assumeIsolated { controller.marginIcon(ofParagraphAt: offset, role: role) }
+        cachedMargin = (revision, icon)
+        return icon
+    }
+
+    private var cachedMargin: (revision: Int, icon: WritingMarginIcon?)?
+
+    /// Where the margin icon draws, from the fragment's top-left corner: a
+    /// mark level with the middle of the gap above its paragraph (the blank
+    /// line before it, one source line tall), a `caret-down` level with the
+    /// first source line. Nil without one.
+    var marginIconRect: CGRect? {
+        guard let icon = marginIcon else {
+            return nil
+        }
+        switch icon {
+        case .mark:
+            return WritingMetrics.marginIconRect(midY: -sourceLineHeight / 2)
+        case .close:
+            return WritingMetrics.marginIconRect(midY: textLineFragments.first?.typographicBounds.midY ?? 0)
+        }
+    }
+
+    /// The height one line of this paragraph takes as source, its paragraph
+    /// spacing included: what a blank line of the same style takes. A mark
+    /// sits level with the middle of that much space above its paragraph.
+    var sourceLineHeight: CGFloat {
+        let natural = super.layoutFragmentFrame.height
+        guard let first = textLineFragments.first?.typographicBounds,
+              let last = textLineFragments.last?.typographicBounds
+        else {
+            return natural
+        }
+        return first.maxY + max(natural - last.maxY, 0)
+    }
+
     /// The paragraph's UTF-16 offset.
     var offset: Int? {
         guard let manager = textLayoutManager else {
@@ -91,8 +177,9 @@ final class WritingFragment: NSTextLayoutFragment {
             frame.size.height = rendering.height
         case .collapsed:
             frame.size.height = 0
-        case .pill:
-            frame.size.height = WritingMetrics.pillFragmentHeight
+        case let .pill(pill):
+            // A margin mark takes no height.
+            frame.size.height = pill.isMark ? 0 : WritingMetrics.pillFragmentHeight
         }
         return frame
     }
@@ -100,7 +187,8 @@ final class WritingFragment: NSTextLayoutFragment {
     override var renderingSurfaceBounds: CGRect {
         switch role {
         case .source:
-            return super.renderingSurfaceBounds
+            let bounds = super.renderingSurfaceBounds
+            return marginIconRect.map { bounds.union($0) } ?? bounds
         case let .rendered(rendering, _):
             let width = columnWidth
             var bar = WritingMetrics.staleBar
@@ -109,7 +197,10 @@ final class WritingFragment: NSTextLayoutFragment {
                 .union(CGRect(x: 0, y: 0, width: width, height: rendering.height))
         case .collapsed:
             return .zero
-        case .pill:
+        case let .pill(pill):
+            if pill.isMark {
+                return marginIconRect ?? .zero
+            }
             return CGRect(x: 0, y: 0, width: columnWidth, height: WritingMetrics.pillFragmentHeight)
         }
     }
@@ -119,8 +210,17 @@ final class WritingFragment: NSTextLayoutFragment {
         switch role {
         case .source:
             count("source")
-            dimming(layer: super.renderingSurfaceBounds, at: point, in: context) {
+            let icon = marginIconRect
+            dimming(
+                layer: icon.map { super.renderingSurfaceBounds.union($0) } ?? super.renderingSurfaceBounds,
+                at: point,
+                in: context,
+            ) {
                 super.draw(at: point, in: context)
+                if let icon {
+                    count("caret-down")
+                    drawMarginIcon(.close, in: icon.offsetBy(dx: point.x, dy: point.y), context: context)
+                }
             }
         case let .rendered(rendering, block):
             count("rendered")
@@ -132,9 +232,25 @@ final class WritingFragment: NSTextLayoutFragment {
         case .collapsed:
             count("collapsed")
         case let .pill(pill):
-            count("pill")
-            dimming(layer: renderingSurfaceBounds, at: point, in: context) {
-                drawPill(pill, at: point, in: context)
+            switch pill.style {
+            case .plain:
+                count("pill")
+                dimming(layer: renderingSurfaceBounds, at: point, in: context) {
+                    drawPill(pill, at: point, in: context)
+                }
+            case .setup:
+                count("setup")
+                dimming(layer: renderingSurfaceBounds, at: point, in: context) {
+                    drawSetupRow(pill, at: point, in: context)
+                }
+            case let .mark(mark):
+                count("mark")
+                guard let icon = marginIconRect else {
+                    return
+                }
+                dimming(layer: icon, at: point, in: context) {
+                    drawMarginIcon(.mark(mark), in: icon.offsetBy(dx: point.x, dy: point.y), context: context)
+                }
             }
         }
     }
@@ -361,6 +477,122 @@ final class WritingFragment: NSTextLayoutFragment {
         label.draw(with: textRect, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
         NSGraphicsContext.restoreGraphicsState()
         context.restoreGState()
+    }
+}
+
+private extension WritingFragment {
+    /// A closed setup row: `caret-right` and the label, 12 pt, in the muted
+    /// text colour, with no fill and no border.
+    func drawSetupRow(_ pill: WritingPill, at point: CGPoint, in context: CGContext) {
+        let controller = controller
+        guard let color = MainActor.assumeIsolated({ controller?.foldColor() }) else {
+            return
+        }
+        let rect = WritingMetrics.setupRowRect(label: pill.text, column: columnWidth)
+            .offsetBy(dx: point.x, dy: point.y)
+        let size = WritingMetrics.foldIconSize
+        let icon = CGRect(x: rect.minX, y: rect.midY - size / 2, width: size, height: size)
+        WritingIcons.draw("caret-right", in: icon, color: color, context: context)
+        let label = NSAttributedString(string: pill.text, attributes: [
+            .font: WritingMetrics.pillFont,
+            .foregroundColor: NSColor(cgColor: color) ?? .secondaryLabelColor,
+        ])
+        let height = label.size().height
+        let x = icon.maxX + WritingMetrics.foldIconGap
+        context.saveGState()
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: true)
+        label.draw(
+            with: CGRect(x: x, y: rect.midY - height / 2, width: max(rect.maxX - x, 1), height: height),
+            options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
+        )
+        NSGraphicsContext.restoreGraphicsState()
+        context.restoreGState()
+    }
+
+    /// A margin icon in the muted text colour: `rect` is where it goes.
+    func drawMarginIcon(_ icon: WritingMarginIcon, in rect: CGRect, context: CGContext) {
+        let controller = controller
+        guard let color = MainActor.assumeIsolated({ controller?.foldColor() }) else {
+            return
+        }
+        WritingIcons.draw(icon.iconName, in: rect, color: color, context: context, rotated: icon == .close)
+    }
+}
+
+/// What a paragraph draws in the left margin in Writing mode.
+enum WritingMarginIcon: Equatable {
+    /// A closed fold with no `context` block (Phase 6 decision 2).
+    case mark(WritingPill.Mark)
+    /// The first paragraph of an open fold: a click closes it.
+    case close
+
+    /// The bundled Phosphor icon. The set has no `chat-teardrop` and no
+    /// `caret-down`: a comment draws `chat-text`, and `caret-down` is
+    /// `caret-right` turned a quarter (`WritingIcons.draw(rotated:)`), which
+    /// is how Phosphor draws it.
+    var iconName: String {
+        switch self {
+        case .mark(.comment): "chat-text"
+        case .mark(.code): "code-simple"
+        case .close: "caret-right"
+        }
+    }
+}
+
+/// Draws a bundled Phosphor icon (`IconStore`, template PDFs) in a Core
+/// Graphics context that TextKit draws a fragment into, y pointing down, on
+/// the main thread.
+enum WritingIcons {
+    /// Draws icon `name` filling `rect` in `color`; `rotated` turns it a
+    /// quarter clockwise (`caret-right` to `caret-down`).
+    static func draw(_ name: String, in rect: CGRect, color: CGColor, context: CGContext, rotated: Bool = false) {
+        // NSImage is not Sendable; this runs on the main thread.
+        nonisolated(unsafe) var found: NSImage?
+        MainActor.assumeIsolated {
+            found = IconStore.image(name)
+        }
+        guard let image = found else {
+            return
+        }
+        let layer = rect.insetBy(dx: -1, dy: -1)
+        context.saveGState()
+        context.beginTransparencyLayer(in: layer, auxiliaryInfo: nil)
+        context.saveGState()
+        if rotated {
+            context.translateBy(x: rect.midX, y: rect.midY)
+            context.rotate(by: .pi / 2)
+            context.translateBy(x: -rect.midX, y: -rect.midY)
+        }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: true)
+        image.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+        NSGraphicsContext.restoreGraphicsState()
+        context.restoreGState()
+        // The template's ink takes the colour.
+        context.setBlendMode(.sourceIn)
+        context.setFillColor(color)
+        context.fill(layer)
+        context.endTransparencyLayer()
+        context.restoreGState()
+    }
+}
+
+extension WritingPill {
+    /// A closed fold drawn as a mark in the margin, with no height.
+    var isMark: Bool {
+        if case .mark = style {
+            return true
+        }
+        return false
+    }
+
+    /// A closed fold drawn as a setup row.
+    var isSetup: Bool {
+        if case .setup = style {
+            return true
+        }
+        return false
     }
 }
 

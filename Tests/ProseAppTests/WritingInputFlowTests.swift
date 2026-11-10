@@ -371,23 +371,31 @@ extension WritingFlowTests {
         let pills = writingFragments(manager).filter(\.isPill)
         #expect(pills.count >= 2)
         let column = try #require(editor.textContainer).size.width
+        // Since Phase 6 the `#set` lines are a setup row and the comment a
+        // margin mark: their frames are the row's icon and label, and the
+        // mark's icon.
         for pill in pills {
             guard case let .pill(shown) = pill.role, let block = model.blockRange(holding: pill.offset) else {
                 continue
             }
-            let expected = try onScreen(
-                editor,
-                WritingMetrics.pillRect(label: shown.text, column: column)
-                    .offsetBy(dx: pill.frame.minX, dy: pill.frame.minY),
-            )
+            let local = switch shown.style {
+            case .plain: WritingMetrics.pillRect(label: shown.text, column: column)
+            case .setup: WritingMetrics.setupRowRect(label: shown.text, column: column)
+            case .mark: try #require(pill.fragment?.marginIconRect)
+            }
+            let expected = try onScreen(editor, local.offsetBy(dx: pill.frame.minX, dy: pill.frame.minY))
             let frame = editor.accessibilityFrame(for: block)
             #expect(
                 abs(frame.minX - expected.minX) < 0.5 && abs(frame.minY - expected.minY) < 0.5
-                    && abs(frame.width - expected.width) < 0.5 && abs(frame.height - WritingMetrics.pillHeight) < 0.5,
+                    && abs(frame.width - expected.width) < 0.5 && abs(frame.height - expected.height) < 0.5,
                 "Pill \(block): frame \(frame), pill \(expected)",
             )
+            guard !shown.isMark else {
+                // A mark takes no height in the column; no point lies on it.
+                continue
+            }
             let centre = NSPoint(x: expected.midX, y: expected.midY)
-            #expect(editor.accessibilityRange(for: centre) == text.rangeOfComposedCharacterSequence(at: block.location))
+            #expect(editor.accessibilityRange(for: centre) == text.rangeOfComposedCharacterSequence(at: pill.offset))
         }
         let raw = text.range(of: "def raw()")
         let comment = text.range(of: "// A comment")

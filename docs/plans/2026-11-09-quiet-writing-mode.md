@@ -291,3 +291,21 @@ The fold model is in `WritingLayout`, behind `foldsEnabled`, which is off until 
   - While text is marked, folds are not rebuilt and the pointer calls do nothing; a composition inside a closed fold opens and pins it at once.
 - Cost: caret moves, role reads and the pointer calls use binary searches over the folds; edits and renders rebuild only the folds near the change. On 4,000 blocks in the debug build a caret move takes 11 to 15 µs.
 - Checks (main session): lint and the release build pass; 303 core and 210 app tests pass; coverage 89.85 percent (`WritingLayout.swift` 99.4 percent, `WritingLayoutTypes.swift` 95.5 percent, the subagent's figures). New tests: `Tests/ProseCoreTests/WritingFoldTests.swift` (12), with a seeded random run of edits, caret moves and pointer calls compared against a fresh model.
+
+## Step B outcome (2026-11-09)
+
+Folds draw and respond in Writing and Focus mode, for everyone. Acceptance tests 1 to 7 pass (`Tests/ProseAppTests/WritingFoldFlowTests.swift`, with an `#include`-stays-a-pill test and a metrics test). Tests 1 and 2 use the real welcome guide and the real engine: the row reads "Document setup · 16 lines" once the `#codly` render arrives.
+
+- Built: the row, the mark and the closing icon in `WritingFragment`; the controller's fold logic in the new `Sources/Prose/WritingFolds.swift`; `moveUp(_:)` and `moveDown(_:)` overrides in `ManuscriptTextView`; the caret rectangle at a resting position through `ManuscriptLayoutManager`; row and mark rectangles for the pointer, the highlight and accessibility; `hidesSetupRows` and the fold as one focus span in Focus.
+- Choices the step made:
+  - Icons: `caret-right` and `code-simple` are bundled. `chat-teardrop` is not, so comments draw `chat-text`. `caret-down` is `caret-right` turned 90 degrees.
+  - The margin icon sits 30 to 18 pt left of the column, centred on the middle of the blank line above the fold.
+  - The caret at a resting position: on a row, at the row's left edge, 15 pt tall; on a mark, at the column's left edge, level with the mark.
+  - The first click opens a fold and leaves the caret alone. A second click on a row selects the word at the fold's first character and a third selects the fold's source, as for a pill.
+  - The goal column is not kept across a fold: Down from a row goes to the start of the line after the fold, and Up past a mark or a hidden row goes to the end of the line before it.
+  - Up and Down pass a closed mark in one step in every mode.
+  - The top-line anchor is unchanged; when the fold is the top paragraph in view its top stays at the same place on screen.
+- A character typed at a resting position lands at the fold's first offset. That line is then no longer a setup line, so it leaves the fold, and the rest of the fold opens and stays open.
+- Existing tests changed because pills became folds: `writingModeRenderedHeightsFollowTheEngine`, `writingModeDrawsRendersPillsAndSource`, `writingModeDragsExtendThroughGlyphBoxesFromRenderedAndSourceBlocks`, `writingModeKeysWithACaretLandWhereTheyLandInCodeMode` (Up and Down moves that meet a closed fold must never land inside it; every other move must still match Code mode), `writingModePageKeysMoveTheCaretAboutOneViewportAndScrollWithIt` (more filler text), `writingModeAcceptance12AccessibilityValueIsTheSourceAndFramesLieOnTheGlyphs`, `focusModeDimsEveryBlockButTheFocusBlocks` (the measured pill is an `#include` line, compared by its strongest ink) and the helper `expectCaretInSource`.
+- Checks (main session, load average 6 to 14): lint and the release build pass; 303 core and 219 app tests pass, no rerun; coverage 89.99 percent. Book benchmark, every gate passes: typing p95 in Writing mode 7.08 ms (War and Peace) and 5.61 ms (SICP), in Focus 14.20 and 8.44 ms; typewriter step p95 22.15 and 18.33 ms; paragraphs built at most 1,503; peak memory 1,025 to 1,117 MiB in Writing and Focus.
+- Not tested: rows and marks in dark appearance, a mark at the very top of a file, and real pointer and key events in the running app.

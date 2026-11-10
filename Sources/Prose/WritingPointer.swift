@@ -204,7 +204,11 @@ extension WritingController {
         switch fragment.role {
         case .source, .collapsed:
             return nil
-        case .pill:
+        case let .pill(pill):
+            // A closed fold counts as one unit: its whole source.
+            if pill.style != .plain, let fold = model.fold(holding: start) {
+                return (.missed, foldRange(fold))
+            }
             return model.blockRange(holding: start).map { (.missed, $0) }
         case let .rendered(rendering, range):
             let hit = fragment.glyphMap(rendering, block: range)
@@ -408,8 +412,18 @@ extension WritingFragment {
         switch role {
         case let .rendered(rendering, block):
             glyphMap(rendering, block: block).selectionRects(for: selected)
-        case .pill:
-            selected.isEmpty ? [] : [CGRect(x: 0, y: 0, width: columnWidth, height: layoutFragmentFrame.height)]
+        case let .pill(pill):
+            switch pill.style {
+            case _ where selected.isEmpty:
+                []
+            case .plain:
+                [CGRect(x: 0, y: 0, width: columnWidth, height: layoutFragmentFrame.height)]
+            case .setup:
+                // The row's icon and label, whole.
+                [WritingMetrics.setupRowRect(label: pill.text, column: columnWidth)]
+            case .mark:
+                []
+            }
         case .source, .collapsed:
             []
         }

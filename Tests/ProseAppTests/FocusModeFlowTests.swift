@@ -742,6 +742,9 @@ private struct FocusCanvas {
     }
 }
 
+/// The pill of the dimming test: an `#include` line, which never folds.
+private let focusPillLine = "#include \"chapter.typ\""
+
 /// The blocks acceptance test 3 measures, by where their text starts and ends.
 @MainActor
 private struct FocusBlocks {
@@ -756,7 +759,7 @@ private struct FocusBlocks {
             let first = text.range(of: start).location
             return NSRange(location: first, length: NSMaxRange(text.range(of: end)) - first)
         }
-        pill = text.range(of: "#set par(justify: false)")
+        pill = text.range(of: focusPillLine)
         paragraph = block("A paragraph with inline math", "ends on a third source line.")
         equation = text.range(of: "$ integral_0^1 x^2 dif x = 1/3 $")
         raw = block("```py", "def raw(): return 1\n```")
@@ -779,8 +782,12 @@ private func drawnRect(_ manager: NSTextLayoutManager, _ block: NSRange) -> CGRe
 /// Acceptance test 3 in one appearance.
 @MainActor
 private func expectFocusDimming(_ appearance: NSAppearance.Name) async throws {
-    let app = try WritingFixture(text: focusSource, startService: false)
+    // Since Phase 6 a `#set` line is a setup row, which Focus hides; an
+    // `#include` line stays a pill, so it is the pill measured here.
+    let source = focusSource.replacingOccurrences(of: "#set par(justify: false)", with: focusPillLine)
+    let app = try WritingFixture(text: source, startService: false)
     defer { app.close() }
+    try Data("Chapter text.\n".utf8).write(to: app.root.appendingPathComponent("chapter.typ"))
     app.window.appearance = NSAppearance(named: appearance)
     app.window.orderFront(nil)
     await app.layout()
@@ -863,7 +870,10 @@ private func expectFocusDimming(_ appearance: NSAppearance.Name) async throws {
     pointerSelect(editor, NSRange(location: NSMaxRange(blocks.pill), length: 1))
     #expect(!dimmed(blocks.pill) && dimmed(blocks.paragraph))
     let pillFocused = try await measure("pill-selected")
-    expectRatio(caretInPlain["pill"], pillFocused["pill"], "pill")
+    // The highlight under the selected pill's label changes which edge
+    // pixels the median counts (the `#include` label's thin strokes reach
+    // 0.49 in dark), so this compares the strongest ink, as below.
+    expectRatio(caretInPlain["peak pill"], pillFocused["peak pill"], "pill")
 
     // A pointer selection across three blocks: all three at full contrast.
     let across = NSRange(

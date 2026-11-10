@@ -50,21 +50,61 @@ extension WritingFlowTests {
                 hidden.append("\(name): \(problem)")
             }
         }
+        // Since Phase 6, Up and Down step over a closed fold (decision 3):
+        // where Code mode's step lands in one, Writing mode's lands on its
+        // resting position or past it, never inside it.
+        // The caret away from the folds, so every fold is closed.
+        park(editor)
+        func closedFold(_ offset: Int) -> WritingFold? {
+            model.fold(holding: offset).flatMap { $0.isOpen ? nil : $0 }
+        }
+        let vertical: Set<Selector> = [#selector(NSResponder.moveUp(_:)), #selector(NSResponder.moveDown(_:))]
         var differences: [String] = []
+        var stepped = 0
         for (command, destinations) in code {
             for (start, expected) in destinations where writing[command]?[start] != expected {
+                let landed = writing[command]?[start]
+                if vertical.contains(command), closedFold(expected.location) != nil || closedFold(start) != nil,
+                   let landed, landed.length == 0
+                {
+                    stepped += 1
+                    if closedFold(start) == nil, let fold = closedFold(landed.location),
+                       landed.location != fold.restingPosition
+                    {
+                        differences
+                            .append("\(NSStringFromSelector(command)) from \(start) landed inside a fold: \(landed)")
+                    }
+                    continue
+                }
                 differences.append(
                     "\(NSStringFromSelector(command)) from \(start): code \(expected), " +
-                        "writing \(String(describing: writing[command]?[start]))",
+                        "writing \(String(describing: landed))",
                 )
             }
         }
+        // A run of plain Up or Down visits the same paragraphs outside the
+        // folds; after a step over a fold it keeps no goal column.
+        func paragraphs(_ steps: [NSRange]) -> [Int] {
+            var starts: [Int] = []
+            for step in steps where closedFold(step.location) == nil {
+                let start = text.paragraphRange(for: NSRange(location: step.location, length: 0)).location
+                if starts.last != start {
+                    starts.append(start)
+                }
+            }
+            return starts
+        }
         for (name, steps) in codeRuns where writingRuns[name] != steps {
+            if !name.hasPrefix("shift"), let other = writingRuns[name], paragraphs(other) == paragraphs(steps) {
+                stepped += 1
+                continue
+            }
             differences.append("\(name): code \(steps), writing \(String(describing: writingRuns[name]))")
         }
+        #expect(stepped > 0, "No vertical move met a fold")
         let moves = code.values.reduce(0) { $0 + $1.count } + codeRuns.values.reduce(0) { $0 + $1.count }
         print("WRITING keys: \(moves) moves, \(entered) into blocks drawn rendered or as pills, " +
-            "\(differences.count) differ from Code mode, \(hidden.count) carets not shown")
+            "\(stepped) stepped over folds, \(differences.count) differ from Code mode, \(hidden.count) carets not shown")
         #expect(entered > 200, "Too few moves entered a rendered block or a pill: \(entered)")
         #expect(differences.isEmpty, "\(differences.prefix(12))")
         #expect(hidden.isEmpty, "\(hidden.prefix(12))")
@@ -198,7 +238,9 @@ extension WritingFlowTests {
     // MARK: - Page up and down
 
     @Test func writingModePageKeysMoveTheCaretAboutOneViewportAndScrollWithIt() async throws {
-        let app = try WritingFixture(text: selectionSource, startService: false)
+        // Folds (Phase 6) made the fixture shorter than three pages; more
+        // filler keeps the second page away from the text's end.
+        let app = try WritingFixture(text: selectionSource + selectionFiller, startService: false)
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
         let length = (editor.string as NSString).length
@@ -672,6 +714,17 @@ private func caretProblem(
         return nil
     }
     let text = editor.string as NSString
+    if let fold = model.fold(holding: selection.location), !fold.isOpen, fold.restingPosition == selection.location {
+        // At a closed fold's resting position the caret draws on its row or
+        // by its mark (Phase 6).
+        let rect = TextKit2Geometry.caretRect(at: selection.location, in: manager)
+        let resting = editor.writing.foldCaretRect(at: selection.location, width: rect?.width ?? 0)
+        guard let rect, rect == resting else {
+            return "caret \(selection.location) at a resting position drawn at \(String(describing: rect))"
+        }
+        let visible = editor.containerVisibleRect()
+        return rect.midY < visible.minY || rect.midY > visible.maxY ? "caret \(selection.location) out of view" : nil
+    }
     let paragraph = text.paragraphRange(for: NSRange(location: selection.location, length: 0))
     let drawn = model.role(forParagraph: paragraph)
     if drawn != .source {

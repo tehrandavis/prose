@@ -116,7 +116,20 @@ extension WritingController {
         let frame = drawn.frame
         if let pill = drawn.pill {
             let column = editor?.textContainer?.size.width ?? frame.width
-            return WritingMetrics.pillRect(label: pill.text, column: column).offsetBy(dx: frame.minX, dy: frame.minY)
+            switch pill.style {
+            case .plain:
+                return WritingMetrics.pillRect(label: pill.text, column: column)
+                    .offsetBy(dx: frame.minX, dy: frame.minY)
+            case .setup:
+                // A closed setup row: its icon and label.
+                return WritingMetrics.setupRowRect(label: pill.text, column: column)
+                    .offsetBy(dx: frame.minX, dy: frame.minY)
+            case .mark:
+                // A closed mark: its icon in the margin.
+                let icon = fragment(at: drawn.block.location)?.marginIconRect
+                    ?? WritingMetrics.marginIconRect(midY: 0)
+                return icon.offsetBy(dx: frame.minX, dy: frame.minY)
+            }
         }
         let lines = drawn.lines
         guard let caret = drawn.map?.caret(at: offset, in: lines) else {

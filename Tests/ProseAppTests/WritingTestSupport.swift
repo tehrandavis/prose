@@ -195,7 +195,9 @@ func writingPress(
 }
 
 /// An empty selection lies in a paragraph drawn as source, and the caret's
-/// rectangle lies in that paragraph's fragment.
+/// rectangle lies in that paragraph's fragment. Since Phase 6 the caret may
+/// also rest on a closed fold's first character, drawn on its row or by its
+/// mark (`WritingController.foldCaretRect`).
 @MainActor
 func expectCaretInSource(_ editor: ManuscriptTextView, _ manager: NSTextLayoutManager, _ model: WritingLayout) {
     let caret = editor.selectedRange()
@@ -203,6 +205,15 @@ func expectCaretInSource(_ editor: ManuscriptTextView, _ manager: NSTextLayoutMa
         return
     }
     let text = editor.string as NSString
+    if let fold = model.fold(holding: caret.location), !fold.isOpen, fold.restingPosition == caret.location {
+        let rect = TextKit2Geometry.caretRect(at: caret.location, in: manager)
+        let resting = editor.writing.foldCaretRect(at: caret.location, width: rect?.width ?? 0)
+        #expect(
+            rect != nil && rect == resting,
+            "The caret \(caret.location) at a resting position is \(String(describing: rect))",
+        )
+        return
+    }
     let paragraph = text.paragraphRange(for: NSRange(location: caret.location, length: 0))
     #expect(model.role(forParagraph: paragraph) == .source, "The caret \(caret.location) is in a rendered paragraph")
     guard let rect = TextKit2Geometry.caretRect(at: caret.location, in: manager),

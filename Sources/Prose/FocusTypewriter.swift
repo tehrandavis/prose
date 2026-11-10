@@ -51,10 +51,13 @@ extension WritingController {
             spans = model.spans(intersecting: selection) + [text.paragraphRange(for: selection)]
         }
         if selection.length == 0 || selection != pointerSelection {
-            if let index = model.activeBlock {
+            let moving = min(caret ?? selection.location, text.length)
+            if let fold = model.fold(holding: moving) {
+                // A fold, open or closed, is one unit (Phase 6 decision 4).
+                spans.append(fold.span)
+            } else if let index = model.activeBlock {
                 spans.append(model.span(ofBlockAt: index))
             } else {
-                let moving = min(caret ?? selection.location, text.length)
                 spans.append(text.paragraphRange(for: NSRange(location: moving, length: 0)))
             }
         }

@@ -171,7 +171,9 @@ extension WritingFlowTests {
         defer { app.close() }
         let (editor, manager, model) = try await openSelectionDocument(app)
         let text = editor.string as NSString
-        let pill = text.range(of: "#set par").location
+        // Since Phase 6 the `#set` lines fold into a setup row at the top,
+        // which a drag treats as a pill of the fold's source.
+        let pill = 0
         let short = text.range(of: "A short paragraph").location
         let long = text.range(of: "A paragraph with inline math").location
         let equation = text.range(of: "$ integral").location
@@ -213,12 +215,18 @@ extension WritingFlowTests {
         let upFrom = try glyphCentre(manager, block: plain, offset: after)
         try writingPress(editor, at: upFrom, through: [fragmentCentre(manager, at: pill)])
         #expect(editor.selectedRange() == NSRange(location: pill, length: after - pill))
+        // The comment is a margin mark with no height: a drag to where it
+        // lies ends in the gap's source line, not inside the fold.
         park(editor)
         writingScrollToTop(editor)
         let downFrom = try glyphCentre(manager, block: long, offset: second)
-        let commentEnd = try NSMaxRange(#require(model.blocks.first { $0.range.location == comment }).range)
-        try writingPress(editor, at: downFrom, through: [fragmentCentre(manager, at: comment)])
-        #expect(editor.selectedRange() == NSRange(location: second, length: commentEnd - second))
+        let gap = try #require(writingFragments(manager).last { $0.offset < comment })
+        #expect(gap.role == .source)
+        try writingPress(editor, at: downFrom, through: [CGPoint(x: 1, y: gap.frame.maxY - 1)])
+        let fold = try #require(model.fold(holding: comment))
+        #expect(editor.selectedRange().location == second)
+        #expect(NSMaxRange(editor.selectedRange()) == gap.offset, "Dragged to \(editor.selectedRange())")
+        #expect(!fold.isOpen)
 
         // (b) AppKit's tracking from source: the selection navigation calls
         // its loop makes, from "Plain paragraph" (open) up into rendered blocks.

@@ -103,7 +103,13 @@ extension WritingFlowTests {
             #expect(fragment.frame.height == 0)
         }
         for fragment in fragments where fragment.isPill {
-            #expect(fragment.frame.height == WritingMetrics.pillFragmentHeight)
+            // A margin mark (Phase 6) takes no height.
+            let mark = if case let .pill(pill) = fragment.role {
+                pill.isMark
+            } else {
+                false
+            }
+            #expect(fragment.frame.height == (mark ? 0 : WritingMetrics.pillFragmentHeight))
         }
         for (previous, next) in zip(fragments, fragments.dropFirst()) {
             #expect(
@@ -188,18 +194,19 @@ extension WritingFlowTests {
         #expect(canvas.ink(in: blank.frame.insetBy(dx: 0, dy: 1)) == 0, "Source drawn under the rendered block")
         #expect(drew.contains { $0.0.isRendered && $0.1["rendered", default: 0] > 0 })
 
-        // A pill for the #set line, muted for the comment.
+        // Since Phase 6 the #set line is a setup row and the comment a mark
+        // in the margin (`WritingFoldFlowTests.swift` tests both further).
         let set = try #require(fragments.first { $0.offset == 0 })
         #expect(set.isPill)
         #expect(canvas.ink(in: set.frame) > 50)
         let comment = try #require(fragments.first { $0.offset == text.range(of: "// A comment").location })
         guard case let .pill(pill) = comment.role else {
-            Issue.record("The comment is not a pill: \(comment.role)")
+            Issue.record("The comment is not a mark: \(comment.role)")
             return
         }
-        #expect(pill.muted && pill.text.hasPrefix("// A comment"))
+        #expect(pill.muted && pill.style == .mark(.comment) && pill.text.hasPrefix("// A comment"))
         if case let .pill(setPill) = set.role {
-            #expect(!setPill.muted && setPill.text == "#set par(justify: false)")
+            #expect(setPill.muted && setPill.text == "Document setup · 1 line")
         }
 
         // The raw fence and the failing block draw as source.

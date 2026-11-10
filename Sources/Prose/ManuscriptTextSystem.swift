@@ -158,8 +158,11 @@ extension ManuscriptTextView {
 /// for the selected range and draws one line view per segment. Inside a
 /// rendered block those segments are the source lines' rectangles, and the
 /// collapsed lines' lie over the paragraph below the block (Phase 3 spike).
-/// Empty ranges (caret queries) and every other segment type pass through,
-/// and so does everything while Writing mode is off. NSTextView's
+/// Every other segment type passes through, and so does everything while
+/// Writing mode is off. An empty range (the caret) passes through too, except
+/// in a closed fold, where it lies on the fold's row or beside its mark
+/// (`WritingController.foldCaretRect`), since TextKit's lines there are
+/// collapsed source. NSTextView's
 /// accessibility frames read the same segments; Writing mode answers those
 /// for rendered blocks itself (`WritingAccessibility.swift`).
 final class ManuscriptLayoutManager: NSTextLayoutManager {
@@ -171,7 +174,32 @@ final class ManuscriptLayoutManager: NSTextLayoutManager {
         options: NSTextLayoutManager.SegmentOptions = [],
         using block: (NSTextRange?, CGRect, CGFloat, NSTextContainer) -> Bool,
     ) {
-        guard type == .selection, !textRange.isEmpty, Thread.isMainThread, let writing else {
+        guard Thread.isMainThread, let writing else {
+            super.enumerateTextSegments(in: textRange, type: type, options: options, using: block)
+            return
+        }
+        if textRange.isEmpty {
+            // The caret in a closed fold draws on its row or by its mark.
+            let offset = offset(from: documentRange.location, to: textRange.location)
+            guard MainActor.assumeIsolated({ writing.closedFold(holding: offset) != nil }) else {
+                super.enumerateTextSegments(in: textRange, type: type, options: options, using: block)
+                return
+            }
+            var width: CGFloat = 0
+            super.enumerateTextSegments(in: textRange, type: type, options: options) { _, frame, _, _ in
+                width = frame.width
+                return false
+            }
+            if let container = textContainer,
+               let rect = MainActor.assumeIsolated({ writing.foldCaretRect(at: offset, width: width) })
+            {
+                _ = block(options.contains(.rangeNotRequired) ? nil : textRange, rect, rect.height * 0.8, container)
+                return
+            }
+            super.enumerateTextSegments(in: textRange, type: type, options: options, using: block)
+            return
+        }
+        guard type == .selection else {
             super.enumerateTextSegments(in: textRange, type: type, options: options, using: block)
             return
         }

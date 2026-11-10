@@ -102,6 +102,8 @@ final class WritingController: NSObject {
             model = current
         } else {
             model = WritingLayout(renderer: renderer)
+            // Phase 6: runs of setup lines and comments fold.
+            model.foldsEnabled = true
             model.hasMarkedText = { [weak editor] in editor?.hasMarkedText() ?? false }
             model.onChange = { [weak self] in self?.changed($0) }
             model.onStaleChange = { [weak self] in self?.staleChanged($0) }
@@ -112,6 +114,7 @@ final class WritingController: NSObject {
         if let appearance = currentAppearance() {
             model.setAppearance(appearance)
         }
+        model.hidesSetupRows = focused
         model.start(file: file, text: editor.string)
         beginEntry()
     }
@@ -133,6 +136,8 @@ final class WritingController: NSObject {
             return
         }
         beginEntry(keepingHeld: true)
+        // Focus hides closed setup rows (Phase 6 decision 4).
+        model?.hidesSetupRows = on
         sendAppearance()
         // Every paragraph in view changes contrast.
         flush()
@@ -216,13 +221,17 @@ final class WritingController: NSObject {
         flush()
     }
 
-    /// The paragraphs of every block that does not draw source.
+    /// The paragraphs of every block that does not draw source, and unless
+    /// `only` rendered blocks are asked for, every fold (a closed one's blank
+    /// lines belong to no block; an open one's first paragraph draws its
+    /// margin icon).
     private func shownSpans(rendered only: Bool = false) -> [NSRange] {
         guard let model, let editor else {
             return []
         }
         let text = editor.string as NSString
-        var spans: [NSRange] = []
+        var spans: [NSRange] = only ? [] : model.folds(intersecting: NSRange(location: 0, length: text.length))
+            .map(\.span)
         for (index, block) in model.blocks.enumerated() where NSMaxRange(block.range) <= text.length {
             switch model.state(ofBlockAt: index) {
             case .source:

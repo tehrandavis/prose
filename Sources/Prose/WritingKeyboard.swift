@@ -264,6 +264,13 @@ extension WritingController {
             return nil
         }
         var paragraph = text.paragraphRange(for: NSRange(location: offset, length: 0))
+        if let fold = model.fold(holding: offset), !fold.isOpen {
+            // A closed fold draws on its first paragraph, unless Focus hides it.
+            guard !fold.isHidden else {
+                return nil
+            }
+            paragraph = text.paragraphRange(for: NSRange(location: fold.span.location, length: 0))
+        }
         var role = model.role(forParagraph: paragraph)
         var steps = 0
         while case .collapsed = role, paragraph.location > 0, steps <= WritingLayout.longBlockLines {
@@ -283,6 +290,9 @@ extension WritingController {
         case .source, .collapsed:
             return nil
         case let .pill(pill):
+            if pill.style != .plain, let fold = model.fold(holding: paragraph.location) {
+                return WritingDrawnBlock(frame: frame, block: foldRange(fold), map: nil, pill: pill)
+            }
             return model.blockRange(holding: paragraph.location).map {
                 WritingDrawnBlock(frame: frame, block: $0, map: nil, pill: pill)
             }
@@ -298,6 +308,12 @@ extension WritingController {
         if let drawn {
             let lines = drawn.lines
             guard let caret = drawn.map?.caret(at: offset, in: lines) else {
+                // A setup row's or mark's caret (`foldCaretRect`), else a pill's middle.
+                if drawn.pill.map({ $0.style != .plain }) == true,
+                   let rect = foldCaretRect(at: drawn.block.location, width: 0)
+                {
+                    return CGPoint(x: rect.minX, y: rect.midY)
+                }
                 return CGPoint(x: drawn.frame.minX, y: drawn.frame.midY)
             }
             return CGPoint(x: drawn.frame.minX + caret.x, y: drawn.frame.minY + lines[caret.line].midY)
