@@ -126,3 +126,11 @@ Open items (full list in the note's Phase 5 outcome): the `style: "ieee"` defaul
 - Dark appearance in Writing and Focus modes: the engine renders with the document's own colours and then remaps every paint except images in OKLab (black ink to `#E8E4DE`, white fills to the page `#262626`, hues kept). C ABI version 5 replaces the default text colour with a dark flag. A document that sets its own dark ink (the welcome guide) is now readable, and table rules are light. Open: a mid grey such as the guide's muted text reaches only 3.4:1.
 - The home window's close button now quits through the normal termination path; `⌘W` on the home window quits too. `⌘Q` already worked.
 - Results: lint, release build, 291 core and 209 app tests (coverage 89.72 percent).
+
+## 2026-11-09 (night): Quiet Writing mode, design note
+
+- Tehran approved making the code parts of Typst less visible in Writing and Focus modes, as Overleaf's visual editor does, and asked for a new session to start it.
+- Wrote the design note `docs/plans/2026-11-09-quiet-writing-mode.md` (draft, not accepted): setup lines and comments fold into one row or a margin mark; the open block draws in the document's font with faint markers; typing in the rendered paragraph gets a spike only, with pass marks and end conditions.
+- No code yet. `td-e987b5` tracks the phase.
+
+Open: nine questions at the end of the note (phase number, arrow keys over a fold, no-ink blocks and `#include`, equations, the faint colour, and the four questions left from Phase 5).
