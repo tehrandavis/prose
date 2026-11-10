@@ -1109,3 +1109,76 @@ private func expectOrdered(_ blocks: [RenderBlock], within length: Int) {
     await layout.idle()
     #expect(await gate.refreshes == stopped)
 }
+
+/// Phase 6 decision 7: only an active paragraph, heading or list draws as
+/// the open block; a display equation, a raw block, a failed render, a
+/// block over 400 lines and a block of a fold keep the code look.
+@Test @MainActor func writingLayoutOpenBlockIsTheActiveParagraphHeadingOrList() async throws {
+    let draft = try Draft()
+    let long = Array(repeating: "line", count: WritingLayout.longBlockLines + 1).joined(separator: "\n")
+    let source = """
+    = Heading
+
+    A paragraph.
+
+    - item one
+    - item two
+
+    $ x = 1 $
+
+    ```py
+    x = 2
+    ```
+
+    Broken #(1 + ) here.
+
+    #v(7mm)
+
+    \(long)
+
+    """
+    let text = source as NSString
+    let (layout, _) = try await started(source, draft.renderer(), draft)
+    layout.foldsEnabled = true
+    await layout.idle()
+    func open(at needle: String, _ shift: Int = 2) -> WritingOpenBlock? {
+        layout.selectionDidChange(caret: text.range(of: needle).location + shift)
+        return layout.openBlock
+    }
+    #expect(layout.openBlock == nil, "No caret, no open block")
+    #expect(open(at: "= Heading")?.kind == .heading)
+    let paragraph = try #require(open(at: "A paragraph"))
+    #expect(paragraph.kind == .paragraph && paragraph.range == text.range(of: "A paragraph."))
+    #expect(paragraph.span == text.paragraphRange(for: paragraph.range))
+    #expect(open(at: "- item one")?.kind == .list)
+    #expect(open(at: "$ x = 1") == nil)
+    #expect(open(at: "x = 2") == nil)
+    #expect(open(at: "Broken") == nil)
+    #expect(layout.fold(holding: text.range(of: "#v(7mm)").location) != nil)
+    #expect(open(at: "#v(7mm)", 3) == nil)
+    #expect(open(at: "line\nline") == nil)
+    // Typing at its first character keeps it open, before and after the
+    // engine's new block list; a block sharing its line stays closed.
+    let edited = NSMutableString(string: source)
+    let start = edited.range(of: "A paragraph").location
+    layout.selectionDidChange(caret: start)
+    #expect(layout.openBlock != nil)
+    edit(edited, NSRange(location: start, length: 0), "Q", layout)
+    layout.selectionDidChange(caret: start + 1)
+    #expect(layout.openBlock?.span == edited.paragraphRange(for: NSRange(location: start, length: 1)))
+    await layout.idle()
+    #expect(layout.openBlock?.range == edited.range(of: "QA paragraph."))
+    let other = try Draft()
+    let (sharing, _) = try await started(
+        "Intro words #set text(fill: red) more words.\n\nNext paragraph.\n", other.renderer(), other,
+    )
+    try #require(sharing.blocks.count == 4 && sharing.blocks[0].kind == .paragraph)
+    sharing.selectionDidChange(caret: 3)
+    #expect(
+        sharing.activeBlock != nil && sharing.openBlock == nil,
+        "A block that shares its line opened: \(String(describing: sharing.activeBlock))",
+    )
+    sharing.stop()
+    layout.stop()
+    #expect(layout.openBlock == nil)
+}

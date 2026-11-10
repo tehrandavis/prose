@@ -151,6 +151,9 @@ final class Workspace: ObservableObject {
     /// Writing mode's engine for the open project, created the first time
     /// Writing mode is used (decision 10 of the Phase 3 note).
     var writingEngine: (key: WritingEngineKey, renderer: BlockRenderer)?
+    /// The document's fonts, made from the engine's bytes for the open block
+    /// (Phase 6 decision 6); forgotten with the engine.
+    let documentFonts = DocumentFonts()
     var writingEngineTask: Task<Void, Never>?
     var writingEngineRequest: WritingEngineKey?
     var writingEngineGeneration = 0

@@ -122,6 +122,10 @@ public final class SourceStyler: NSObject, @preconcurrency NSTextContentStorageD
         let whole = NSRange(location: 0, length: storage.length)
         // The same text keeps its spelling state; replaced text starts bare.
         let keepsSpelling = keepsSpelling && colors.length == whole.length
+        if !keepsSpelling {
+            // Replaced text has no open block.
+            openBlock = nil
+        }
         colors.removeAll(keepingSpelling: keepsSpelling)
         if !keepsSpelling {
             colors.replaceCharacters(in: NSRange(location: 0, length: colors.length), length: whole.length)
@@ -159,6 +163,7 @@ public final class SourceStyler: NSObject, @preconcurrency NSTextContentStorageD
         }
         let original = NSRange(location: edited.location, length: edited.length - delta)
         colors.replaceCharacters(in: original, length: edited.length)
+        openBlock?.rebase(editing: original, delta: delta)
         guard isEnabled else {
             return
         }
@@ -308,13 +313,71 @@ public final class SourceStyler: NSObject, @preconcurrency NSTextContentStorageD
     /// text element, and on macOS 15 every edit walks the cached elements
     /// after it, so the book benchmark checks this count stays small.
     public private(set) static var paragraphsBuilt = 0
+    /// Every paragraph TextKit asks for while not nil, for tests.
+    public static var paragraphRequestLog: [NSRange]?
+
+    /// The open block of Writing mode (Phase 6 decision 5, mechanism 1):
+    /// paragraphs TextKit builds in its span get the document's fonts. The
+    /// storage never changes. Set it, then `rebuildParagraphs(in:)` over the
+    /// old and new spans.
+    public var openBlock: OpenBlockStyle?
+
+    /// The paragraphs TextKit asked for that lie in `openBlock`'s span, and
+    /// how many of them got the document's fonts, for tests.
+    public private(set) var openParagraphRequests: [NSRange] = []
+    public private(set) static var openParagraphsBuilt = 0
+    /// The main thread's time spent making the open block's paragraphs.
+    public private(set) static var openParagraphTime: Duration = .zero
+
+    public func resetOpenParagraphRequests() {
+        openParagraphRequests = []
+    }
 
     public func textContentStorage(
         _: NSTextContentStorage,
-        textParagraphWith _: NSRange,
+        textParagraphWith range: NSRange,
     ) -> NSTextParagraph? {
         Self.paragraphsBuilt += 1
-        return nil
+        Self.paragraphRequestLog?.append(range)
+        guard let openBlock, let storage else {
+            return nil
+        }
+        let inside = NSIntersectionRange(range, openBlock.span).length > 0
+            || (range.length == 0 && NSLocationInRange(range.location, openBlock.span))
+        guard inside else {
+            return nil
+        }
+        if openParagraphRequests.count >= 1024 {
+            openParagraphRequests.removeFirst(512)
+        }
+        openParagraphRequests.append(range)
+        let start = ContinuousClock.now
+        defer { Self.openParagraphTime += ContinuousClock.now - start }
+        guard let paragraph = openBlock.paragraph(range, from: storage) else {
+            return nil
+        }
+        Self.openParagraphsBuilt += 1
+        return NSTextParagraph(attributedString: paragraph)
+    }
+
+    /// Makes TextKit build the paragraphs of `range` again through
+    /// `textContentStorage(_:textParagraphWith:)` on its next layout pass,
+    /// with no change to the storage: the content storage is told that the
+    /// attributes of `range` changed, as `NSTextStorage` tells it after an
+    /// attribute edit, but the storage itself does not process an edit, so
+    /// its delegate, the text view and undo see nothing. Call it outside an
+    /// edit, as the styler's own replies wait for one to end.
+    public func rebuildParagraphs(in range: NSRange) {
+        guard let contentStorage, let storage, range.location >= 0, NSMaxRange(range) <= storage.length else {
+            return
+        }
+        contentStorage.processEditing(
+            for: storage,
+            edited: .editedAttributes,
+            range: range,
+            changeInLength: 0,
+            invalidatedRange: range,
+        )
     }
 }
 

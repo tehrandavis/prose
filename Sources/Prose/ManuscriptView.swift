@@ -98,6 +98,8 @@ struct ManuscriptView: NSViewRepresentable {
             guard editedMask.contains(.editedCharacters) else {
                 return
             }
+            // The content storage processes the edit after this returns.
+            workspace.editor?.writing.storageDidProcessCharacterEdit()
             workspace.editor?.recordCharacterEdit(in: textStorage, range: editedRange, delta: delta)
         }
 
@@ -443,6 +445,16 @@ final class ManuscriptTextView: NSTextView {
         }
         workspaceRevision = workspace?.revision ?? -1
         workspace?.selection = selectedRange()
+        if writing.isRunning, let manager = textLayoutManager {
+            // Lay out the text around the caret before Writing mode swaps and
+            // places the caret's line, as a jump does. Without it, an undo
+            // just above the viewport's top fragment can make the viewport's
+            // next layout lay out the text from far above (7,700 paragraphs
+            // of SICP in Focus, Phase 6 step D).
+            TextKit2Geometry.layOutContext(around: selectedRange().location, in: manager)
+        }
+        // The undo's edits are processed; the open block can follow them.
+        writing.storageEditDidEnd()
         selectionChanged()
     }
 

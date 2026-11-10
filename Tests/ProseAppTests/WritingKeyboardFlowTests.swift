@@ -31,6 +31,17 @@ extension WritingFlowTests {
         park(editor)
         let model = try await enterWritingMode(app)
         writingScrollToTop(editor)
+        // Since Phase 6 step D the block that holds the caret draws in the
+        // document's font. Load it first, so every move here meets it; this
+        // loop never waits, so a load it started would not arrive in time.
+        for block in model.blocks {
+            if let font = model.textFont(at: block.range.location) {
+                editor.writing.loadDocumentFonts(font.id)
+            }
+        }
+        try await app.wait { editor.writing.fontLoads.isEmpty }
+        #expect(!editor.writing.loadedFonts.isEmpty, "No document font loaded")
+        let builtBefore = SourceStyler.openParagraphsBuilt
         var hidden: [String] = []
         var entered = 0
         let writing = keyboardDestinations(editor, through: end, before: { start, command in
@@ -59,11 +70,37 @@ extension WritingFlowTests {
             model.fold(holding: offset).flatMap { $0.isOpen ? nil : $0 }
         }
         let vertical: Set<Selector> = [#selector(NSResponder.moveUp(_:)), #selector(NSResponder.moveDown(_:))]
+        // A vertical move keeps the caret's x. Into, out of or inside a block
+        // drawn in the document's font that x maps to another offset than in
+        // Code mode's monospace lines, but the move lands on the same line.
+        let verticalAll = vertical.union([
+            #selector(NSResponder.moveUpAndModifySelection(_:)), #selector(NSResponder.moveDownAndModifySelection(_:)),
+        ])
+        func paragraph(_ offset: Int) -> Int {
+            text.paragraphRange(for: NSRange(location: min(offset, text.length), length: 0)).location
+        }
+        func inDocumentFont(_ offset: Int) -> Bool {
+            model.blocks.contains {
+                [.paragraph, .heading, .list].contains($0.kind) && NSLocationInRange(
+                    paragraph(offset),
+                    text.paragraphRange(for: $0.range),
+                )
+            }
+        }
         var differences: [String] = []
-        var stepped = 0
+        var stepped = 0, byFont = 0
         for (command, destinations) in code {
             for (start, expected) in destinations where writing[command]?[start] != expected {
                 let landed = writing[command]?[start]
+                if verticalAll.contains(command), let landed,
+                   inDocumentFont(start) || inDocumentFont(expected.location) || inDocumentFont(NSMaxRange(expected)),
+                   paragraph(landed.location) == paragraph(expected.location),
+                   paragraph(NSMaxRange(landed)) == paragraph(NSMaxRange(expected)),
+                   closedFold(expected.location) == nil, closedFold(start) == nil
+                {
+                    byFont += 1
+                    continue
+                }
                 if vertical.contains(command), closedFold(expected.location) != nil || closedFold(start) != nil,
                    let landed, landed.length == 0
                 {
@@ -94,17 +131,31 @@ extension WritingFlowTests {
             }
             return starts
         }
+        func movingEnds(_ name: String, _ steps: [NSRange]) -> [NSRange] {
+            steps.map { NSRange(location: name.contains("down") ? NSMaxRange($0) : $0.location, length: 0) }
+        }
         for (name, steps) in codeRuns where writingRuns[name] != steps {
             if !name.hasPrefix("shift"), let other = writingRuns[name], paragraphs(other) == paragraphs(steps) {
                 stepped += 1
+                continue
+            }
+            // A shifted run keeps its x through blocks in the document's
+            // font too: its moving end visits the same lines.
+            if name.hasPrefix("shift"), let other = writingRuns[name],
+               paragraphs(movingEnds(name, other)) == paragraphs(movingEnds(name, steps))
+            {
+                byFont += 1
                 continue
             }
             differences.append("\(name): code \(steps), writing \(String(describing: writingRuns[name]))")
         }
         #expect(stepped > 0, "No vertical move met a fold")
         let moves = code.values.reduce(0) { $0 + $1.count } + codeRuns.values.reduce(0) { $0 + $1.count }
+        let opened = SourceStyler.openParagraphsBuilt - builtBefore
         print("WRITING keys: \(moves) moves, \(entered) into blocks drawn rendered or as pills, " +
-            "\(stepped) stepped over folds, \(differences.count) differ from Code mode, \(hidden.count) carets not shown")
+            "\(stepped) stepped over folds, \(byFont) vertical moves on the same line in the document's font, " +
+            "\(opened) paragraphs built in it, \(differences.count) differ from Code mode, \(hidden.count) carets not shown")
+        #expect(opened > 100, "Blocks did not open in the document's font: \(opened) paragraphs")
         #expect(entered > 200, "Too few moves entered a rendered block or a pill: \(entered)")
         #expect(differences.isEmpty, "\(differences.prefix(12))")
         #expect(hidden.isEmpty, "\(hidden.prefix(12))")
@@ -313,7 +364,16 @@ extension WritingFlowTests {
         #expect(grown.location == anchor && grown.length > 200, "Shift-page down: \(grown)")
         editor.pageUpAndModifySelection(nil)
         let shrunk = editor.selectedRange()
-        #expect(shrunk.location <= anchor && NSMaxRange(shrunk) <= anchor + 2, "Shift-page up: \(shrunk)")
+        // The fixed end stays; the moving end comes back to the fixed end's
+        // line, or to the start of the line after it: the block of the
+        // moving end opens in the document's font (Phase 6 step D), a point
+        // or two off its render's height, so the page back can fall just
+        // below the line the page down left.
+        let anchorLine = (editor.string as NSString).paragraphRange(for: NSRange(location: anchor, length: 0))
+        #expect(
+            shrunk.location <= anchor && NSMaxRange(shrunk) <= NSMaxRange(anchorLine),
+            "Shift-page up: \(shrunk), the fixed end's line \(anchorLine)",
+        )
         expectPlainStorage(editor)
     }
 

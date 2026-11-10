@@ -257,6 +257,12 @@ extension WritingFlowTests {
         }
         #expect(role(paragraph)?.isRendered == true)
         let lines = writingFragments(manager).filter { $0.offset >= paragraph }.prefix(3)
+        let equation = text.range(of: "$ integral").location
+        let below = try #require(writingFragments(manager).first { $0.offset == equation })
+        // The paragraph's document font is ready before the caret enters.
+        let font = try #require(model.textFont(at: paragraph))
+        editor.writing.loadDocumentFonts(font.id)
+        try await app.wait { editor.writing.fontLoads.isEmpty }
 
         let bitmap = try #require(editor.bitmapImageRepForCachingDisplay(in: editor.visibleRect))
         let canvas = WritingCanvas(editor: editor, bitmap: bitmap, background: (255, 255, 255))
@@ -278,8 +284,14 @@ extension WritingFlowTests {
         let opened = writingFragments(manager).filter { $0.offset >= paragraph }.prefix(3)
         #expect(opened.allSatisfy { $0.role == .source && $0.frame.height > 4 })
         #expect(lines.map(\.offset) == opened.map(\.offset))
-        // The same fragment objects: the swap is invalidateLayout(for:).
-        #expect(zip(lines, opened).allSatisfy { $0.fragment === $1.fragment })
+        // The paragraph opens in the document's font (Phase 6 step D): TextKit
+        // builds its paragraphs again through the content storage delegate,
+        // so they have new fragments (and so may the blank line after it).
+        // The equation below keeps its fragment object: the swap itself is
+        // invalidateLayout(for:).
+        #expect(editor.styler?.openBlock?.fonts != nil, "The paragraph did not open in the document's font")
+        #expect(zip(lines, opened).allSatisfy { $0.fragment !== $1.fragment && $1.fragment != nil })
+        #expect(writingFragments(manager).first { $0.offset == equation }?.fragment === below.fragment)
         let caretRect = try #require(TextKit2Geometry.caretRect(at: caret, in: manager))
         let after = caretRect.minY - editor.containerVisibleRect().minY
         print("WRITING caret entry: caret line \(before) -> \(after) from the top of the view")
@@ -536,6 +548,8 @@ func enterWritingMode(_ app: WritingFixture) async throws -> WritingLayout {
     await model.idle()
     try await app.wait { editor.writing.enteredWithRenders != nil }
     await model.idle()
+    // The open block's fonts load once; it lays out again when they arrive.
+    try await app.wait { editor.writing.fontLoads.isEmpty }
     await app.layout()
     return model
 }

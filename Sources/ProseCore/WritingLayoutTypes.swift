@@ -199,6 +199,16 @@ public struct WritingFold: Hashable, Sendable {
     }
 }
 
+/// The block that holds the caret, when it draws in the document's font
+/// (`WritingLayout.openBlock`).
+public struct WritingOpenBlock: Equatable, Sendable {
+    /// The block's source.
+    public let range: NSRange
+    /// Its paragraphs, the last one's terminator included.
+    public let span: NSRange
+    public let kind: RenderBlock.Kind
+}
+
 /// Why a block lays out as source.
 public enum WritingSourceReason: Equatable, Sendable {
     /// It holds the caret.

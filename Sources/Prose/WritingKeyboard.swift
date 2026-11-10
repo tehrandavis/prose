@@ -389,6 +389,14 @@ extension WritingController {
         }
         // The moving end in view once its block has opened.
         editor.reveal(NSRange(location: end, length: 0))
+        if down, end == text.length, !focused {
+            // The text's end: its last page in view, after the swaps the move
+            // caused have changed the text's height. (Focus puts the caret's
+            // line on the typewriter line instead.)
+            manager.textViewportLayoutController.layoutViewport()
+            editor.scrollContainer(to: manager.usageBoundsForTextContainer.maxY)
+            manager.textViewportLayoutController.layoutViewport()
+        }
         return true
     }
 }

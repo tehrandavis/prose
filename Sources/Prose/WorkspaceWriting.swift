@@ -63,8 +63,9 @@ extension Workspace {
         projectChangeTask?.cancel()
         projectChangeTask = nil
         pendingProjectChanges = []
-        if writingEngine != nil {
+        if let engine = writingEngine {
             recordOperation("writing.engineFreed")
+            documentFonts.forget(engine.renderer)
         }
         writingEngine = nil
         editor?.writing.detach()

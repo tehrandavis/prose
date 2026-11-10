@@ -548,6 +548,8 @@ private func enterFocus(_ app: WritingFixture, _ route: () throws -> Void) async
     try await app.wait { editor.writing.enteredWithRenders != nil }
     await app.layout()
     await model.idle()
+    // The open block's fonts load once; it lays out again when they arrive.
+    try await app.wait { editor.writing.fontLoads.isEmpty }
     await app.layout()
     await model.idle()
     return model
@@ -808,6 +810,14 @@ private func expectFocusDimming(_ appearance: NSAppearance.Name) async throws {
 
     // Shows the blocks from the pill down and measures each one's ink.
     func measure(_ label: String) async throws -> [String: Double] {
+        await model.idle()
+        await app.layout()
+        editor.scrollContainer(to: drawnRect(manager, blocks.pill).minY - 8)
+        editor.prepareForPointerInteraction()
+        await app.layout()
+        // Blocks the scroll brings into view may still be rendering, and each
+        // render that arrives keeps the caret's line in place: scroll back
+        // once they are in.
         await model.idle()
         await app.layout()
         editor.scrollContainer(to: drawnRect(manager, blocks.pill).minY - 8)

@@ -48,6 +48,15 @@ enum Theme {
     static let sourceIdentifier = adaptive("sourceIdentifier", light: 0x496B7D, dark: 0xA5B8C8)
     static let sourceCode = adaptive("sourceCode", light: 0x455A64, dark: 0xBAC4CF)
     static let codeBackground = adaptive("codeBackground", light: 0xECEFF1, dark: 0x272D32)
+    /// Markers in Writing mode's open block (Phase 6 decision 8): the source
+    /// text colour at 40 percent opacity, the smallest multiple of 5 percent
+    /// that keeps 2:1 against the page in light (2.07:1; 35 percent gives
+    /// 1.87:1). Dark gives 2.94:1.
+    static let faintOpacity: CGFloat = 0.4
+    static let faintText = NSColor(name: NSColor.Name("Prose.faintText")) { appearance in
+        let dark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return NSColor(hex: dark ? 0xD5D9DE : 0x37474F).withAlphaComponent(faintOpacity)
+    }
 
     static let background = Color(nsColor: nativeBackground)
     static let editor = Color(nsColor: nativeEditor)

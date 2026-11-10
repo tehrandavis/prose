@@ -41,7 +41,7 @@ final class WritingController: NSObject {
     private var held: [NSRange] = []
     private var pending: [NSRange] = []
     private var flushScheduled = false
-    private var editing = false
+    private(set) var editing = false
     private var appearanceTask: Task<Void, Never>?
 
     /// For tests: swaps applied, and whether entry drew the viewport's renders
@@ -71,6 +71,22 @@ final class WritingController: NSObject {
     let dimmedImages = DimmedImageCache()
     /// For tests: the rendered blocks the last spelling change laid out again.
     private(set) var spellingRelaidOut: [NSRange] = []
+    /// The fonts the open block was last laid out with (Phase 6 decision 6).
+    var openFontKey: OpenBlockFontKey?
+    /// Document fonts of the engine in use whose four faces are made, and
+    /// those being made.
+    var loadedFonts: Set<Int> = []
+    var fontLoads: [Int: Task<Void, Never>] = [:]
+    /// For tests: open block changes shown, and the main thread's time in
+    /// them (rebuilds asked for and colours written).
+    var openBlockChanges = 0
+    var openBlockCost: Duration = .zero
+    /// A character edit is still being processed: the content storage tells
+    /// TextKit about it after the text storage's delegate has run, and
+    /// TextKit moves the selection from inside that. The open block waits
+    /// (`openBlockWaits`) until it is over (`storageEditDidEnd`).
+    var storageEditInProgress = false
+    var openBlockWaits = false
 
     init(editor: ManuscriptTextView) {
         self.editor = editor
@@ -101,6 +117,8 @@ final class WritingController: NSObject {
         if let current = self.model, self.renderer === renderer {
             model = current
         } else {
+            // Font identifiers belong to one engine.
+            forgetDocumentFonts()
             model = WritingLayout(renderer: renderer)
             // Phase 6: runs of setup lines and comments fold.
             model.foldsEnabled = true
@@ -204,6 +222,7 @@ final class WritingController: NSObject {
     /// Stops and lets go of the engine.
     func detach() {
         stop()
+        forgetDocumentFonts()
         model = nil
         renderer = nil
     }
@@ -291,9 +310,12 @@ final class WritingController: NSObject {
     /// The edit is over; swaps it caused can be laid out. In Focus mode the
     /// focus blocks and the typewriter line follow it.
     func editDidEnd() {
+        storageEditDidEnd()
         if flushScheduled || focused {
             flush()
         }
+        // Typed markers draw faint at once; a block the edit changed opens.
+        refreshOpenBlock()
     }
 
     /// The selection or the marked text changed. The caret is the selection's
@@ -343,11 +365,16 @@ final class WritingController: NSObject {
         self.caret = caret
         caretLine = line(of: caret)
         if focused, selection.length == 0 {
-            focusCaretLine = caretMiddleInView(caret).map { (caret, $0) }
+            // Not while TextKit is still processing an edit: the swap waits
+            // for it to end, and a layout query from inside it can make
+            // TextKit lay out the text from far above.
+            focusCaretLine = storageEditInProgress ? nil : caretMiddleInView(caret).map { (caret, $0) }
         }
         model.selectionDidChange(caret: caret)
         caretLine = nil
         focusCaretLine = nil
+        // A composition that ended, or fonts that changed, without a swap.
+        refreshOpenBlock()
     }
 
     /// The end of `selection` a shift-click at `offset` keeps: the end away
@@ -384,6 +411,7 @@ final class WritingController: NSObject {
         }
         visibleRange = range
         model.setVisibleRange(range)
+        preloadDocumentFonts()
     }
 
     /// The width, the backing scale or the appearance changed. During a live
@@ -532,7 +560,7 @@ final class WritingController: NSObject {
             return
         }
         pending += ranges
-        if editing || editor?.textStorage?.editedMask.isEmpty == false {
+        if editing || storageEditInProgress || editor?.textStorage?.editedMask.isEmpty == false {
             scheduleFlush()
         } else {
             flush()
@@ -623,7 +651,7 @@ final class WritingController: NSObject {
         guard focused, let editor else {
             return
         }
-        if editing || editor.textStorage?.editedMask.isEmpty == false {
+        if editing || storageEditInProgress || editor.textStorage?.editedMask.isEmpty == false {
             scheduleFlush()
         } else {
             flush()
@@ -657,6 +685,21 @@ final class WritingController: NSObject {
             return
         }
         pending += refocus()
+        // The open block changes in the same pass as the swap, so the anchor
+        // below keeps the caret's line (or the top line) in place.
+        var open = openBlockPlan()
+        if open != nil, mustDeferOpenBlock {
+            // Never inside the processing of an edit: building paragraphs
+            // again there makes TextKit lay out everything from far above.
+            open = nil
+            openBlockWaits = true
+        }
+        if let open, open.rebuild.isEmpty {
+            applyOpenBlock(open)
+        } else if let open {
+            pending += open.rebuild
+        }
+        let reopen = open.flatMap { $0.rebuild.isEmpty ? nil : $0 }
         let typewriter = takeTypewriter()
         guard !pending.isEmpty || typewriter != nil else {
             return
@@ -673,8 +716,20 @@ final class WritingController: NSObject {
             }
         }
         pending = []
-        let line = focusLine(changing: ranges)
+        var line = focusLine(changing: ranges)
+        if line == nil, focused, reopen != nil, editor.selectedRange().length == 0,
+           opened(editor.selectedRange().location)
+        {
+            // The caret's own block lays out in other fonts (its fonts
+            // arrived, or the edit changed the block): in Focus its line
+            // stays where it is, as for any swap that keeps the caret's block.
+            let caret = editor.selectedRange().location
+            line = caretMiddleInView(caret).map { (caret, $0) }
+        }
         if let caret = typewriter?.offset ?? line?.offset {
+            if let reopen {
+                applyOpenBlock(reopen)
+            }
             for range in ranges {
                 if let textRange = TextKit2Geometry.textRange(range, in: manager) {
                     manager.invalidateLayout(for: textRange)
@@ -698,6 +753,9 @@ final class WritingController: NSObject {
             WritingAnchor(offset: caretLine.offset, y: caretLine.y, caret: true)
         } else {
             editor.writingAnchor(changing: ranges)
+        }
+        if let reopen {
+            applyOpenBlock(reopen)
         }
         for range in ranges {
             if let textRange = TextKit2Geometry.textRange(range, in: manager) {

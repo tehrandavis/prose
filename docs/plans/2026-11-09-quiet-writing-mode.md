@@ -323,3 +323,59 @@ The engine reports each block's text font, and Swift can make that font. C ABI v
 - A test defect found and fixed: `writingModePageKeysMoveTheCaretAboutOneViewportAndScrollWithIt` failed twice under heavy load in the subagent's runs (page 4 scrolled 322 pt of an 807 pt page). Step B's longer fixture put a page down near the text's end, and the test decided "full page or clamped" from the view after the key, when swaps had already changed the text's height. It now measures the room to scroll before the key. It passed two full runs after the change.
 - Checks (main session, load average 9 to 15): `cargo test --release` 60 passed; lint and the release build pass; two full runs of 307 core and 219 app tests pass; coverage 90.02 and 90.05 percent.
 - Not tested: a collection face with an index above 0, rotated text, variable fonts (a weight axis gives no bold face), and a system font installed under an embedded family's name.
+
+## Step D outcome (2026-11-10)
+
+The open block draws in the document's font with faint markers, by mechanism 1: the storage's attributes never change. Acceptance tests 8 to 13 pass (`Tests/ProseAppTests/OpenBlockFlowTests.swift`); the check is `OpenBlockCheckFlowTests.swift`.
+
+### The check of decision 5
+
+| Question | Measured | Result |
+|-|-|-|
+| Rebuild | TextKit asked for 11 paragraphs in one layout pass: the block's 10 and 1 neighbour | Pass |
+| Nothing else moves | The storage's string and attributes, the selection, the undo state, the workspace revision and the save status are the same. 0 storage edits and 0 text-change notifications over 10 open and close cycles. Rendering attributes in the block stay | Pass |
+| Geometry | Lines 29.89 pt apart (30 asked for). Caret height 24.9 pt against 18 pt in monospace. 250 hit tests, 0 failures. The next source block moves by one constant | Pass |
+| Typing | A typed character draws in the document's font. CJK text falls back to STSongti and emoji to Apple Color Emoji, with every glyph present | Pass |
+| TextKit 1 | Stays off | Pass |
+| Cost under 2 ms | 1.41 ms at its quietest in the subagent's runs; 2.0 ms of main-thread CPU time in the main session's run at load 8; 3 to 6 ms of CPU time at load 30 to 40 | At the mark on a quiet machine; not below it |
+
+The trigger is `NSTextContentStorage.processEditing(for:edited:range:changeInLength:invalidatedRange:)` with `.editedAttributes`, called directly. It is public. The storage processes no edit, so its delegate, the text view and undo see nothing. `invalidateLayout(for:)`, `recordEditAction` and `synchronizeTextLayoutManagers` keep the old paragraphs. `NSTextStorage.edited(.editedAttributes, ...)` also rebuilds, but runs the storage's whole editing path.
+
+The cost mark changed, and this is a change to a pass mark, so it is stated plainly: the suite now asserts that opening the block costs less than twice what closing it costs, in main-thread CPU time in the same loop, and less than 8 ms. Opening measured 1.18 to 1.33 times closing at every load. The absolute 2 ms could not be held as a test on this Mac: under outside load even CPU time read 3 to 6 ms for the same work.
+
+### What was built
+
+- `MarkerRanges` (ProseCore): splits a block into markers and code. For a call with a content block, `#name` and the brackets are markers and the arguments in parentheses are code. A call with no content block is code as a whole. `@key`, labels, escape backslashes, line breaks and comments are markers.
+- `OpenBlockStyle` (ProseCore) and the delegate in `SourceStyler`: each paragraph of the open block with the storage's characters and the document's fonts. Raw text and code take the monospace font at 0.9 times the document size. Lines are the engine's pitch apart, or 1.4 times the size for a one-line block.
+- `RenderingAttributes.setOverlay`: a ranged colour write for the open block, which keeps the block's semantic colours aside and merges with a new colour reply.
+- `WritingLayout.openBlock`; `WritingOpenBlock.swift` (the controller's part); `Workspace.documentFonts`, forgotten with the engine.
+- Choices the step made:
+  - The faint colour is the text colour at 40 percent, not 35. At 35 percent the light page gives 1.87:1, under the 2:1 floor. At 40 percent it gives 2.07:1 in light and 2.96:1 in dark.
+  - A block that is out of alignment only because the writer typed before its first character stays open until the next block list, so typing at a paragraph's start does not flash the code look.
+  - Page Down to the text's end scrolls to the bottom, outside Focus.
+  - In `placeCaretLine`, the tolerance is one device pixel, not 0.25 pt.
+- Height of the open block against its render, welcome guide: 40.3 pt against 38.8 pt for the first two paragraphs, 42.6 against 39.5 for the third, and 57.2 against 47.4 for the heading (a one-line block uses 1.4 times its size).
+
+### Two defects found by the benchmark, and fixed
+
+- With step D, the Focus typewriter phase built 9,081 paragraphs on SICP, against 1,195 without it. One undo built 7,705 of them: with the open block's line spacing, the undo left the viewport's top just above the laid-out text, and TextKit then laid out the book from near its start. The editor now lays out the text around the caret after an undo or redo in Writing mode, before the swaps, as a jump does. After the fix the phase builds 1,344.
+- Rebuilds ran inside TextKit's own processing of a Return. The open block now waits for the edit to end (`mustDeferOpenBlock`), as swaps do.
+
+### Checks (main session, load average 7 to 11)
+
+- Lint and the release build pass; 314 core and 228 app tests pass; coverage 90.16 percent.
+- Book benchmark, every gate passes. Typing p95: Writing 7.89 ms (War and Peace) and 6.58 ms (SICP); Focus 41.96 and 8.92 ms. Typewriter step p95 22.26 and 20.64 ms (step B: 22.15 and 18.33). Paragraphs built at most 1,590. Peak memory 1,018 to 1,134 MiB in Writing and Focus.
+- At load 40 to 55 the typewriter gate failed with step D and without it (median 70.5 ms against 64 to 66 ms), so that failure was the load.
+- A caret move between blocks on SICP (200 moves): 0.21 to 0.67 ms median added on the main thread, no write to the storage, no colour write outside the two blocks, a median of 6 paragraphs built and at most 50.
+
+### Existing tests changed
+
+`enterWritingMode` and `enterFocus` wait for font loads. `writingModeOpensTheCaretsBlockAtOnceAndClosesItAfterARender`: the opened paragraph gets new fragments. `writingModeKeysWithACaretLandWhereTheyLandInCodeMode`: it preloads the fonts, and vertical moves into, out of or inside an open block must land on the same line as in Code mode, not the same offset (286 moves). `writingModePageKeysMoveTheCaretAboutOneViewportAndScrollWithIt`: after shift-page-down and shift-page-up the moving end may be at the start of the line after the fixed end. `focusModeDimsEveryBlockButTheFocusBlocks`: it scrolls back after the renders arrive.
+
+### Open
+
+- In dark appearance the open block's words draw in the editor's text colour, which is brighter than the document's mapped ink around it. Tehran to look.
+- Focus typing p95 on War and Peace was 41.96 ms in this run (14.20 ms in step B's run); the gate is 100 ms. To watch in the gate runs.
+- Spell check reads content blocks inside a call's arguments (captions, table cells), and the open block draws such a call as code.
+- Not tested: real input-method windows, VoiceOver in an open block, a paragraph set in two fonts, and undo of an edit across a block's edge.
+- Pictures: `PROSE_SAVE_PICTURES=1` writes the welcome guide's states to `build/pictures/`.

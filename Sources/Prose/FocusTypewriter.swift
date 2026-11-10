@@ -182,6 +182,7 @@ extension WritingController {
         guard let editor, let manager = editor.textLayoutManager else {
             return
         }
+        let devicePixel = 1 / max(editor.window?.backingScaleFactor ?? 2, 1)
         defer {
             manager.textViewportLayoutController.layoutViewport()
             editor.needsDisplay = true
@@ -202,7 +203,11 @@ extension WritingController {
                 manager.textViewportLayoutController.layoutViewport()
                 continue
             }
-            guard abs(middle - visible.minY - y) >= 0.25 else {
+            // Within a device pixel the line is where it can be drawn. A
+            // smaller scroll moves nothing on screen, and in a book TextKit
+            // can answer one by laying out the text from far above (Phase 6
+            // step D: thousands of paragraphs during an undo in Focus).
+            guard abs(middle - visible.minY - y) >= devicePixel else {
                 return
             }
             editor.scrollContainer(to: middle - y)

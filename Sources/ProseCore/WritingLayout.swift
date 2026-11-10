@@ -544,6 +544,32 @@ public final class WritingLayout {
         activeID.flatMap { indexByID[$0] }
     }
 
+    /// The block that draws as Phase 6's open block (decision 7): the
+    /// active block, laid out as source because it holds the caret, when
+    /// it is a paragraph, heading or list that would otherwise render. Nil
+    /// for a display equation, a raw block, a block of more than
+    /// `longBlockLines` lines, a block that shares a paragraph with another
+    /// block, a block whose last render failed, a block of a fold, and while
+    /// the model is stopped. Text typed before a block's first character on
+    /// its line leaves it unaligned until the engine's next block list; it
+    /// stays open meanwhile, since no other block shares its paragraphs.
+    public var openBlock: WritingOpenBlock? {
+        guard isRunning, let index = activeBlock else {
+            return nil
+        }
+        let entry = entries[index]
+        let shared = [index - 1, index + 1].contains {
+            entries.indices.contains($0) && NSIntersectionRange(entries[$0].span, entry.span).length > 0
+        }
+        guard entry.shown == .source(.active), [.paragraph, .heading, .list].contains(entry.kind),
+              entry.aligned || !shared, entry.lines <= Self.longBlockLines, entry.failure == nil,
+              foldIndex(ofEntry: index) == nil
+        else {
+            return nil
+        }
+        return WritingOpenBlock(range: entry.range, span: entry.span, kind: entry.kind)
+    }
+
     /// Bytes of the bitmaps held.
     public var bytesHeld: Int {
         entries.reduce(0) { total, entry in
