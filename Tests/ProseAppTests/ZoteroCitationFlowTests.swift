@@ -439,20 +439,9 @@ private func openZoteroTab(_ app: WritingFixture) async throws {
     await app.layout()
 }
 
-/// A loopback port nothing listens on: bound, read, closed.
+/// A loopback port nothing listens on. Port 1 needs root to listen on and
+/// nothing does on macOS, so a connection is refused at once. (A port bound,
+/// read and closed could be taken by a parallel test before the request.)
 private func closedLoopbackPort() -> UInt16 {
-    let socket = Darwin.socket(AF_INET, SOCK_STREAM, 0)
-    defer { close(socket) }
-    var address = sockaddr_in()
-    address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
-    address.sin_family = sa_family_t(AF_INET)
-    address.sin_addr.s_addr = inet_addr("127.0.0.1")
-    var length = socklen_t(MemoryLayout<sockaddr_in>.size)
-    _ = withUnsafePointer(to: &address) {
-        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(socket, $0, length) }
-    }
-    _ = withUnsafeMutablePointer(to: &address) {
-        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(socket, $0, &length) }
-    }
-    return UInt16(bigEndian: address.sin_port)
+    1
 }

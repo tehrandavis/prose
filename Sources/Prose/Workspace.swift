@@ -245,6 +245,13 @@ final class Workspace: ObservableObject {
 
     @Published var discoveryMode: UniverseDiscoveryMode?
     @Published var libraryOpen = false
+    /// Shows file panels; tests replace it (see `present`).
+    var showPanel: @MainActor (
+        NSSavePanel,
+        PanelPresentation,
+        NSWindow,
+        @escaping (NSApplication.ModalResponse) -> Void,
+    ) -> Void = Workspace.showPanel
     @Published private(set) var isLibraryHome = false
     @Published var documentTemplate: DocumentTemplate = .blank
     @Published var managedDocumentID: UUID?
@@ -786,6 +793,13 @@ final class Workspace: ObservableObject {
         }
     }
 
+    /// How a file panel is shown. Tests replace it: a real panel ended in the
+    /// test window stops the test host's run loop.
+    enum PanelPresentation: Equatable {
+        case sheet
+        case window
+    }
+
     /// Shows a file panel as a sheet on the window. The library sheet ("Your
     /// writing…") closes first, because its own menu offers Open Folder and
     /// Import; while another sheet is attached the panel opens as its own
@@ -802,12 +816,12 @@ final class Workspace: ObservableObject {
             return
         }
         guard let sheet = window.attachedSheet else {
-            panel.beginSheetModal(for: window, completionHandler: finish)
+            showPanel(panel, .sheet, window, finish)
             return
         }
         guard libraryOpen else {
             recordOperation("panel.window", ["reason": "sheet"])
-            panel.begin(completionHandler: finish)
+            showPanel(panel, .window, window, finish)
             return
         }
         // The library sheet closes on SwiftUI's next update; present the panel
@@ -818,11 +832,20 @@ final class Workspace: ObservableObject {
             for _ in 0 ..< 50 where window.attachedSheet === sheet {
                 try? await Task.sleep(for: .milliseconds(20))
             }
-            if window.attachedSheet == nil {
-                panel.beginSheetModal(for: window, completionHandler: finish)
-            } else {
-                panel.begin(completionHandler: finish)
-            }
+            showPanel(panel, window.attachedSheet == nil ? .sheet : .window, window, finish)
+        }
+    }
+
+    /// Shows `panel` on `window` as a sheet or as its own window.
+    static func showPanel(
+        _ panel: NSSavePanel,
+        _ presentation: PanelPresentation,
+        _ window: NSWindow,
+        _ finish: @escaping (NSApplication.ModalResponse) -> Void,
+    ) {
+        switch presentation {
+        case .sheet: panel.beginSheetModal(for: window, completionHandler: finish)
+        case .window: panel.begin(completionHandler: finish)
         }
     }
 

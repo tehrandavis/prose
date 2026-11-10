@@ -358,21 +358,27 @@ extension WritingFlowTests {
 
     /// Open Folder from the library sheet's own menu used to do nothing: the
     /// panel helper returned while a sheet was attached. The library sheet now
-    /// closes and the folder panel takes its place.
+    /// closes and the folder panel takes its place as a sheet. The panel is
+    /// not shown for real: ending one in the test window stops the test host.
     @Test func openFolderFromTheLibrarySheetShowsTheFolderPanel() async throws {
         let app = try WritingFixture(text: "= Current writing\n", startService: false)
         defer { app.close() }
         app.window.orderFront(nil)
+        var shown: [(NSSavePanel, Workspace.PanelPresentation, Bool)] = []
+        app.workspace.showPanel = { panel, presentation, window, _ in
+            shown.append((panel, presentation, window.attachedSheet == nil))
+        }
         app.workspace.libraryOpen = true
         try await app.wait { app.window.attachedSheet != nil }
-        let library = try #require(app.window.attachedSheet)
         app.workspace.openFolderPanel()
-        try await app.wait { app.window.attachedSheet is NSOpenPanel }
+        try await app.wait { !shown.isEmpty }
         #expect(!app.workspace.libraryOpen)
-        #expect(app.window.attachedSheet !== library)
-        let panel = try #require(app.window.attachedSheet as? NSOpenPanel)
-        #expect(panel.canChooseDirectories && !panel.canChooseFiles)
-        app.window.endSheet(panel, returnCode: .cancel)
-        try await app.wait { app.window.attachedSheet == nil }
+        let (panel, presentation, free) = try #require(shown.first)
+        #expect(presentation == .sheet && free)
+        let open = try #require(panel as? NSOpenPanel)
+        #expect(open.canChooseDirectories && !open.canChooseFiles)
+        // Without a sheet the panel goes straight onto the window.
+        app.workspace.openFolderPanel()
+        #expect(shown.count == 2 && shown[1].1 == .sheet)
     }
 }
