@@ -566,9 +566,14 @@ public final class SpellCheckModel {
             mainThreadTime += start.duration(to: .now)
             requests += 1
             paragraphsChecked += misses.count
-            let found = await checker.misspellings(in: batch, ranges: checkable, document: documentTag)
+            let reported = await checker.misspellings(in: batch, ranges: checkable, document: documentTag)
             guard generation == self.generation else {
                 return
+            }
+            // Built-in words are never reported, from any checker.
+            let words = batch as NSString
+            let found = reported.filter { range in
+                NSMaxRange(range) > words.length || !SpellCheckRanges.isBuiltIn(words.substring(with: range))
             }
             start = ContinuousClock.now
             var cursor = 0

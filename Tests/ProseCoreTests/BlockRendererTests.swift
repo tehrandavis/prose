@@ -509,3 +509,37 @@ private func pixels(of image: CGImage) throws -> [UInt8] {
     #expect(changed.text.contains("New Title") && !changed.cached)
     #expect(await renderer.filesChanged([]) == 0)
 }
+
+@Test func blockRendererShowsAnAPACitationInAuthorYearForm() async throws {
+    let root = TestPaths.temporaryDirectory.appendingPathComponent("block-renderer-apa-" + UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let main = root.appendingPathComponent("main.typ")
+    // The call the `bibliography` command writes by default.
+    let call = try TypstInsertion.make("bibliography", values: ["path": "refs.bib"]).text
+    #expect(call == #"#bibliography("refs.bib", style: "apa")"#)
+    try Data("See @a here.\n\n\(call)\n".utf8).write(to: main)
+    try Data("@book{a, title={Quiet Pages}, author={Writer, Ann}, year={2020}}\n".utf8)
+        .write(to: root.appendingPathComponent("refs.bib"))
+    let renderer = try await BlockRenderer(root: root, main: main)
+    #expect(await renderer.refresh().succeeded)
+    let blocks = try await renderer.blocks(in: main)
+    try #require(blocks.count == 2)
+    let citation = try await renderer.render(blocks[0].range, in: main, width: 400).get().text
+    #expect(citation.contains("Writer") && citation.contains("2020"), "\(citation)")
+    #expect(!citation.contains("[1]"), "\(citation)")
+    let entry = try await renderer.render(blocks[1].range, in: main, width: 400).get().text
+    #expect(entry.contains("Writer, A.") && entry.contains("(2020)"), "\(entry)")
+
+    // Every style the command offers is one the engine knows.
+    for style in CommandChoice.bibliographyStyles.map(\.value) {
+        let call = try TypstInsertion.make("bibliography", values: ["path": "refs.bib", "style": style]).text
+        #expect(call == "#bibliography(\"refs.bib\", style: \"\(style)\")")
+        try await renderer.setText("See @a here.\n\n\(call)\n", of: main)
+        #expect(await renderer.refresh().succeeded, "\(style)")
+        let blocks = try await renderer.blocks(in: main)
+        try #require(blocks.count == 2)
+        let entry = try await renderer.render(blocks[1].range, in: main, width: 400).get().text
+        #expect(entry.contains("Quiet Pages"), "\(style): \(entry)")
+    }
+}

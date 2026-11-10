@@ -253,6 +253,16 @@ struct CommandPalette: View {
                             Text(field.title).font(.system(size: 10)).foregroundStyle(Theme.secondary)
                             if field.resourceKind != nil {
                                 resourcePicker(command)
+                            } else if !field.choices.isEmpty {
+                                Picker(field.title, selection: Binding(
+                                    get: { workspace.fieldValues[field.id] ?? field.initial },
+                                    set: { workspace.fieldValues[field.id] = $0 },
+                                )) {
+                                    ForEach(field.choices) { choice in
+                                        Text(choice.title).tag(choice.value)
+                                    }
+                                }
+                                .labelsHidden().pickerStyle(.menu)
                             } else {
                                 PaletteTextField(
                                     text: Binding(

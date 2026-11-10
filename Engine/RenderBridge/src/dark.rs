@@ -4,10 +4,13 @@
 //! frame (text fills and strokes, shape fills and strokes, gradient stops)
 //! is mapped in OKLab so that lightness turns over between the app's dark
 //! text colour and the dark page: black ink becomes `#E8E4DE` and a white
-//! fill fades into `#262626`. Hue is kept, chroma is scaled by the same
-//! factor as the lightness range (reduced further only to stay in sRGB), and
-//! alpha is kept. Images are never touched. Tilings keep their colours: their
-//! frame cannot be rebuilt from outside Typst.
+//! fill fades into `#262626`. The turn follows the square of the lightness,
+//! so mid greys stay light enough to read: any colour with 4.5:1 or better
+//! on a white page keeps 4.5:1 or better on the dark page. Hue is kept,
+//! chroma is scaled by the same factor as the lightness range (reduced
+//! further only to stay in sRGB), and alpha is kept. Images are never
+//! touched. Tilings keep their colours: their frame cannot be rebuilt from
+//! outside Typst.
 
 use std::sync::Arc;
 
@@ -20,17 +23,25 @@ pub const DARK_PAGE: [u8; 3] = [0x26, 0x26, 0x26];
 pub const DARK_TEXT: [u8; 3] = [0xE8, 0xE4, 0xDE];
 
 /// The dark-appearance colour of a straight (not premultiplied) sRGB colour,
-/// components from 0 to 1. With `L` the colour's OKLab lightness, the new
-/// lightness is `L_text + (L_page - L_text) * L`. The neutral axis maps onto
-/// the line from the text colour to the page colour (so black gives exactly
-/// the text colour), and the colour's own chroma, scaled by
-/// `|L_text - L_page|`, is added to it, as far as sRGB allows. Alpha is kept.
+/// components from 0 to 1. With `L` the colour's OKLab lightness and
+/// `t = L * L`, the new lightness is `L_text + (L_page - L_text) * t`
+/// (`L_text` 0.920 for `#E8E4DE`, `L_page` 0.269 for `#262626`). The square
+/// keeps black at the text colour and white at the page, keeps the order of
+/// lightness (reversed), and lifts mid tones toward the text colour: the
+/// welcome guide's muted `#66736D` (5.0:1 on white) becomes about `#A3A9A1`
+/// (6.3:1 on the page) where a straight line gave `#727972` (3.4:1). Its
+/// slope is continuous everywhere. Light fills still fade toward the page
+/// (`#DBE6DF` becomes about `#3D433E`, 1.5:1). The neutral axis maps onto
+/// the line from the text colour to the page colour at the same `t`, and the
+/// colour's own chroma, scaled by `|L_text - L_page|`, is added to it, as far
+/// as sRGB allows. Alpha is kept.
 pub fn dark_color(rgba: [f32; 4]) -> [f32; 4] {
     let [r, g, b, alpha] = rgba;
     let [l, a, bb] = oklab([r as f64, g as f64, b as f64]);
     let text = oklab(DARK_TEXT.map(|c| c as f64 / 255.0));
     let page = oklab(DARK_PAGE.map(|c| c as f64 / 255.0));
-    let t = l.clamp(0.0, 1.0);
+    let l = l.clamp(0.0, 1.0);
+    let t = l * l;
     let lightness = text[0] + (page[0] - text[0]) * t;
     let tint = [
         text[1] + (page[1] - text[1]) * t,
@@ -192,14 +203,46 @@ mod tests {
         b.atan2(a).to_degrees()
     }
 
+    /// WCAG relative luminance, after rounding to 8 bits as a bitmap would.
+    fn luminance(rgba: [f32; 4]) -> f64 {
+        let channel = |c: f32| decode((c as f64 * 255.0).round() / 255.0);
+        0.2126 * channel(rgba[0]) + 0.7152 * channel(rgba[1]) + 0.0722 * channel(rgba[2])
+    }
+
+    /// WCAG contrast ratio of two colours.
+    fn contrast(x: [f32; 4], y: [f32; 4]) -> f64 {
+        let (x, y) = (luminance(x), luminance(y));
+        (x.max(y) + 0.05) / (x.min(y) + 0.05)
+    }
+
+    fn lightness(rgba: [f32; 4]) -> f64 {
+        oklab([rgba[0] as f64, rgba[1] as f64, rgba[2] as f64])[0]
+    }
+
+    /// Every colour of a grid with `steps` levels per channel, and every grey.
+    fn sweep(steps: u32) -> Vec<[f32; 4]> {
+        let level = |i: u32| i as f32 / (steps - 1) as f32;
+        let mut colours = Vec::new();
+        for r in 0..steps {
+            for g in 0..steps {
+                for b in 0..steps {
+                    colours.push([level(r), level(g), level(b), 1.0]);
+                }
+            }
+        }
+        colours.extend((0..=255).map(|v| unit([v, v, v])));
+        colours
+    }
+
     #[test]
     fn black_becomes_the_text_colour_and_white_the_page() {
         assert_near(dark_color([0.0, 0.0, 0.0, 1.0]), DARK_TEXT);
         assert_near(dark_color([1.0, 1.0, 1.0, 1.0]), DARK_PAGE);
-        // The welcome guide's ink, #1A1918 (OKLab L 0.20), lands at L 0.79,
-        // about #BBB7B1: 7.6:1 against the page.
+        // Dark ink, #1A1918 (OKLab L 0.21), lands at L 0.89, about #DFDAD3:
+        // 10.9:1 against the page.
         let ink = dark_color(unit([0x1A, 0x19, 0x18]));
-        assert!(ink.iter().take(3).all(|c| *c > 0.68), "{ink:?}");
+        assert!(ink.iter().take(3).all(|c| *c > 0.80), "{ink:?}");
+        assert!(contrast(ink, unit(DARK_PAGE)) > 10.0, "{ink:?}");
     }
 
     #[test]
@@ -220,10 +263,11 @@ mod tests {
         );
         let chroma = got[1].hypot(got[2]);
         assert!(chroma > 0.08, "red lost its colour: {dark:?}");
-        // Pure red darkens, so an image left alone is told apart from a
+        // Mapped, pure red gains green and blue (about #E9624E), so an image
+        // left alone, near (234, 51, 35) on screen, is told apart from a
         // mapped one (DarkWritingFlowTests).
         let pure = dark_color([1.0, 0.0, 0.0, 1.0]);
-        assert!(pure[0] < 0.8, "{pure:?}");
+        assert!(pure[1] > 0.35 && pure[2] > 0.29, "{pure:?}");
     }
 
     #[test]
@@ -249,5 +293,64 @@ mod tests {
         let dark_ink = dark_color(unit([0x1A, 0x19, 0x18]));
         let l = |c: [f32; 4]| oklab([c[0] as f64, c[1] as f64, c[2] as f64])[0];
         assert!(l(light_fill) < l(dark_ink));
+    }
+
+    #[test]
+    fn text_that_reads_on_white_reads_on_the_dark_page() {
+        // Every grey and every colour of a 33-level grid with 4.5:1 or better
+        // against white keeps 4.5:1 or better against #262626. The closest
+        // is a light violet, #BF00FF: about 4.8:1.
+        let white = [1.0, 1.0, 1.0, 1.0];
+        let page = unit(DARK_PAGE);
+        let mut checked = 0;
+        for colour in sweep(33) {
+            if contrast(colour, white) < 4.5 {
+                continue;
+            }
+            checked += 1;
+            let dark = dark_color(colour);
+            assert!(
+                contrast(dark, page) >= 4.5,
+                "{colour:?} -> {dark:?}: {:.2}:1",
+                contrast(dark, page)
+            );
+        }
+        assert!(checked > 10_000, "{checked}");
+        // The welcome guide's muted line, #66736D, 5.0:1 on white.
+        let muted = dark_color(unit([0x66, 0x73, 0x6D]));
+        assert!(contrast(muted, page) >= 6.0, "{muted:?}");
+        // Its ink, #253238.
+        let ink = dark_color(unit([0x25, 0x32, 0x38]));
+        assert!(contrast(ink, page) >= 9.0, "{ink:?}");
+    }
+
+    #[test]
+    fn a_lighter_grey_never_maps_lighter() {
+        let mut previous = f64::INFINITY;
+        for v in 0..=255u8 {
+            let mapped = lightness(dark_color(unit([v, v, v])));
+            assert!(mapped <= previous + 1e-9, "#{v:02X} maps to L {mapped}");
+            previous = mapped;
+        }
+    }
+
+    #[test]
+    fn light_fills_stay_near_the_page() {
+        // Light fills (the guide's sage, sage lightened 55 percent, near
+        // white) stay within 0.11 of the page's OKLab lightness and below
+        // 1.55:1 against it: a faint panel, not a bright block.
+        let page = unit(DARK_PAGE);
+        let page_lightness = lightness(page);
+        for fill in [
+            [0xDB, 0xE6, 0xDF],
+            [0xEE, 0xF3, 0xF0],
+            [0xE6, 0xEF, 0xE4],
+            [0xF5, 0xF5, 0xF7],
+        ] {
+            let dark = dark_color(unit(fill));
+            let lift = lightness(dark) - page_lightness;
+            assert!((0.0..=0.11).contains(&lift), "{fill:02X?} -> {dark:?}: {lift}");
+            assert!(contrast(dark, page) < 1.55, "{fill:02X?} -> {dark:?}");
+        }
     }
 }

@@ -130,3 +130,22 @@ import Testing
     let old = Data(#"{"text":"draft","selection":0}"#.utf8)
     #expect(try JSONDecoder().decode(RecoverySnapshot.self, from: old).mainFileURL == nil)
 }
+
+@Test func bibliographyCommandWritesAPAByDefaultAndTheChosenStyle() throws {
+    let command = try #require(WritingCommand.all.first { $0.id == "bibliography" })
+    let style = try #require(command.fields.first { $0.id == "style" })
+    #expect(style.initial == "apa")
+    #expect(style.choices.first?.value == "apa")
+    #expect(style.choices.map(\.value) == [
+        "apa", "ieee", "chicago-author-date", "chicago-notes", "mla", "harvard-cite-them-right", "vancouver", "nature",
+    ])
+    #expect(style.choices.allSatisfy { !$0.title.isEmpty })
+    #expect(command.fields.first?.resourceKind == .bibliography, "The file stays the first field")
+    #expect(try TypstInsertion.make("bibliography", values: ["path": "refs.bib"]).text
+        == #"#bibliography("refs.bib", style: "apa")"#)
+    #expect(try TypstInsertion.make("bibliography", values: ["path": "refs.bib", "style": "mla"]).text
+        == #"#bibliography("refs.bib", style: "mla")"#)
+    #expect(throws: (any Error).self) {
+        try TypstInsertion.make("bibliography", values: ["path": "refs.bib", "style": "apa\") #panic(\""])
+    }
+}

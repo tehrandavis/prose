@@ -55,6 +55,7 @@
 "Check Document Now" = "Check Document Now";
 "Check Source" = "Check Source";
 "Check Spelling While Typing" = "Check Spelling While Typing";
+"Choose a citation style from the list." = "Choose a citation style from the list.";
 "Choose a new name and location for this document." = "Choose a new name and location for this document.";
 "Choose a project folder containing the selected Typst source file." = "Choose a project folder containing the selected Typst source file.";
 "Choose a shortcut for command discovery. Spaces and standard macOS editing shortcuts remain available." = "Choose a shortcut for command discovery. Spaces and standard macOS editing shortcuts remain available.";
@@ -64,6 +65,7 @@
 "Choose the project's main document" = "Choose the project's main document";
 "Citation" = "Citation";
 "Citation key" = "Citation key";
+"Citation style" = "Citation style";
 "Citations, bibliography and contents" = "Citations, bibliography and contents";
 "Cite a source by its key. The document needs a bibliography." = "Cite a source by its key. The document needs a bibliography.";
 "Close Commands" = "Close Commands";

@@ -332,7 +332,7 @@ private let quickSpelling = SpellCheckTiming(pause: .milliseconds(20), viewport:
 /// A document for Writing mode: misspellings in rendered paragraphs, a raw
 /// block that always draws source (where `park` puts the caret), and filler.
 private let renderedSpellingSource = """
-= Spelling fixture
+= Write in Typst
 
 A first paragraph with teh word, then plain words that run on for a while.
 
@@ -578,6 +578,9 @@ extension WritingFlowTests {
         let manager = try #require(editor.textLayoutManager)
         park(editor)
         let checker = ScriptedSpelling()
+        // A checker without Typst in its dictionary: the heading's built-in
+        // word is never reported or underlined.
+        checker.misspelled.insert("Typst")
         app.workspace.useSpellChecker(checker, timing: quickSpelling)
         let spelling = app.workspace.spelling
         let model = try await enterWritingMode(app)
@@ -590,6 +593,8 @@ extension WritingFlowTests {
         let teh = text.range(of: "teh"), wrold = text.range(of: "wrold")
         let first = text.paragraphRange(for: teh), third = text.paragraphRange(for: wrold)
         #expect(role(model, text, teh.location).isRendered && role(model, text, wrold.location).isRendered)
+        #expect(role(model, text, 0).isRendered, "The heading is rendered")
+        #expect(spelling.misspellings.map { text.substring(with: $0) } == ["teh", "wrold"])
         let before = storageSnapshot(editor)
 
         let picture = try SpellingPicture(editor, save: "spelling-rendered.png")
@@ -613,9 +618,11 @@ extension WritingFlowTests {
                 )
             }
         }
-        // Nowhere else: not under correctly spelled words.
+        // Nowhere else: not under correctly spelled words, nor under Typst.
         let stray = red.filter { point in !words.contains { $0.insetBy(dx: -1, dy: -1).contains(point) } }
         #expect(stray.isEmpty, "Red ink away from the misspelled words: \(stray.prefix(5))")
+        let typst = try renderedBoxes(editor, block: 0, range: text.range(of: "Typst"))
+        #expect(picture.red(in: typst.insetBy(dx: -1, dy: -3)).isEmpty, "Typst is underlined")
         // The system's colour: systemRed at 75 percent over the page,
         // (255, 108, 100), at the dots' cores.
         let core = picture.redStrength(in: words[0])

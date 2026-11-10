@@ -106,9 +106,44 @@ public struct CommandGroup: Identifiable, Sendable {
     ]
 }
 
+/// One value a choice field offers: the text written into the source and
+/// the name the form shows.
+public struct CommandChoice: Identifiable, Sendable, Equatable {
+    public let value: String
+    private let titleKey: String
+    public var id: String {
+        value
+    }
+
+    public var title: String {
+        L10n.text(titleKey)
+    }
+
+    public init(_ value: String, _ title: String) {
+        self.value = value
+        titleKey = title
+    }
+
+    /// The citation styles the `bibliography` command offers, APA first as
+    /// the default. Each value is a style name built into Typst 0.15.1
+    /// (Hayagriva 0.10.1, `ArchivedStyle::by_name`).
+    public static let bibliographyStyles: [CommandChoice] = [
+        .init("apa", "APA"),
+        .init("ieee", "IEEE"),
+        .init("chicago-author-date", "Chicago (author-date)"),
+        .init("chicago-notes", "Chicago (notes)"),
+        .init("mla", "MLA"),
+        .init("harvard-cite-them-right", "Harvard"),
+        .init("vancouver", "Vancouver"),
+        .init("nature", "Nature"),
+    ]
+}
+
 public struct CommandField: Identifiable, Sendable {
     public let id: String
     public let resourceKind: DocumentResourceKind?
+    /// The values the field allows, shown as a menu. Empty for a text field.
+    public let choices: [CommandChoice]
     private let titleKey: String
     public var title: String {
         L10n.text(titleKey)
@@ -119,9 +154,16 @@ public struct CommandField: Identifiable, Sendable {
         L10n.text(initialValue)
     }
 
-    public init(_ id: String, _ title: String, _ initial: String, resourceKind: DocumentResourceKind? = nil) {
+    public init(
+        _ id: String,
+        _ title: String,
+        _ initial: String,
+        resourceKind: DocumentResourceKind? = nil,
+        choices: [CommandChoice] = [],
+    ) {
         self.id = id
         self.resourceKind = resourceKind
+        self.choices = choices
         titleKey = title
         initialValue = initial
     }
@@ -974,7 +1016,10 @@ public struct WritingCommand: Identifiable, Sendable {
             "Bibliography",
             "Generate a bibliography from a BibLaTeX or Hayagriva file.",
             "bibliography references bib yaml",
-            fields: [.init("path", "Bibliography file · .bib / .yaml", "", resourceKind: .bibliography)],
+            fields: [
+                .init("path", "Bibliography file · .bib / .yaml", "", resourceKind: .bibliography),
+                .init("style", "Citation style", "apa", choices: CommandChoice.bibliographyStyles),
+            ],
             placement: .block,
             documentation: "model/bibliography/",
         ),
@@ -1653,8 +1698,13 @@ public enum TypstInsertion {
         case "horizontalSpace": return try snippet("#h(\(amount("12"))pt)")
         case "divider": return snippet("#line(length: 100%, stroke: 0.5pt)")
         case "contents": return snippet("#outline(title: \(quoted(localized("Contents"))))")
-        case "bibliography": return snippet(
-                "#bibliography(\(protect(quoted(value("path", "references.bib")))), style: \"ieee\")",
+        case "bibliography":
+            let style = value("style", "apa")
+            guard CommandChoice.bibliographyStyles.contains(where: { $0.value == style }) else {
+                throw CommandError.invalid(localized("Choose a citation style from the list."))
+            }
+            return snippet(
+                "#bibliography(\(protect(quoted(value("path", "references.bib")))), style: \(quoted(style)))",
             )
         case "citation": return try snippet("#cite(<\(label("example"))>)")
         case "include": return snippet("#include \(protect(quoted(value("path", "section.typ"))))")

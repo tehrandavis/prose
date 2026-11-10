@@ -23,6 +23,13 @@ extension WritingFlowTests {
         // 4.5:1 against the page, and nothing is drawn darker than the page.
         #expect(canvas.contrasting(in: block.frame, atLeast: 4.5) > 100, "Rendered text does not reach 4.5:1")
         #expect(canvas.darkerThanPage(in: block.frame) == 0, "Dark ink is drawn on the dark page")
+        // The muted line under the title, #66736D (5.0:1 on white), reads
+        // too: its strongest ink reaches 4.5:1 against the page.
+        let subtitle = text.range(of: "#text(size: 15pt, fill: muted)[Begin with a thought").location
+        let muted = try #require(writingFragments(manager).first { $0.offset == subtitle })
+        #expect(muted.isRendered)
+        #expect(canvas.contrasting(in: muted.frame, atLeast: 4.5) > 100, "The muted line does not reach 4.5:1")
+        #expect(canvas.darkerThanPage(in: muted.frame) == 0)
         expectPlainStorage(editor)
     }
 
@@ -123,8 +130,8 @@ private struct DarkCanvas {
 
     /// The image's red as the screen shows it: the untagged PNG's pure red
     /// arrives near (234, 51, 35) after colour matching. The dark mapping
-    /// would make it (179, 48, 34), so a red channel of 215 or more
-    /// means the image's pixels were not mapped.
+    /// would make it about (233, 98, 78), so a red channel of 215 or more
+    /// with green at 80 or less means the image's pixels were not mapped.
     func pureRed(in rect: CGRect) -> Int {
         canvas.matching(in: rect) { $0 >= 215 && $1 <= 80 && $2 <= 70 }
     }

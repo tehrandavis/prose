@@ -123,7 +123,9 @@ extension WritingFlowTests {
         #expect(IconStore.image("missing-icon") == nil)
         #expect(IconStore.image("missing-icon") == nil)
         for command in WritingCommand.all.filter({ !$0.fields.isEmpty }) {
-            let textFields = command.fields.filter { $0.resourceKind == nil }
+            // Choice fields (the bibliography's citation style) are menus,
+            // which SwiftUI draws without an AppKit view.
+            let textFields = command.fields.filter { $0.resourceKind == nil && $0.choices.isEmpty }
             app.workspace.selectCommand(command)
             // SwiftUI may retain the previous form for more than one frame on
             // a shared runner. Wait for the actual form, not a fixed delay.

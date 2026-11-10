@@ -277,7 +277,7 @@ extension WritingFlowTests {
         await app.layout()
         #expect(!FileManager.default.fileExists(atPath: paper.prose.path))
         #expect(app.workspace.handlePaletteKey(app.key("\r", code: 36)))
-        try await app.wait { app.workspace.text.contains("#bibliography(\"references-prose.bib\"") }
+        try await app.wait { app.workspace.text.contains("#bibliography(\"references-prose.bib\", style: \"apa\")") }
         #expect(app.workspace.text.contains(" @\(newItem.key)[p. 4]"))
         #expect(try String(contentsOf: paper.prose, encoding: .utf8).contains("Quokka"))
         #expect(app.workspace.message?.contains("references-prose.bib") == true)

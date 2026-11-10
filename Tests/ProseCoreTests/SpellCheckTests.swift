@@ -122,6 +122,49 @@ private func whole(_ text: NSString) -> NSRange {
     }
 }
 
+@Test func spellCheckLeavesTheBuiltInWordsAndTheirEndings() {
+    for word in [
+        "Typst",
+        "typst",
+        "Typst's",
+        "Typst\u{2019}s",
+        "Typsts",
+        "Tinymist",
+        "tinymist's",
+        "Zotero",
+        "Hayagriva",
+    ] {
+        #expect(SpellCheckRanges.isBuiltIn(word), "\(word)")
+    }
+    for word in ["Typstt", "TYPST", "Typ", "typsty", "Typst's's", "Zoterro", "recieve"] {
+        #expect(!SpellCheckRanges.isBuiltIn(word), "\(word)")
+    }
+    // `BibTeX`, `BibLaTeX` and `CSL` are left by the usual rule.
+    for word in ["BibTeX", "BibLaTeX", "CSL"] {
+        #expect(!SpellCheckRanges.reports(word), "\(word)")
+    }
+}
+
+/// A checker that reports the built-in words (as one without the word in its
+/// dictionary would) still underlines none of them, and `Typstt` stays.
+@Test @MainActor func spellCheckModelNeverReportsTheBuiltInWords() async {
+    let text = "= Write in Typst\n\nWe write typst and Typst's manual, not Typstt or teh.\n"
+    let checker = ScriptedSpellChecker()
+    checker.misspelled.formUnion(["Typst", "typst", "Typstt"])
+    checker.whole = ["Typst's"]
+    let model = SpellCheckModel(checker: checker, timing: quick)
+    model.open(file: fileA, text: text)
+    model.setVisibleRange(NSRange(location: 0, length: (text as NSString).length))
+    await model.idle()
+    let source = text as NSString
+    #expect(model.misspellings.map { source.substring(with: $0) } == ["Typstt", "teh"])
+    // Check Document Now (`nextMisspelling`) goes from the start to Typstt.
+    let first = await model.nextMisspelling(after: 0)
+    #expect(first.map { source.substring(with: $0) } == "Typstt")
+    #expect(checker.learned.isEmpty, "The user's dictionary is not touched")
+    model.close()
+}
+
 @Test func systemSpellCheckerMasksTextOutsideTheRanges() {
     let masked = SystemSpellChecker.masked(
         "ab `cd` ef",
@@ -169,6 +212,9 @@ private func whole(_ text: NSString) -> NSRange {
 @MainActor
 private final class ScriptedSpellChecker: SpellChecker {
     var misspelled: Set<String> = ["teh", "recieve", "wrold", "paragraf", "speling"]
+    /// Reported as one range wherever they occur inside the ranges, as
+    /// NSSpellChecker reports a possessive with its ending (`Typst's`).
+    var whole: [String] = []
     var ignored: [Int: Set<String>] = [:]
     var learned: Set<String> = []
     var opened: [Int] = []
@@ -211,6 +257,15 @@ private final class ScriptedSpellChecker: SpellChecker {
                     }
                     start = nil
                 }
+            }
+        }
+        for word in whole {
+            var search = NSRange(location: 0, length: source.length)
+            while case let match = source.range(of: word, options: [], range: search), match.location != NSNotFound {
+                if ranges.contains(where: { NSIntersectionRange($0, match) == match }) {
+                    found.append(match)
+                }
+                search = NSRange(location: NSMaxRange(match), length: source.length - NSMaxRange(match))
             }
         }
         return found.sorted { $0.location < $1.location }

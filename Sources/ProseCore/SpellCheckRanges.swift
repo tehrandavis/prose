@@ -108,6 +108,28 @@ public enum SpellCheckRanges {
         return !(allUpper && letters > 0 && letters <= 5)
     }
 
+    /// Names Prose never reports, whatever the checker says: the tools a
+    /// Typst writer names all the time. Case-sensitive. `BibTeX`, `BibLaTeX`
+    /// and `CSL` need no entry, because `reports` already leaves them.
+    public static let builtInWords: Set<String> = [
+        "Typst", "typst", "Tinymist", "tinymist", "Zotero", "zotero", "Hayagriva", "hayagriva",
+    ]
+
+    /// Whether `word`, a range the checker reported, is a built-in word, or
+    /// one with a possessive or plural ending. NSSpellChecker reports a
+    /// possessive with its ending, `Typst's` or `Typst’s`, as one range.
+    public static func isBuiltIn(_ word: String) -> Bool {
+        var stem = Substring(word)
+        for ending in ["'s", "\u{2019}s", "'", "\u{2019}"] where stem.hasSuffix(ending) {
+            stem = stem.dropLast(ending.count)
+            break
+        }
+        if builtInWords.contains(String(stem)) {
+            return true
+        }
+        return stem.hasSuffix("s") && builtInWords.contains(String(stem.dropLast()))
+    }
+
     /// `range`, a part of the text gap `gap`, without the letters that touch
     /// a cut word at an edge of the gap; nil when nothing is left.
     private static func trimmed(_ range: NSRange, in source: NSString, gap: NSRange) -> NSRange? {

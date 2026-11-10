@@ -207,6 +207,7 @@ extension WritingFlowTests {
         #expect(editor.readSelection(from: pasteboard, type: .fileURL))
         try await app.wait { editor.string.contains("#bibliography(") && !app.workspace.applyingCommand }
         #expect(!editor.string.contains(bibliography.path))
+        #expect(editor.string.contains("style: \"apa\")"), "A dropped bibliography uses APA")
         let module = app.root.appendingPathComponent("helpers.typ")
         try Data("#let example = 1\n".utf8).write(to: module)
         app.workspace.togglePalette()
@@ -221,6 +222,18 @@ extension WritingFlowTests {
         let pdf = app.root.appendingPathComponent("resources.pdf")
         try await app.workspace.exportPDF(to: pdf)
         #expect(PDFDocument(url: pdf) != nil)
+        // The panel's style menu writes the chosen style.
+        editor.setSelectedRange(NSRange(location: editor.string.utf16.count, length: 0))
+        app.workspace.togglePalette()
+        let bibliographyCommand = try #require(WritingCommand.all.first { $0.id == "bibliography" })
+        app.workspace.selectCommand(bibliographyCommand)
+        #expect(app.workspace.fieldValues["style"] == "apa")
+        await app.layout()
+        app.workspace.fieldValues["style"] = "chicago-author-date"
+        app.workspace.resourceSelection = .file(bibliography)
+        app.workspace.execute(bibliographyCommand)
+        try await app.wait { !app.workspace.paletteOpen && !app.workspace.applyingCommand }
+        #expect(editor.string.contains("style: \"chicago-author-date\")"))
     }
 }
 

@@ -162,6 +162,7 @@ extension WritingFlowTests {
         #expect(app.workspace.citationPickerEntry == entry)
         #expect(app.workspace.handlePaletteKey(app.key("\r", code: 36)))
         let call = try TypstInsertion.make("bibliography", values: ["path": "refs.bib"]).text
+        #expect(call == #"#bibliography("refs.bib", style: "apa")"#, "The offer writes APA")
         let cited = "= Draft\n\nA first claim @smith2019.\n"
         try await app.wait { app.workspace.text == cited + "\n" + call + "\n" }
         #expect(editor.string == cited + "\n" + call + "\n")
