@@ -1,7 +1,7 @@
 # Quiet Writing mode: fewer code parts in Writing and Focus
 
 Date: 2026-11-09
-Status: Draft. Waits for Tehran's acceptance; no code before that. Every decision that is a choice and not a fact is marked **Choice** so it can be reversed.
+Status: Accepted 2026-11-09, with every recommendation (see "Answers"). Every decision that is a choice and not a fact is marked **Choice** so it can be reversed.
 Spec: `docs/prose-spec.md`, Sections 5.3, 5.4, 6 and 8. Builds on `docs/plans/2026-11-08-phase-3-writing-mode.md` and `docs/plans/2026-11-09-phase-4-focus-toolbar-spellcheck.md`.
 
 ## Goal
@@ -198,7 +198,8 @@ The main session briefs each step to one Opus subagent with explicit checks, rev
 | C. Engine fonts | Decision 6: C ABI version 6, the block's text font and baseline distance, font bytes, bold and italic faces; `BlockRenderer` and a font cache in Swift | `cargo test --release`; `BlockRendererTests`; a test that draws a line in the registered Libertinus Serif and finds no fallback font in it |
 | D. The open block | The check of decision 5 first, then decisions 5, 7 and 8 | The check's pass marks, written into this note. Acceptance tests 8 to 13. Book benchmark in all three modes |
 | E. Spike | Decision 9, on `quiet-writing-spike` | "Spike results" in this note, each pass mark with its number. Then stop for Tehran |
-| F. Gate and documents | Three full runs of the suite and the benchmark; spec Sections 5.3, 5.4, 6 and 8, `docs/architecture.md`, `docs/visual-editing.md`, the `CLAUDE.md` phase table, the writing guide, the work log | Every acceptance test passes three runs in a row |
+| F. Earlier answers | Answers 6 to 8: the `bibliography` command gets a style field with APA as the default; the dark mapping brightens mid greys to 4.5:1 or better against the page; spell check skips "Typst" | Tests for each; `cargo test --release`; spec Sections 5.2, 5.3 and 5.5 |
+| G. Gate and documents | Three full runs of the suite and the benchmark; spec Sections 5.3, 5.4, 6 and 8, `docs/architecture.md`, `docs/visual-editing.md`, the `CLAUDE.md` phase table, the writing guide, the work log | Every acceptance test passes three runs in a row |
 
 ## Acceptance tests
 
@@ -257,3 +258,19 @@ Waiting from earlier phases:
 7. In dark appearance a document's mid-grey text reaches 3.4:1. Brighten mid greys in the mapping?
 8. "Typst" is underlined as misspelled. Skip it by default?
 9. `⌘W` on the home window quits the app, as the close button does. Keep that?
+
+## Answers (2026-11-09)
+
+Tehran accepted the note and every recommendation:
+
+1. This is Phase 6, "Quiet Writing mode". Polish is Phase 7.
+2. Arrow keys step over a closed fold, with the resting position on the row.
+3. No-ink blocks become margin marks. `#include` lines stay pills.
+4. An open display equation keeps the code look. Inline math keeps monospace inside an open block.
+5. The faint colour is the text colour at 35 percent opacity, tuned by eye after step D, with a contrast floor of 2:1.
+6. The `bibliography` command gets a style field with APA as the default.
+7. The dark mapping brightens mid greys to 4.5:1 or better.
+8. Spell check skips "Typst" by default.
+9. `⌘W` on the home window keeps quitting the app.
+
+Answers 6 to 8 are step F.

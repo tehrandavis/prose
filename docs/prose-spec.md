@@ -193,7 +193,7 @@ The hard part is not rendering. It is keeping native selection, undo, IME and ac
 - IME: while text is marked, no block swaps and no render result is applied; results wait until the composition ends. One exception: a block whose text the composition itself changes opens at once and stays active until the composition ends. This covers a composition that replaces a pointer selection inside a rendered block. The candidate window rectangle lies on the caret's line.
 - Accessibility: the editor's value, its strings for ranges, its lines and its insertion point are the source, as in Code mode. VoiceOver reads the source, which is readable Typst. An accessibility line is a line of the source layout, so line numbers do not change when a block swaps. The frame of a range in a rendered block is the union of its glyph boxes, and a point maps to a character through the glyph boxes, as a click does.
 - One block engine (`BlockRenderer`) serves each open project. It is created the first time Writing mode is used, for the project root and main entry, and the open file's buffer goes in through `setText`, so an included chapter renders with the main file's rules and numbers. Switching files in the project keeps it; switching projects or closing the window frees it. Project files that change on disk reach it once a burst of changes pauses for 300 ms: Typst files through `setText`, every file through `files_changed`, and a refresh follows when the document read any of them (Phase 5 step A). Tinymist reads changed files itself, with its own watcher, so the preview and the PDF need nothing from Prose.
-- Writing mode is available to everyone from 2026-11-09. A document opens in Code mode; per-document mode memory is Phase 6.
+- Writing mode is available to everyone from 2026-11-09. A document opens in Code mode; per-document mode memory is Phase 7.
 
 Spell check (built in Phase 4) uses `NSSpellChecker` on the source text and works in every mode. NSTextView's own spell checking stays off, because it would check code and math.
 
@@ -261,7 +261,8 @@ Each phase ends with the app usable and the coverage gate green.
 | 3. Writing mode | Custom layout fragments, caret-entry swap, click mapping, selection, copy, IME and VoiceOver acceptance tests before the mode is enabled by default | High. This is where LeftBlank's first attempt failed |
 | 4. Focus mode and toolbar | Focus view state, floating toolbar bound to the command registry, spell check with syntax-aware skipping | Low |
 | 5. Citations | Bibliography files reload from disk in both engines, a citation picker over the project's entries, Zotero through Better BibTeX with a linked auto-export per project (`docs/plans/2026-11-09-citations.md`) | Medium. Zotero endpoints unconfirmed until the spike (confirmed in step D) |
-| 6. Polish | Info popover, export sheet, per-document mode memory, screenshots, writing guide update | Low |
+| 6. Quiet Writing mode | Setup lines and comments fold into one row or a margin mark; the open block draws in the document's font with faint markers; a spike, with pass marks, for typing in the rendered paragraph (`docs/plans/2026-11-09-quiet-writing-mode.md`) | Medium. The open block's fonts need an unverified TextKit 2 rebuild; the spike may end step 3 |
+| 7. Polish | Info popover, export sheet, per-document mode memory, screenshots, writing guide update | Low |
 
 Phase 3 has a kill switch: if the acceptance tests for selection, undo, IME or VoiceOver cannot pass, Writing mode ships as a read-only rendered view (click to jump to the source in Code mode) and the floating toolbar still works. That is still more than Edist offers, and it is honest.
 
