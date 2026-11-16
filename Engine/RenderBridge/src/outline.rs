@@ -152,7 +152,8 @@ fn classify(run: &Run, text: &str) -> Option<BlockKind> {
 }
 
 /// Splits the top level of a parsed file at paragraph breaks, except inside a
-/// loose list. Headings end their block, together with a trailing label. Context lines and `#include`
+/// loose list. Headings end their block, together with a trailing label and
+/// any comment on the same line. Context lines and `#include`
 /// lines are blocks of their own, together with a comment on the same line.
 /// A block's range ends at its last character that is not whitespace.
 pub fn split_tree(root: &SyntaxNode, text: &str) -> Outline {
@@ -230,12 +231,16 @@ pub fn split_tree(root: &SyntaxNode, text: &str) -> Outline {
             }
             SyntaxKind::Heading => {
                 flush(&mut current, &mut outline);
+                // A label and a comment on the heading's line belong to it.
+                // Typst ends the heading node before trailing trivia, so a
+                // comment at the end of the line (a comment's end marker, for
+                // one) is outside the node.
                 let mut end = end;
                 let mut skip = 1;
                 while let Some(n) = children.get(index + skip) {
                     let inline_space =
                         n.kind() == SyntaxKind::Space && !text[end..end + n.len()].contains('\n');
-                    if !inline_space && n.kind() != SyntaxKind::Label {
+                    if !inline_space && n.kind() != SyntaxKind::Label && !is_comment(n.kind()) {
                         break;
                     }
                     end += n.len();

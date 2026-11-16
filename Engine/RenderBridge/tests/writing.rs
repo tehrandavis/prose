@@ -94,6 +94,67 @@ fn include_raw_list_and_comment_blocks_have_their_own_kinds() {
 }
 
 #[test]
+fn a_comment_on_a_headings_line_belongs_to_the_heading() {
+    // Typst ends a heading node before trailing trivia, so a comment at the
+    // end of the line (a comment's end marker, for one) is outside the node.
+    // It is still the heading's block, before or after a label, and no
+    // comment block follows the heading (Phase 8, acceptance test 3).
+    let cases: [(&str, &str); 7] = [
+        ("= Title/*k3f9x2>*/", "= Title/*k3f9x2>*/"),
+        ("= Title/*k3f9x2>*/ <intro>", "= Title/*k3f9x2>*/ <intro>"),
+        ("= Title <intro>/*k3f9x2>*/", "= Title <intro>/*k3f9x2>*/"),
+        (
+            "= /*<k3f9x2*/Title/*k3f9x2>*/",
+            "= /*<k3f9x2*/Title/*k3f9x2>*/",
+        ),
+        (
+            "== /*<k3f9x2*/Title/*k3f9x2>*/ <intro> /*a2b3c4>*/",
+            "== /*<k3f9x2*/Title/*k3f9x2>*/ <intro> /*a2b3c4>*/",
+        ),
+        ("= Title // a note", "= Title // a note"),
+        (
+            "= Title /* a note */ // and another",
+            "= Title /* a note */ // and another",
+        ),
+    ];
+    for (line, heading) in cases {
+        let text = format!("{line}\n\nText after.\n");
+        let shown = kinds(&text);
+        let shown: Vec<(&str, BlockKind)> = shown.iter().map(|(t, k)| (t.as_str(), *k)).collect();
+        assert_eq!(
+            shown,
+            [
+                (heading, BlockKind::Heading),
+                ("Text after.", BlockKind::Paragraph)
+            ],
+            "{line:?}"
+        );
+    }
+    // A comment on the next line is not on the heading's line.
+    let shown = kinds("= Title/*k3f9x2>*/\n// The next line.\n\nText.\n");
+    let shown: Vec<(&str, BlockKind)> = shown.iter().map(|(t, k)| (t.as_str(), *k)).collect();
+    assert_eq!(
+        shown,
+        [
+            ("= Title/*k3f9x2>*/", BlockKind::Heading),
+            ("// The next line.", BlockKind::Comment),
+            ("Text.", BlockKind::Paragraph),
+        ]
+    );
+    // The heading's block renders as the heading did without the comment.
+    let text = "= Title/*k3f9x2>*/ <intro>\n\nText.\n";
+    let project = Project::new(&[("main.typ", text)]);
+    let engine = project.engine();
+    let path = project.path("main.typ");
+    let blocks = engine.blocks(&path).unwrap();
+    assert_covers(text, &blocks);
+    let render = engine
+        .render(&path, blocks[0].start, blocks[0].end, 300.0)
+        .unwrap();
+    assert_eq!(render.rendered.text.trim(), "Title");
+}
+
+#[test]
 fn a_list_with_a_paragraph_after_its_item_is_still_a_list_but_text_first_is_not() {
     let shown = kinds("Intro text:\n- one\n- two\n\n1. first\n2. second\n");
     assert_eq!(shown[0].1, BlockKind::Paragraph);

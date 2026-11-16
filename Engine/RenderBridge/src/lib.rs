@@ -31,6 +31,8 @@
 
 mod bibliography;
 mod cache;
+#[cfg(test)]
+mod comment_format;
 mod context;
 mod dark;
 mod engine;

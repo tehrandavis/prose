@@ -626,6 +626,17 @@ impl Engine {
     pub fn last_error(&self) -> Option<String> {
         self.lock().error.clone()
     }
+
+    /// The whole document laid out, with the files' current texts and no
+    /// probe. For tests that compare full documents.
+    #[cfg(test)]
+    pub(crate) fn compile_document(&self) -> Result<PagedDocument, String> {
+        let state = self.lock();
+        let view = View::new(&state.shared, state.main, None);
+        typst::compile::<PagedDocument>(&view)
+            .output
+            .map_err(|errors| first_message(&errors))
+    }
 }
 
 impl State {
