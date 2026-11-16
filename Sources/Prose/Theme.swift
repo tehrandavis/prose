@@ -32,10 +32,17 @@ enum Theme {
     static let nativeGreenText = adaptive("greenText", light: 0x2E7D32, dark: 0x6CC86C)
     static let nativeRedText = adaptive("redText", light: 0xC62828, dark: 0xEF7A7A)
     // Accent at 10 percent on the light page and 22 percent on the dark page.
-    static let selection = adaptive("selection", light: 0xF2E9F4, dark: 0x463B4F)
+    static let nativeSelection = adaptive("selection", light: 0xF2E9F4, dark: 0x463B4F)
     static let selectedText = adaptive("selectedText", light: 0x1A1918, dark: 0xE8E4DE)
     // Accent at 10 percent on the light sidebar and 22 percent on the dark one.
     static let nativeSidebarSelection = adaptive("sidebarSelection", light: 0xE9E0ED, dark: 0x3D3146)
+    /// The hover wash of an open row (spec Section 4.1, `ThingsLook.hover`):
+    /// black at 4 percent in light, white at 5 percent in dark, over any surface.
+    static let nativeHover = NSColor(name: NSColor.Name("Prose.hover")) { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? NSColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.05)
+            : NSColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.04)
+    }
 
     // Code-mode syntax colours keep LeftBlank's Nano-derived set (spec Section 4.1).
     static let sourceText = adaptive("sourceText", light: 0x37474F, dark: 0xD5D9DE)
@@ -72,6 +79,9 @@ enum Theme {
     static let greenText = Color(nsColor: nativeGreenText)
     static let redText = Color(nsColor: nativeRedText)
     static let sidebarSelection = Color(nsColor: nativeSidebarSelection)
+    /// Selected open rows on the page colour (the "Your writing…" sheet).
+    static let selection = Color(nsColor: nativeSelection)
+    static let hover = Color(nsColor: nativeHover)
 
     @MainActor static func apply(_ preference: AppAppearance) {
         switch preference {

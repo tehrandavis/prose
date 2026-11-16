@@ -3,6 +3,10 @@
 "%@ packages · Local index %@" = "%@ packages · Local index %@";
 "%@ packages · Updated %@" = "%@ packages · Updated %@";
 "%@ words" = "%@ words";
+"%@, document, edited %@" = "%@, document, edited %@";
+"%@, file" = "%@, file";
+"%@, folder" = "%@, folder";
+"%@, heading" = "%@, heading";
 "%@, version %@" = "%@, version %@";
 "%d documents" = "%d documents";
 "1 document" = "1 document";

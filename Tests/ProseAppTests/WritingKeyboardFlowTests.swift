@@ -631,7 +631,7 @@ extension WritingFlowTests {
         }
         // The bitmap holds display colours: allow for the profile's shift.
         let grey = expected(.unemphasizedSelectedTextBackgroundColor)
-        let violet = expected(Theme.selection)
+        let violet = expected(Theme.nativeSelection)
         var redraws = editor.writing.highlightRedraws
         func redrew(sourceLocation: Testing.SourceLocation = #_sourceLocation) -> Bool {
             defer { redraws = editor.writing.highlightRedraws }

@@ -165,9 +165,14 @@ extension WritingFlowTests {
         #expect(!log.contains("Preserve this before trashing"))
     }
 
-    @Test func titleClickRenamesAndDoubleClickOpensLibraryWithoutChangingWriting() async throws {
+    /// The toolbar title renames on one click and opens "Your writing…" on a
+    /// double click. Since Phase 7 step A the sheet's rows have no title field:
+    /// one click opens a row (`yourWritingRowsOpenOnOneClick`) and rename is in
+    /// the row's context menu.
+    @Test func toolbarTitleClickRenamesAndDoubleClickOpensLibraryWithoutChangingWriting() async throws {
         let app = try WritingFixture(text: "= Keep the manuscript\n", startService: false)
         defer { app.close() }
+        app.window.orderFront(nil)
         try await app.workspace.library.create(title: "Notebook", text: "= Keep the manuscript\n")
         await app.layout()
         func fields(_ view: NSView) -> [DocumentTitleField] {
@@ -227,6 +232,15 @@ extension WritingFlowTests {
         #expect(!field.renaming)
         #expect(app.workspace.title == "Field notes 中文")
         #expect(editor.string == text)
+        try await app.wait { app.window.attachedSheet != nil }
+        let sheet = try #require(app.window.attachedSheet?.contentView)
+        try await app.wait {
+            sheet.layoutSubtreeIfNeeded()
+            return !app.workspace.libraryRows.rows.isEmpty
+        }
+        #expect(fields(sheet).isEmpty, "The sheet's rows have no title field to rename in")
+        app.workspace.libraryOpen = false
+        try await app.wait { app.window.attachedSheet == nil }
     }
 
     @Test func libraryCreateRenameSearchTrashRestoreAndExportPreserveWriting() async throws {

@@ -32,7 +32,7 @@ struct ManuscriptView: NSViewRepresentable {
         editor.backgroundColor = Theme.nativeEditor
         editor.textColor = Theme.nativeText
         editor.insertionPointColor = Theme.nativeAccent
-        editor.selectedTextAttributes = [.backgroundColor: Theme.selection, .foregroundColor: Theme.selectedText]
+        editor.selectedTextAttributes = [.backgroundColor: Theme.nativeSelection, .foregroundColor: Theme.selectedText]
         editor.isVerticallyResizable = true
         editor.isHorizontallyResizable = false
         editor.autoresizingMask = [.width]

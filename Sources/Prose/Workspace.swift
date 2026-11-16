@@ -114,6 +114,11 @@ final class Workspace: ObservableObject {
 
     /// Focus mode's hidden title row items and status bar.
     let focusChrome = FocusChrome()
+    /// The open row under the pointer in the sidebar and in the "Your
+    /// writing…" sheet, and the sheet's keyboard selection (Phase 7 step A).
+    let sidebarHover = RowHover()
+    let libraryHover = RowHover()
+    let libraryRows = LibraryRowSelection()
     /// Spell check of the open file (decisions 7 and 8 of the Phase 4 note).
     lazy var spelling: SpellCheckModel = makeSpellCheckModel()
     /// Edit › Spelling and Grammar › Check Spelling While Typing.

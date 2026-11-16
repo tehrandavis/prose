@@ -4,12 +4,19 @@ import SwiftUI
 struct LibraryBrowser: View {
     @ObservedObject var workspace: Workspace
     @ObservedObject var library: LibraryController
+    @ObservedObject private var selection: LibraryRowSelection
     @State private var query = ""
     @State private var showingTrash = false
     @State private var results: [LibraryDocument] = []
     @State private var renaming: LibraryDocument?
     @State private var newTitle = ""
     @State private var searchError: String?
+
+    init(workspace: Workspace, library: LibraryController) {
+        self.workspace = workspace
+        self.library = library
+        selection = workspace.libraryRows
+    }
 
     private var browserSize: CGSize {
         DiscoveryLayout.size(for: workspace.window, gallery: false)
@@ -41,16 +48,15 @@ struct LibraryBrowser: View {
     /// Folders opened in place, most recent first. They are not library
     /// documents: Prose edits their files where they are.
     @ViewBuilder private var folders: some View {
-        let recent = workspace.projectStore.recent()
+        let recent = recentFolders
         if !recent.isEmpty {
             VStack(alignment: .leading, spacing: 2) {
                 Text(L10n.text("Folders")).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.secondary)
                     .padding(.horizontal, 10).padding(.bottom, 4)
                 ForEach(recent) { record in
-                    Button {
-                        workspace.libraryOpen = false
-                        workspace.openRecentFolder(record)
-                    } label: {
+                    let row = LibraryRow.folder(record)
+                    let selected = selection.selected == row.id
+                    Button { workspace.openLibraryRow(row) } label: {
                         HStack(spacing: 10) {
                             PhosphorIcon(name: "folder-simple", size: 16).foregroundStyle(Theme.accent)
                             Text(record.name).font(.system(size: 13)).foregroundStyle(Theme.text)
@@ -59,13 +65,33 @@ struct LibraryBrowser: View {
                                 .font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(1)
                                 .truncationMode(.head)
                             Spacer(minLength: 0)
-                        }.padding(.horizontal, 10).frame(height: 34).contentShape(Rectangle())
-                    }.buttonStyle(.plain).accessibilityIdentifier("library.folder." + record.name)
+                        }.padding(.horizontal, 10).frame(height: 34)
+                            .openRow(
+                                row.id,
+                                hover: workspace.libraryHover,
+                                selected: selected,
+                                selection: Theme.selection,
+                                radius: 8,
+                            )
+                    }.buttonStyle(.plain)
+                        .accessibilityLabel(L10n.format("%@, folder", record.name))
+                        .accessibilityAddTraits(selected ? .isSelected : [])
+                        .accessibilityIdentifier("library.folder." + record.name)
                 }
                 Text(L10n.text("Documents")).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.secondary)
                     .padding(.horizontal, 10).padding(.top, 14).padding(.bottom, 4)
             }.frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 4)
         }
+    }
+
+    /// Folders show only in the document list with no search.
+    private var recentFolders: [ProjectRecord] {
+        showingTrash || !query.isEmpty ? [] : workspace.projectStore.recent()
+    }
+
+    /// The rows in the order the sheet shows them, for the keyboard.
+    private var displayedRows: [LibraryRow] {
+        recentFolders.map(LibraryRow.folder) + results.map(LibraryRow.document)
     }
 
     private var documents: some View {
@@ -107,6 +133,7 @@ struct LibraryBrowser: View {
                     text: $query,
                     label: L10n.text("Search your writing"),
                     placeholder: L10n.text("Search titles and content"),
+                    onCommand: command,
                 )
                 if showingTrash {
                     Button(L10n.text("Trash ×")) { showingTrash = false }
@@ -123,9 +150,7 @@ struct LibraryBrowser: View {
             }
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    if !showingTrash, query.isEmpty {
-                        folders
-                    }
+                    folders
                     if results.isEmpty {
                         VStack(spacing: 10) {
                             PhosphorIcon(name: showingTrash ? "clock-counter-clockwise" : "book-open-text", size: 28)
@@ -174,6 +199,11 @@ struct LibraryBrowser: View {
             await search()
         }
         .onReceive(library.$documents) { _ in Task { await search() } }
+        .onChange(of: displayedRows, initial: true) { _, rows in selection.rows = rows }
+        .onChange(of: showingTrash, initial: true) { _, trash in selection.opensRows = !trash }
+        .onChange(of: showingTrash) { selection.selected = nil }
+        // The open document's row is selected when the sheet opens.
+        .onAppear { selection.selected = workspace.managedDocumentID.map(LibraryRow.documentID) }
         .onExitCommand { workspace.libraryOpen = false }
         .alert(
             L10n.text("Rename document"),
@@ -194,54 +224,67 @@ struct LibraryBrowser: View {
         }
     }
 
+    /// The search field keeps the focus: Down and Up move the selection and
+    /// Return opens the selected row. Everything else goes to the field.
+    private func command(_ selector: Selector) -> Bool {
+        switch selector {
+        case #selector(NSResponder.moveDown(_:)):
+            selection.moveSelection(by: 1)
+            return true
+        case #selector(NSResponder.moveUp(_:)):
+            selection.moveSelection(by: -1)
+            return true
+        case #selector(NSResponder.insertNewline(_:)):
+            return workspace.openLibrarySelection()
+        default:
+            return false
+        }
+    }
+
+    /// One click anywhere on the row opens the document (not in Trash). The
+    /// trash or restore button shows while the row is hovered or selected;
+    /// VoiceOver reaches it at any time as an action of the row.
     private func row(_ document: LibraryDocument) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            Capsule().fill(workspace.managedDocumentID == document.id ? Theme.accent.opacity(0.8) : .clear)
-                .frame(width: 2, height: 24).padding(.top, 3)
-            VStack(alignment: .leading, spacing: 7) {
+        let row = LibraryRow.document(document)
+        let selected = selection.selected == row.id
+        let buttonTitle = L10n.text(showingTrash ? "Restore" : "Move to Trash")
+        let trashOrRestore = {
+            library.perform {
                 if showingTrash {
-                    Text(document.title).font(.system(size: 14, weight: .medium)).lineLimit(1)
+                    try await library.restore(document.id)
                 } else {
-                    EditableDocumentName(
-                        title: document.title,
-                        documentID: document.id,
-                        fontSize: 14,
-                        identifier: "library-title-\(document.id)",
-                        help: "Click to rename. Double-click to open.",
-                        onOpen: { library.perform { try await library.open(document.id) } },
-                        onRename: { title in library.perform { try await library.rename(
-                            document.id,
-                            title: title,
-                        ) } },
-                    )
-                    .frame(height: 20)
-                    .learningHelp(L10n.text("Click to rename. Double-click to open."))
+                    try await library.moveToTrash(document.id)
                 }
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(document.snippet.isEmpty ? L10n.text("Empty document") : document.snippet)
-                        .font(.system(size: 11)).foregroundStyle(Theme.secondary).lineLimit(2)
-                    Text(document.modifiedAt, style: .relative).font(.system(size: 10)).foregroundStyle(Theme.muted)
-                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                    .onTapGesture(count: 2) {
-                        if !showingTrash {
-                            library.perform { try await library.open(document.id) }
-                        }
-                    }
-            }.frame(maxWidth: .infinity, alignment: .leading)
-            QuietButton(
-                icon: showingTrash ? "arrow-counter-clockwise" : "trash",
-                help: L10n.text(showingTrash ? "Restore" : "Move to Trash"),
-            ) {
-                library.perform {
-                    if showingTrash {
-                        try await library.restore(document.id)
-                    } else {
-                        try await library.moveToTrash(document.id)
-                    }
-                }
-            }.accessibilityIdentifier("library-\(showingTrash ? "restore" : "trash")-\(document.id)")
-        }.padding(.vertical, 16).padding(.horizontal, 12).frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        let content = VStack(alignment: .leading, spacing: 7) {
+            Text(document.title).font(.system(size: 14, weight: .medium)).lineLimit(1)
+                .frame(height: 20)
+            Text(document.snippet.isEmpty ? L10n.text("Empty document") : document.snippet)
+                .font(.system(size: 11)).foregroundStyle(Theme.secondary).lineLimit(2)
+            Text(document.modifiedAt, style: .relative).font(.system(size: 10)).foregroundStyle(Theme.muted)
+        }.frame(maxWidth: .infinity, alignment: .leading)
+            // Room for the trash button, which lies over the row.
+            .padding(.trailing, 44).padding(.vertical, 16).padding(.horizontal, 12)
             .contentShape(Rectangle())
+        return opener(content, row: row)
+            .accessibilityLabel(Self.label(title: document.title, modifiedAt: document.modifiedAt))
+            .accessibilityAddTraits(selected ? .isSelected : [])
+            .accessibilityAction(named: buttonTitle, trashOrRestore)
+            .accessibilityIdentifier("library.document.\(document.id)")
+            .overlay(alignment: .topTrailing) {
+                RowRevealedButton(
+                    hover: workspace.libraryHover,
+                    rowID: row.id,
+                    selected: selected,
+                    icon: showingTrash ? "arrow-counter-clockwise" : "trash",
+                    help: buttonTitle,
+                    action: trashOrRestore,
+                )
+                .accessibilityIdentifier("library-\(showingTrash ? "restore" : "trash")-\(document.id)")
+                .padding(.top, 11).padding(.trailing, 12)
+            }
+            .openRow(row.id, hover: workspace.libraryHover, selected: selected, selection: Theme.selection, radius: 8)
             .contextMenu {
                 if showingTrash {
                     Button(L10n.text("Restore")) { library.perform { try await library.restore(document.id) } }
@@ -260,6 +303,28 @@ struct LibraryBrowser: View {
             }
     }
 
+    /// The row's content as one button that opens the document, or, in Trash,
+    /// where documents do not open, as one plain element.
+    @ViewBuilder private func opener(_ content: some View, row: LibraryRow) -> some View {
+        if showingTrash {
+            content.accessibilityElement(children: .ignore)
+        } else {
+            Button { workspace.openLibraryRow(row) } label: { content }.buttonStyle(.plain)
+        }
+    }
+
+    /// "Notes, document, edited 2 hours ago".
+    static func label(title: String, modifiedAt: Date, now: Date = Date()) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "en")
+        formatter.unitsStyle = .full
+        return L10n.format(
+            "%@, document, edited %@",
+            title,
+            formatter.localizedString(for: modifiedAt, relativeTo: now),
+        )
+    }
+
     private func search() async {
         let request = query, trash = showingTrash
         do {
@@ -270,5 +335,24 @@ struct LibraryBrowser: View {
             results = matches.filter { ($0.trashedAt != nil) == trash }
             searchError = nil
         } catch { searchError = error.localizedDescription }
+    }
+}
+
+/// A row's trash or restore button: shown only while its row is hovered or
+/// selected, so the list stays quiet. The row carries the same action for
+/// VoiceOver, so the button itself stays out of the accessibility tree.
+private struct RowRevealedButton: View {
+    @ObservedObject var hover: RowHover
+    let rowID: String
+    let selected: Bool
+    let icon: String
+    let help: String
+    let action: () -> Void
+
+    var body: some View {
+        let shown = selected || hover.id == rowID
+        QuietButton(icon: icon, help: help, action: action)
+            .opacity(shown ? 1 : 0).allowsHitTesting(shown)
+            .accessibilityHidden(true)
     }
 }

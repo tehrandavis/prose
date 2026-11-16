@@ -215,8 +215,7 @@ struct ProjectSidebar: View {
         }
         .foregroundStyle(Theme.text)
         .padding(.leading, CGFloat(4 + depth * 14)).padding(.trailing, 6).frame(height: 26)
-        .background(isOpen(node) ? Theme.sidebarSelection : .clear, in: RoundedRectangle(cornerRadius: 6))
-        .contentShape(Rectangle())
+        .openRow("item:" + node.id, hover: workspace.sidebarHover, selected: isOpen(node))
         .onTapGesture {
             targetFolder = node.isDirectory ? node.url : node.url.deletingLastPathComponent()
             if node.isDirectory {
@@ -235,6 +234,8 @@ struct ProjectSidebar: View {
             Button(L10n.text("Move to Trash")) { workspace.trashProjectItem(node.url) }
         }
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(L10n.format(node.isDirectory ? "%@, folder" : "%@, file", node.name))
+        .accessibilityValue(isMain ? L10n.text("Main Document") : "")
         .accessibilityAddTraits(.isButton)
         .accessibilityAddTraits(isOpen(node) ? .isSelected : [])
         .accessibilityIdentifier("sidebar.row." + (project.map { workspace.relative(node.url, in: $0.root) } ?? node
@@ -275,12 +276,15 @@ struct ProjectSidebar: View {
                         .truncationMode(.tail)
                     Spacer(minLength: 0)
                 }.frame(height: 24).contentShape(Rectangle())
-            }.buttonStyle(.plain).accessibilityLabel(item.title)
+            }.buttonStyle(.plain).accessibilityLabel(L10n.format("%@, heading", item.title))
                 .accessibilityAddTraits(current ? .isSelected : [])
+                .accessibilityIdentifier("sidebar.heading.\(index)")
         }
         .foregroundStyle(current ? Theme.accent : Theme.secondary)
         .padding(.leading, CGFloat(4 + indent)).padding(.trailing, 6)
-        .accessibilityIdentifier("sidebar.heading.\(index)")
+        // The current heading keeps its accent text and no fill: the open
+        // file's row above it already carries the selection fill.
+        .openRow("heading:\(index)", hover: workspace.sidebarHover)
     }
 
     private func moreRow(_ count: Int, depth: Int) -> some View {

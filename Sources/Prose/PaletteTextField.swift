@@ -7,6 +7,9 @@ struct PaletteTextField: NSViewRepresentable {
     var placeholder = ""
     var autoFocus = true
     var onSubmit: () -> Void = {}
+    /// A key command from the field editor (`moveDown:`, `insertNewline:`…).
+    /// Return true to take it; false lets the field handle it.
+    var onCommand: ((Selector) -> Bool)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -48,6 +51,13 @@ struct PaletteTextField: NSViewRepresentable {
             if let field = notification.object as? NSTextField {
                 parent.text = field.stringValue
             }
+        }
+
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            guard let onCommand = parent.onCommand, !textView.hasMarkedText() else {
+                return false
+            }
+            return onCommand(selector)
         }
 
         @objc func submit() {

@@ -227,3 +227,29 @@ Tehran accepted the note and every recommendation.
 6. One click opens a row in "Your writing…"; rename is in the context menu and on the toolbar title.
 7. `⌘N` makes a blank page; templates are on `⌘⇧N` and the toolbar button.
 8. A blank page opens in Writing mode.
+
+## Step A outcome (2026-11-15)
+
+Open rows are built as decision 5 describes.
+
+### What was built
+
+- `Sources/Prose/OpenRows.swift` (new). `RowHover` holds the hovered row's id; rows set it from `.onHover` and tests call `set(_:)`. `OpenRowStyle` (`.openRow(...)`) draws the hover or selection fill, selection first, and puts an AppKit view behind the row that shows the pointing hand and takes no clicks. A row that leaves the list while hovered clears its own hover. `LibraryRow` and `LibraryRowSelection` hold the sheet's rows and its keyboard selection.
+- `Theme.hover` is black at 4 percent in light and white at 5 percent in dark. The page-colour selection already existed as an `NSColor` named `Theme.selection`, used for selected text in the editor; it is now `Theme.nativeSelection`, and `Theme.selection` is its SwiftUI colour.
+- Sidebar: file rows and heading rows gain hover and the pointing hand. Clicks are unchanged. The current heading keeps its accent text and gets no fill, because the open file's row above it has the selection fill.
+- "Your writing…" sheet: one click anywhere on a document row opens it; the inline title field and the 2 pt capsule are gone; the open document's row is selected when the sheet opens. The trash or restore button shows only on the hovered or selected row. Down, Up and Return work with the focus in the search field (`PaletteTextField.onCommand`); the selection stops at both ends, and Up with no selection picks the last row. In Trash, rows do not open.
+- VoiceOver: a folder row is "Thesis, folder", a document row is "Notes, document, edited 2 hours ago", a sidebar row is "name, file" or "name, folder" with "Main Document" as its value, and a heading row is "Title, heading". Each is one button with the selected trait when selected. The trash or restore button is an accessibility action of its row.
+
+### Tests
+
+Acceptance tests 1 to 4 are in `Tests/ProseAppTests/OpenRowFlowTests.swift`. Test 1 reads the drawn pixels of sidebar rows in light and dark. Test 4 turns on the accessibility tree with the private `AXEnhancedUserInterface` attribute, as VoiceOver does, because SwiftUI builds no tree until an assistive app asks.
+
+Existing tests changed: `titleClickRenamesAndDoubleClickOpensLibraryWithoutChangingWriting` is now `toolbarTitleClickRenamesAndDoubleClickOpensLibraryWithoutChangingWriting` (it always tested the toolbar title; it now also checks that the sheet has no title field). One line in `WritingKeyboardFlowTests.swift` follows the `nativeSelection` rename. The identifier `library-title-<id>` is gone and a document row is `library.document.<uuid>`.
+
+### Checks (main session, load average 8 to 10)
+
+Lint clean. Release build clean. 318 core tests and 232 app tests passed; coverage 90.32 percent. In the subagent's own run, `writingModeOpensTheCaretsBlockAtOnceAndClosesItAfterARender` failed once at load 10.7 and passed alone; it passed in the main session's run.
+
+### Open
+
+- No test checks the pointing hand or hover from a real pointer. Both need one look in the running app.
