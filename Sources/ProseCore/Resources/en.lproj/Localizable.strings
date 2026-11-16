@@ -289,6 +289,11 @@
 "Minimize" = "Minimize";
 "Move to Trash" = "Move to Trash";
 "New Document" = "New Document";
+"New from Template…" = "New from Template…";
+"New from Template" = "New from Template";
+"New Blank Page" = "New Blank Page";
+"Start writing on a blank page." = "Start writing on a blank page.";
+"Start from a template, the sample book or a Typst Universe template." = "Start from a template, the sample book or a Typst Universe template.";
 "No Guesses Found" = "No Guesses Found";
 "No completions are available here." = "No completions are available here.";
 "No matching commands" = "No matching commands";
@@ -637,7 +642,6 @@
 "Offline · Browsing the saved catalog" = "Offline · Browsing the saved catalog";
 "%d results · Search by name or what you want to make" = "%d results · Search by name or what you want to make";
 "Preview unavailable" = "Preview unavailable";
-"Browse templates" = "Browse templates";
 "Start a document from a template" = "Start a document from a template";
 "Another library operation is in progress. Try again in a moment." = "Another library operation is in progress. Try again in a moment.";
 "All templates" = "All templates";
@@ -670,7 +674,6 @@
 "The example could not be downloaded or verified. Please try again." = "The example could not be downloaded or verified. Please try again.";
 
 // Template-first creation
-"Choose a blank page or a template for your next idea." = "Choose a blank page or a template for your next idea.";
 "Start here" = "Start here";
 "A small guide to Prose, with equations, a diagram and code. Make it your own." = "A small guide to Prose, with equations, a diagram and code. Make it your own.";
 "Just a page and your next thought." = "Just a page and your next thought.";

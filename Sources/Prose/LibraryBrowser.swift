@@ -112,14 +112,12 @@ struct LibraryBrowser: View {
                     Button(L10n.text(showingTrash ? "Show documents" : "Show Trash")) { showingTrash.toggle() }
                 } label: { PhosphorIcon(name: "dots-three-vertical", size: 18).frame(width: 28, height: 28) }
                     .menuStyle(.borderlessButton).fixedSize().accessibilityLabel(L10n.text("Library actions"))
-                Button { workspace.openDiscovery(.templates) } label: {
-                    HStack(spacing: 6) {
-                        PhosphorIcon(name: "grid-four", size: 15)
-                        Text(L10n.text("Browse templates")).font(.system(size: 12))
-                    }.foregroundStyle(Theme.secondary).padding(.horizontal, 5).frame(height: 32)
-                        .contentShape(Rectangle())
-                }.buttonStyle(.plain).accessibilityIdentifier("library-browse-templates")
-                    .learningHelp(L10n.text("Start a document from a template"), shortcut: "⌘N")
+                QuietButton(
+                    icon: "grid-four",
+                    help: L10n.text("Start a document from a template"),
+                    shortcut: WritingCommand.all.first { $0.id == "new" }?.shortcuts.first?.label,
+                ) { workspace.newFromTemplate() }
+                    .accessibilityIdentifier("library-browse-templates")
                 if !workspace.isLibraryHome {
                     QuietButton(icon: "x", help: L10n.text("Close library"), shortcut: "Esc") {
                         workspace.libraryOpen = false
@@ -199,6 +197,7 @@ struct LibraryBrowser: View {
             await search()
         }
         .onReceive(library.$documents) { _ in Task { await search() } }
+        .onReceive(library.$blankPageID) { _ in Task { await search() } }
         .onChange(of: displayedRows, initial: true) { _, rows in selection.rows = rows }
         .onChange(of: showingTrash, initial: true) { _, trash in selection.opensRows = !trash }
         .onChange(of: showingTrash) { selection.selected = nil }
@@ -332,7 +331,8 @@ struct LibraryBrowser: View {
             guard request == query, trash == showingTrash else {
                 return
             }
-            results = matches.filter { ($0.trashedAt != nil) == trash }
+            // The untouched blank page is in no list (Phase 7, decision 2).
+            results = matches.filter { ($0.trashedAt != nil) == trash && !library.isUntouchedBlankPage($0.id) }
             searchError = nil
         } catch { searchError = error.localizedDescription }
     }

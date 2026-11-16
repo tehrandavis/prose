@@ -175,9 +175,9 @@ extension WritingFlowTests {
         await app.layout()
         let toolbar = try #require(app.window.toolbar)
         let anchors = toolbar.items.flatMap { descendants($0.view) }.compactMap { $0 as? HelpAnchor }
-        // Sidebar, library, title, Code, Writing, Focus, export, preview, status.
-        #expect(anchors.count == 9)
-        #expect(anchors.filter { $0.shortcut != nil }.count == 8)
+        // Sidebar, library, templates, title, Code, Writing, Focus, export, preview, status.
+        #expect(anchors.count == 10)
+        #expect(anchors.filter { $0.shortcut != nil }.count == 9)
         for anchor in anchors {
             #expect(anchor.bounds.width >= 25)
             #expect(anchor.bounds.height >= 25)

@@ -300,3 +300,47 @@ private final class LibraryEventCounter: @unchecked Sendable {
     #expect(counter.value > before)
     withExtendedLifetime((monitor, account)) {}
 }
+
+/// Phase 7, decision 2: an untouched blank page is deleted for good, and only
+/// while it is still untouched.
+@Test func discardUntouchedDeletesOnlyAnUntouchedPage() async throws {
+    let root = try libraryFixture()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let library = DocumentLibrary(rootURL: root)
+    let source = DocumentTemplate.blank.source
+    func page() async throws -> LibraryDocument {
+        try await library.create(title: L10n.text("Untitled"), text: source)
+    }
+
+    let untouched = try await page()
+    try Data().write(to: untouched.folderURL.appendingPathComponent(".DS_Store"))
+    #expect(try await library.isUntouched(untouched.id, expecting: source))
+    #expect(try await library.discardUntouched(untouched.id, expecting: source))
+    #expect(!FileManager.default.fileExists(atPath: untouched.folderURL.path))
+    #expect(try await library.trashSnapshot().isEmpty, "A discarded page never goes to Trash")
+    await #expect(throws: LibraryError.self) { try await library.discardUntouched(untouched.id, expecting: source) }
+    await #expect(throws: LibraryError.self) { try await library.discardUntouched(UUID(), expecting: source) }
+
+    let changed = try await page()
+    _ = try await library.save(changed.id, text: source + "A word", baseline: nil)
+    let added = try await page()
+    try Data("<svg/>".utf8).write(to: added.folderURL.appendingPathComponent("figure.svg"))
+    let renamed = try await page()
+    _ = try await library.rename(renamed.id, title: "Plan")
+    let trashed = try await page()
+    _ = try await library.trash(trashed.id)
+    let folder = root.appendingPathComponent("Outside/src")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try Data(source.utf8).write(to: folder.appendingPathComponent("main.typ"))
+    let project = try await library.importProject(
+        at: folder.deletingLastPathComponent(),
+        mainFile: folder.appendingPathComponent("main.typ"),
+        title: L10n.text("Untitled"),
+    )
+    for document in [changed, added, renamed, trashed, project] {
+        #expect(try await !library.isUntouched(document.id, expecting: source))
+        #expect(try await !library.discardUntouched(document.id, expecting: source))
+        #expect(FileManager.default.fileExists(atPath: document.folderURL.path))
+    }
+    #expect(try await library.list(includeTrashed: true).count == 5)
+}

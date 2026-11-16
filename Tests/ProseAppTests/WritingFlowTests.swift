@@ -54,7 +54,7 @@ struct WritingFlowTests {
         #expect(outline.id == "outline")
         #expect(outline.keyPath == "v o")
         #expect(outline.shortcuts.first?.label == "⌘0")
-        #expect(WritingCommand.all.filter { !$0.shortcuts.isEmpty }.count == 33)
+        #expect(WritingCommand.all.filter { !$0.shortcuts.isEmpty }.count == 34)
     }
 
     @Test func discoverInsertUndoRedoAndExport() async throws {
@@ -205,7 +205,7 @@ struct WritingFlowTests {
         let app = try WritingFixture(text: "= Existing file\n")
         defer { app.close() }
         try await app.ready()
-        app.workspace.newDocument()
+        app.workspace.newFromTemplate()
         #expect(app.workspace.discoveryMode == .templates)
         try await app.workspace.library.create(builtIn: .blank)
         try await app.ready()
@@ -223,7 +223,7 @@ struct WritingFlowTests {
         #expect(!app.workspace.open(app.root.appendingPathComponent("missing.typ")))
         #expect(app.workspace.text == "= Existing file\n")
         #expect(app.workspace.message != nil)
-        app.workspace.newDocument()
+        app.workspace.newFromTemplate()
         #expect(app.workspace.discoveryMode == .templates)
         try await app.workspace.library.create(builtIn: .blank)
         try await app.ready()
@@ -407,12 +407,16 @@ struct WritingFlowTests {
         )
         try choose("Save")
         #expect(try String(contentsOf: app.document, encoding: .utf8).contains("Saved by menu"))
-        try choose("New Document")
+        try choose("New from Template…")
         #expect(app.workspace.libraryOpen)
         #expect(app.workspace.discoveryMode == .templates)
         #expect(app.workspace.fileURL == app.document)
-        try await app.workspace.library.create(builtIn: .blank)
+        app.workspace.libraryOpen = false
+        app.workspace.discoveryMode = nil
+        try choose("New Document")
+        try await app.wait { !app.workspace.library.busy && app.workspace.managedDocumentID != nil }
         #expect(app.workspace.title == L10n.text("Untitled"))
+        #expect(app.workspace.text == DocumentTemplate.blank.source)
         try await app.ready()
         #expect(!delegate.applicationShouldTerminateAfterLastWindowClosed(NSApp))
         #expect(delegate.applicationShouldTerminate(NSApp) == .terminateNow)

@@ -74,7 +74,8 @@ extension WritingFlowTests {
         #expect(try String(contentsOf: app.document, encoding: .utf8) == "= Preserve this document\n")
     }
 
-    @Test func newDocumentDiscoversTemplatesWithoutCreatingOrReplacingWriting() async throws {
+    /// `⌘⇧N` (Phase 7: `⌘N` makes a blank page, see `BlankPageFlowTests`).
+    @Test func newFromTemplateDiscoversTemplatesWithoutCreatingOrReplacingWriting() async throws {
         let app = try WritingFixture(text: "= My unfinished idea\n", startService: false)
         defer { app.close() }
         let delegate = AppDelegate(workspace: app.workspace)
@@ -84,7 +85,7 @@ extension WritingFlowTests {
         }
         delegate.installMenu()
         let menu = try #require(NSApp.mainMenu)
-        #expect(menu.performKeyEquivalent(with: app.key("n", code: 45, modifiers: .command)))
+        #expect(menu.performKeyEquivalent(with: app.key("N", code: 45, modifiers: [.command, .shift])))
         #expect(app.workspace.discoveryMode == .templates)
         #expect(app.workspace.libraryOpen)
         #expect(try await app.workspace.library.store.list().isEmpty)
@@ -93,7 +94,7 @@ extension WritingFlowTests {
         #expect(app.workspace.discoveryMode == nil)
         try app.workspace.execute(#require(WritingCommand.all.first { $0.id == "universe" }))
         #expect(app.workspace.discoveryMode == .packages)
-        app.workspace.newDocument()
+        app.workspace.newFromTemplate()
         #expect(app.workspace.discoveryMode == .templates)
         #expect(app.workspace.fileURL == app.document)
         #expect(!WritingCommand.all.contains { $0.id == "newCodeNotes" })
@@ -107,7 +108,7 @@ extension WritingFlowTests {
         #expect(app.workspace.text == DocumentTemplate.blank.source)
         #expect(try String(contentsOf: app.document, encoding: .utf8) == "= My unfinished idea\n")
         app.workspace.showLibraryHome()
-        app.workspace.newDocument()
+        app.workspace.newFromTemplate()
         #expect(app.workspace.discoveryMode == .templates)
         #expect(
             !app.workspace.libraryOpen,

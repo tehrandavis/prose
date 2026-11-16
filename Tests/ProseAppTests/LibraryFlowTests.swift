@@ -104,7 +104,10 @@ extension WritingFlowTests {
         #expect(!log.contains("Private writing"))
     }
 
-    @Test func trashActiveDocumentSelectsRemainingWritingAndEmptyLibrarySurvivesRestart() async throws {
+    /// Phase 7 step B: trashing the open document shows a blank page in its
+    /// place (it used to open the next recent document under the library
+    /// sheet, or the empty home state).
+    @Test func trashActiveDocumentShowsABlankPageAndEmptyLibrarySurvivesRestart() async throws {
         let app = try WritingFixture(text: "= External\n", startService: false)
         defer { app.close() }
         let library = app.workspace.library
@@ -114,12 +117,16 @@ extension WritingFlowTests {
         try await library.create(title: "Untitled", text: "= Second\n")
         let second = try #require(app.workspace.managedDocumentID)
         try await library.moveToTrash(second)
-        #expect(try await library.store.list().map(\.id) == [first])
-        #expect(library.documents.count == 2, "Trashing must not create a replacement document")
-        #expect(app.workspace.managedDocumentID == first)
-        #expect(app.workspace.libraryOpen)
-        app.workspace.libraryOpen = false
+        let page = try #require(library.blankPageID)
+        #expect(try await library.store.list().map(\.id).sorted() == [first, page].sorted())
+        #expect(library.listedDocuments.count == 2, "Only the hidden blank page is new")
+        #expect(app.workspace.managedDocumentID == page)
+        #expect(app.workspace.text == DocumentTemplate.blank.source)
+        #expect(!app.workspace.libraryOpen)
+        #expect(app.workspace.discoveryMode == nil)
 
+        try await library.open(first)
+        try await app.wait { !library.documents.contains { $0.id == page } }
         let editor = try #require(app.workspace.editor)
         editor.insertSnippet(
             Snippet(text: "Preserve this before trashing.\n"),
@@ -127,26 +134,28 @@ extension WritingFlowTests {
         )
         let preserved = editor.string
         try await library.moveToTrash(first)
-        #expect(try await library.store.list().isEmpty)
-        #expect(library.documents.count == 2)
-        #expect(app.workspace.isLibraryHome)
-        #expect(app.workspace.fileURL == nil)
-        #expect(app.workspace.text.isEmpty)
-        #expect(!app.workspace.serviceReady)
+        let next = try #require(library.blankPageID)
+        #expect(try await library.store.list().map(\.id) == [next])
+        #expect(library.listedDocuments.count == 2)
+        #expect(!library.listedDocuments.contains { !$0.isTrashed })
+        #expect(!app.workspace.isLibraryHome)
+        #expect(app.workspace.managedDocumentID == next)
+        #expect(app.workspace.text == DocumentTemplate.blank.source)
+        #expect(app.workspace.editor?.isEditable == true)
         #expect(app.workspace.previewURL == nil)
         #expect(try await library.store.read(first).text == preserved)
-        app.workspace.openLibrary()
-        app.workspace.save()
-        #expect(!app.workspace.libraryOpen, "An empty library is already the main view")
         #expect(app.workspace.prepareToClose())
         library.stop()
 
+        // The untouched blank page stays at quit and is still the blank page
+        // after a restart; the writer's list stays empty.
         let recovered = Workspace(stateDirectory: app.workspace.stateDirectory)
         defer { recovered.shutdown() }
         await recovered.library.start()
-        #expect(recovered.isLibraryHome)
-        #expect(try await recovered.library.store.list().isEmpty)
-        #expect(recovered.library.documents.count == 2)
+        #expect(recovered.managedDocumentID == next)
+        #expect(recovered.library.blankPageID == next)
+        #expect(!recovered.library.listedDocuments.contains { !$0.isTrashed })
+        #expect(recovered.library.listedDocuments.count == 2)
         await app.layout()
         #expect(app.workspace.window === app.window, "Import dialogs must retain a parent without an editor")
         try await library.restore(first)
@@ -156,12 +165,14 @@ extension WritingFlowTests {
         #expect(app.workspace.managedDocumentID == first)
         #expect(app.workspace.editor?.string == preserved)
         #expect(app.workspace.editor?.isEditable == true)
+        try await app.wait { !library.documents.contains { $0.id == next } }
         let log = try String(
             contentsOf: app.workspace.stateDirectory.appendingPathComponent("Logs/events.jsonl"),
             encoding: .utf8,
         )
         #expect(log.contains("library.trash"))
         #expect(log.contains("library.restore"))
+        #expect(log.contains("library.blankPageDiscarded"))
         #expect(!log.contains("Preserve this before trashing"))
     }
 
@@ -271,7 +282,10 @@ extension WritingFlowTests {
         await #expect(throws: (any Error).self) { try await library.open(id) }
         try await library.restore(id)
         try await library.open(id)
-        #expect(editor.string.contains("One more thought"))
+        await app.layout()
+        // The blank page shown after the trash put the window through the
+        // home state, which replaces the editor view.
+        #expect(app.workspace.editor?.string.contains("One more thought") == true)
         #expect(library.documents.first { $0.id == id }?.trashedAt == nil)
         let view = NSHostingView(rootView: LibraryBrowser(workspace: app.workspace, library: library))
         view.layoutSubtreeIfNeeded()

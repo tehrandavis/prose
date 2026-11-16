@@ -138,13 +138,22 @@ extension Workspace: AgentToolHost {
     }
 
     func agentFinishMetadataChange(_ document: LibraryDocument?) async {
-        if let document, managedDocumentID == document.id, document.isTrashed {
+        // An agent's rename or trash keeps a blank page: it is no longer untouched.
+        if let document, library.isUntouchedBlankPage(document.id) {
+            library.keepBlankPage()
+        }
+        let trashedOpenDocument = document.map { managedDocumentID == $0.id && $0.isTrashed } ?? false
+        if trashedOpenDocument {
             showLibraryHome()
         }
         await library.refresh()
         agentMetadataChangeInProgress = false
         documentTransitionInProgress = false
         editor?.isEditable = editorIsEditable
+        if trashedOpenDocument {
+            // Opens only after the agent's change ends: `open` refuses during it.
+            await showBlankPage()
+        }
         onTitleChange?(title)
     }
 

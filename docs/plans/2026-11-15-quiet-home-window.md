@@ -253,3 +253,33 @@ Lint clean. Release build clean. 318 core tests and 232 app tests passed; covera
 ### Open
 
 - No test checks the pointing hand or hover from a real pointer. Both need one look in the running app.
+
+## Step B outcome (2026-11-15)
+
+The blank page, `⌘N` and the templates button are built as decisions 2 and 6 describe.
+
+### What was built
+
+- `DocumentLibrary.isUntouched` and `discardUntouched`. A page is untouched only if it is not trashed, its title is "Untitled", its source is one file and not a link, neither file has an iCloud conflict, the source bytes equal the blank source, and the folder holds only the source and `document.json` (`.DS_Store` is ignored). `discardUntouched` repeats the checks inside one coordinated delete and deletes nothing if one fails.
+- `LibraryController`: `blankPageID` (stored in `blank-page.json`), `openBlankPage()` (reuse, or create), `keepBlankPage()`, `leaveBlankPage(_:)`, `isUntouchedBlankPage(_:)` and `listedDocuments`. A blank page opens in Writing mode with the caret on its empty last line. The gallery's "Blank page" button follows the same reuse rule.
+- `Workspace`: `newDocument()` (`⌘N`) makes a blank page; `newFromTemplate()` opens the gallery; `showBlankPage()` clears the document and opens a blank page, and stays in the home state with the error if the library cannot give one. `edited()` keeps the page at the first edit with one comparison of an optional id. `open(_:)` compares document ids before and after, and calls `leaveBlankPage` when the writer left the page, so every route is covered.
+- Trashing the open document, by the writer or by an agent, now shows a blank page. A rename by the writer or an agent keeps the page.
+- Menu: "New from Template…" (`⌘⇧N`). Toolbar: `toolbar.templates` (`grid-four`), and the title's width reserve grew by 38 pt. The "Browse templates" text button in the "Your writing…" header is the same icon button. `⌘J`: `new` is "New from Template" (`f n`, `⌘⇧N`) and `newBlank` is "New Blank Page" (`f b`, `⌘N`).
+- The untouched page is in no row of "Your writing…", not in its count and not in the reopenable recents.
+
+### Decision details settled in the build
+
+- "Leaving" is decided by document id, not by URL: the iCloud switch gives the same document a new URL, and a URL check would have deleted the page there.
+- A folder with no main entry opens no file, so the page stays open and is not deleted.
+- Save As from an untouched page leaves the page hidden in the library; the next blank page reuses it.
+- The discard runs in a task after the id is cleared. If the app quits in that moment, the page stays as an ordinary empty "Untitled" document. The other order could reopen a page while it is deleted, so this order is kept.
+
+### Tests
+
+`Tests/ProseAppTests/BlankPageFlowTests.swift` holds acceptance tests 5 to 8 and tests for the toolbar button, `⌘⇧N`, reuse across a restart, trash of the open document and of the page, and an agent's trash and rename. `discardUntouchedDeletesOnlyAnUntouchedPage` is in `LibraryTests.swift`.
+
+Existing tests changed: `newDocumentDiscoversTemplates…` is `newFromTemplateDiscoversTemplatesWithoutCreatingOrReplacingWriting` (it presses `⌘⇧N`; every check is kept). `trashActiveDocumentSelectsRemainingWriting…` is `trashActiveDocumentShowsABlankPageAndEmptyLibrarySurvivesRestart` (a blank page replaces "the next recent under the sheet"; the checks on the trashed text and on the log's privacy are kept). In `WritingFlowTests`: the shortcut count is 34, the native menu test chooses both items, and two `newDocument()` calls are `newFromTemplate()`. `toolbarLearningHints…` counts 10 help anchors and 9 shortcuts. `libraryCreateRename…` reads the editor again after a layout.
+
+### Checks (main session, load average 25 to 50 from other apps)
+
+Lint clean. Release build clean. Coverage 90.38 percent. The full run was not clean at this load: 1 of 319 core tests and 2 of 240 app tests failed on a time limit (`httpSourceSaysNotRunningAtOnceWhenNothingListens`, `previewCoversBlankPaneUntilFirstPaintAndAgainAfterReopen`, `writingFoldAccessibilityFramesAndMarkedText`), and each passed alone. The subagent's run at load 16 to 43 failed four other timing tests, which also passed alone. No blank-page test failed in either run. The gate run in step E must be clean on a quiet machine.

@@ -637,6 +637,10 @@ final class Workspace: ObservableObject {
         {
             scheduleBibliographyReload()
         }
+        // The first edit keeps a blank page: one comparison per edit.
+        if let blank = library.blankPageID, blank == managedDocumentID {
+            library.keepBlankPage()
+        }
         var updatedMetrics: DocumentMetrics?
         if let change, var current = textMetrics, current.apply(change, to: text) {
             updatedMetrics = current
@@ -946,6 +950,7 @@ final class Workspace: ObservableObject {
                 return false
             }
             let (content, disk) = try DocumentStorage.read(url)
+            let previousDocumentID = isLibraryHome ? nil : managedDocumentID
             let previousMain = compilationURL
             if preservingMain, rememberSource, url.standardizedFileURL != documentURL.standardizedFileURL {
                 navigationHistory.append((documentURL, metrics.position(at: selection.location), mainFileURL))
@@ -967,6 +972,10 @@ final class Workspace: ObservableObject {
             if let managedDocumentID {
                 library.noteOpened(managedDocumentID)
             }
+            if let previousDocumentID, previousDocumentID != managedDocumentID {
+                // Leaving an untouched blank page deletes it (Phase 7, decision 2).
+                library.leaveBlankPage(previousDocumentID)
+            }
             updateProject(for: url)
             documentVersion += 1
             selection = NSRange(location: 0, length: 0)
@@ -982,9 +991,32 @@ final class Workspace: ObservableObject {
         }
     }
 
+    /// `⌘N`: a blank page. While the blank page is untouched, nothing new is made.
     func newDocument() {
         recordOperation("document.new")
+        closePalette()
+        library.perform { [weak self] in try await self?.library.openBlankPage() }
+    }
+
+    /// `⌘⇧N`: the template gallery, as a sheet over a document.
+    func newFromTemplate() {
+        recordOperation("document.newFromTemplate")
         openDiscovery(.templates)
+    }
+
+    /// Clears the current document as `showLibraryHome()` does, then opens the
+    /// blank page. If the library cannot give one, the window stays in the
+    /// home state with the error shown; the gallery does not open by itself.
+    func showBlankPage() async {
+        if !isLibraryHome {
+            showLibraryHome()
+        }
+        do { try await library.openBlankPage() }
+        catch {
+            recordOperation("library.blankPageUnavailable", ["error": error.localizedDescription])
+            library.report(error)
+            showMessage(error.localizedDescription, persistent: true)
+        }
     }
 
     func openLibrary() {
@@ -1326,6 +1358,8 @@ final class Workspace: ObservableObject {
         case "fontSmaller": closePalette()
             fontSize = max(12, fontSize - 1)
         case "new": closePalette()
+            newFromTemplate()
+        case "newBlank": closePalette()
             newDocument()
         case "open": closePalette()
             openLibrary()

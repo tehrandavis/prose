@@ -21,8 +21,13 @@ final class LibraryController: ObservableObject {
     private var accountMonitor: LibraryAccountMonitor?
     private let locationURL: URL
     private let recentURL: URL
+    private let blankPageURL: URL
     /// Library documents opened and not yet closed, most recent first; Command-W returns to the next one.
     private(set) var recentDocumentIDs: [UUID]
+    /// The untouched blank page (Phase 7, decision 2), stored in
+    /// `blank-page.json`, local to this Mac. There is at most one. The first
+    /// edit or rename clears it, and the page is an ordinary document.
+    @Published private(set) var blankPageID: UUID?
     static let recentLimit = 50
     var onSyncChange: ((Bool) -> Void)?
 
@@ -33,7 +38,9 @@ final class LibraryController: ObservableObject {
         self.workspace = workspace
         locationURL = workspace.stateDirectory.appendingPathComponent("library-location.json")
         recentURL = workspace.stateDirectory.appendingPathComponent("recent-documents.json")
+        blankPageURL = workspace.stateDirectory.appendingPathComponent("blank-page.json")
         recentDocumentIDs = (try? JSONDecoder().decode([UUID].self, from: Data(contentsOf: recentURL))) ?? []
+        blankPageID = try? JSONDecoder().decode(UUID.self, from: Data(contentsOf: blankPageURL))
         store = DocumentLibrary(
             rootURL: workspace.stateDirectory.appendingPathComponent("Library"),
             cloudResolver: cloudResolver,
@@ -136,6 +143,11 @@ final class LibraryController: ObservableObject {
     }
 
     func create(builtIn template: BuiltInTemplate) async throws {
+        // The gallery's "Blank page" follows the reuse rule of `openBlankPage`.
+        if template == .blank {
+            try await openBlankPage()
+            return
+        }
         let assets = template == .welcome ? try WelcomeDocument.assets() : [:]
         try await create(
             title: template == .welcome ? L10n.text("Welcome") : nil,
@@ -224,7 +236,8 @@ final class LibraryController: ObservableObject {
     }
 
     func noteOpened(_ id: UUID) {
-        guard recentDocumentIDs.first != id else {
+        // An untouched blank page is never a recent to return to.
+        guard recentDocumentIDs.first != id, !isUntouchedBlankPage(id) else {
             return
         }
         updateRecent { $0 = [id] + $0.filter { $0 != id } }
@@ -236,8 +249,115 @@ final class LibraryController: ObservableObject {
 
     /// Recently opened documents that can still be reopened, most recent first.
     var reopenableRecentIDs: [UUID] {
-        let available = Set(documents.filter { !$0.isTrashed }.map(\.id))
+        let available = Set(listedDocuments.filter { !$0.isTrashed }.map(\.id))
         return recentDocumentIDs.filter { available.contains($0) }
+    }
+
+    // MARK: The blank page (Phase 7, decision 2)
+
+    /// Whether `id` is the untouched blank page, which no list shows.
+    func isUntouchedBlankPage(_ id: UUID) -> Bool {
+        id == blankPageID
+    }
+
+    /// The library's documents (Trash included) without the untouched blank
+    /// page: what the writer's lists show.
+    var listedDocuments: [LibraryDocument] {
+        guard let blankPageID else {
+            return documents
+        }
+        return documents.filter { $0.id != blankPageID }
+    }
+
+    /// Opens the untouched blank page, or makes one. Nothing happens when it is
+    /// already open, so repeated requests never make a second one. The page
+    /// opens in Writing mode with the caret on its empty last line.
+    func openBlankPage() async throws {
+        guard let workspace else {
+            return
+        }
+        let source = DocumentTemplate.blank.source
+        if let id = blankPageID {
+            if workspace.managedDocumentID == id, !workspace.isLibraryHome {
+                workspace.libraryOpen = false
+                return
+            }
+            if await (try? store.isUntouched(id, expecting: source)) == true {
+                try await showBlankPage(id)
+                return
+            }
+            // Gone, trashed or changed elsewhere: from now on an ordinary document.
+            setBlankPage(nil)
+        }
+        let document = try await store.create(title: L10n.text("Untitled"), text: source)
+        setBlankPage(document.id)
+        workspace.recordOperation("library.blankPage", ["documentID": document.id.uuidString])
+        await refresh()
+        try await showBlankPage(document.id)
+    }
+
+    private func showBlankPage(_ id: UUID) async throws {
+        guard let workspace else {
+            return
+        }
+        try await open(id)
+        workspace.setMode(.writing)
+        workspace.jump(to: workspace.text.utf16.count, synchronizePreview: false)
+    }
+
+    /// The first edit or rename keeps the page: it becomes an ordinary
+    /// document and a recent like any other.
+    func keepBlankPage() {
+        guard let id = blankPageID else {
+            return
+        }
+        setBlankPage(nil)
+        workspace?.recordOperation("library.blankPageKept", ["documentID": id.uuidString])
+        if workspace?.managedDocumentID == id {
+            noteOpened(id)
+        }
+    }
+
+    /// The writer left the untouched blank page for another document or a
+    /// folder: delete it for good if it is still untouched, else keep it.
+    func leaveBlankPage(_ id: UUID) {
+        guard isUntouchedBlankPage(id) else {
+            return
+        }
+        setBlankPage(nil)
+        forgetRecent(id)
+        Task { [weak self] in
+            guard let self else {
+                return
+            }
+            let discarded: Bool
+            do { discarded = try await store.discardUntouched(id, expecting: DocumentTemplate.blank.source) }
+            catch { discarded = false }
+            workspace?.recordOperation(
+                discarded ? "library.blankPageDiscarded" : "library.blankPageKept",
+                ["documentID": id.uuidString],
+            )
+            await refresh()
+        }
+    }
+
+    /// Shows an error from a library action that ran outside `perform`.
+    func report(_ error: Error) {
+        self.error = error.localizedDescription
+    }
+
+    private func setBlankPage(_ id: UUID?) {
+        guard blankPageID != id else {
+            return
+        }
+        blankPageID = id
+        do {
+            if let id {
+                try JSONEncoder().encode(id).write(to: blankPageURL, options: .atomic)
+            } else if FileManager.default.fileExists(atPath: blankPageURL.path) {
+                try FileManager.default.removeItem(at: blankPageURL)
+            }
+        } catch { workspace?.recordOperation("library.blankPageFailed", ["error": error.localizedDescription]) }
     }
 
     /// Opens the first recent document that still reads; unreadable entries are dropped.
@@ -266,6 +386,9 @@ final class LibraryController: ObservableObject {
 
     func rename(_ id: UUID, title: String) async throws {
         _ = try await store.rename(id, title: title)
+        if isUntouchedBlankPage(id) {
+            keepBlankPage()
+        }
         await refresh()
         if workspace?.managedDocumentID == id, let workspace {
             workspace.onTitleChange?(workspace.title)
@@ -296,16 +419,14 @@ final class LibraryController: ObservableObject {
         }
         _ = try await store.trash(id)
         forgetRecent(id)
+        if isUntouchedBlankPage(id) {
+            setBlankPage(nil)
+        }
         workspace.recordOperation("library.trash", ["documentID": id.uuidString, "active": String(wasActive)])
         await refresh()
         if wasActive {
-            // Clear the trashed buffer first, so an unavailable replacement can
-            // safely leave the library open without editing a trashed document.
-            workspace.showLibraryHome()
-            if let next = reopenableRecentIDs.first ?? documents.first(where: { $0.trashedAt == nil })?.id {
-                try await open(next)
-                workspace.libraryOpen = true
-            }
+            // A blank page takes the trashed document's place (Phase 7, decision 3).
+            await workspace.showBlankPage()
         }
     }
 
@@ -474,6 +595,9 @@ final class LibraryController: ObservableObject {
         }
         let report = try await store.setICloudEnabled(enabled)
         updateRecent { $0 = $0.map { report.idMappings[$0] ?? $0 } }
+        if let id = blankPageID, let mapped = report.idMappings[id] {
+            setBlankPage(mapped)
+        }
         cloudEnabled = report.isICloud
         try Data(enabled ? "icloud".utf8 : "local".utf8).write(to: locationURL, options: .atomic)
         onSyncChange?(enabled)

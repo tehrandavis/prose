@@ -269,6 +269,56 @@ public actor DocumentLibrary {
         return LibraryEmptyTrashResult(deletedCount: deleted, issues: failures)
     }
 
+    /// Whether a document is still an untouched page: not trashed, titled
+    /// `title`, its source file's bytes equal `source`, and its folder holds
+    /// nothing beyond the source file and `document.json` (Phase 7, decision 2).
+    public func isUntouched(
+        _ id: UUID,
+        expecting source: String,
+        title: String = L10n.text("Untitled"),
+    ) throws -> Bool {
+        let folder = try folder(for: id)
+        return try CoordinatedFileAccess.read(folder) { untouched($0, source: source, title: title) }
+    }
+
+    /// Deletes an untouched page for good, not to Trash. It deletes only while
+    /// `isUntouched` holds, checked inside one coordinated delete; otherwise it
+    /// deletes nothing and returns false. An unknown id throws `notFound`.
+    @discardableResult
+    public func discardUntouched(
+        _ id: UUID,
+        expecting source: String,
+        title: String = L10n.text("Untitled"),
+    ) throws -> Bool {
+        let folder = try folder(for: id)
+        return try CoordinatedFileAccess.write(folder, options: .forDeleting) { coordinated in
+            guard untouched(coordinated, source: source, title: title) else {
+                return false
+            }
+            try manager.removeItem(at: coordinated)
+            return true
+        }
+    }
+
+    private func untouched(_ folder: URL, source: String, title: String) -> Bool {
+        let metadataURL = folder.appendingPathComponent(Self.metadataName)
+        guard let metadata = try? decodeMetadata(metadataURL, in: folder),
+              metadata.trashedAt == nil, metadata.title == title,
+              !metadata.sourcePath.contains("/"),
+              let sourceURL = try? sourceURL(metadata, in: folder),
+              (try? sourceURL.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) != true,
+              (try? metadataURL.resourceValues(forKeys: [.ubiquitousItemHasUnresolvedConflictsKey])
+                  .ubiquitousItemHasUnresolvedConflicts) != true,
+              (try? sourceURL.resourceValues(forKeys: [.ubiquitousItemHasUnresolvedConflictsKey])
+                  .ubiquitousItemHasUnresolvedConflicts) != true,
+              let bytes = try? Data(contentsOf: sourceURL), bytes == Data(source.utf8),
+              let names = try? manager.contentsOfDirectory(atPath: folder.path)
+        else {
+            return false
+        }
+        return Set(names).subtracting([".DS_Store"]) == [metadata.sourcePath, Self.metadataName]
+    }
+
     /// Imports one source file; use importProject when it has relative resource dependencies.
     public func importDocument(at url: URL, title: String? = nil) throws -> LibraryDocument {
         let (text, _) = try DocumentStorage.read(url)

@@ -30,11 +30,12 @@ final class WindowToolbar: NSObject, NSToolbarDelegate {
         )]).width
         // Reserve traffic lights, native toolbar spacing and the fixed actions.
         // A short title hugs its content; long names can use the remaining space.
-        let available = max(120, (workspace.window?.frame.width ?? 820) - 340)
+        // The left group's three buttons take 38 pt each with their spacing.
+        let available = max(120, (workspace.window?.frame.width ?? 820) - 378)
         let badgeWidth = workspace.isPackageSource ?
             (L10n.text("Read-only") as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 10)])
             .width + 36 : 0
-        let width = min(available, max(160, ceil(textWidth + badgeWidth) + 64))
+        let width = min(available, max(198, ceil(textWidth + badgeWidth) + 102))
         if titleSize.width != width {
             titleSize.width = width
         }
@@ -109,6 +110,12 @@ private struct DocumentTitle: View {
                 .accessibilityIdentifier("toolbar.sidebar")
             QuietButton(icon: "files", help: L10n.text("Your writing"), shortcut: "⌘O") { workspace.openLibrary() }
                 .accessibilityIdentifier("toolbar.library")
+            QuietButton(
+                icon: "grid-four",
+                help: L10n.text("Templates"),
+                shortcut: WritingCommand.all.first { $0.id == "new" }?.shortcuts.first?.label,
+            ) { workspace.newFromTemplate() }
+                .accessibilityIdentifier("toolbar.templates")
             if let project = workspace.project, case .folder = project.kind, !workspace.isPackageSource {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(workspace.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)

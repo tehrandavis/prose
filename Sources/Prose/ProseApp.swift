@@ -221,6 +221,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         )
         let file = section(L10n.text("Documents"))
         item(L10n.text("New Document"), #selector(newDocument), "n", file, target: self)
+        item(
+            L10n.text("New from Template…"),
+            #selector(newFromTemplate),
+            // Upper case: with a lower-case "n" and Shift, AppKit would not
+            // tell this item from "New Document".
+            "N",
+            file,
+            modifiers: [.command, .shift],
+            target: self,
+        )
         item(L10n.text("Your writing…"), #selector(openLibrary), "o", file, target: self)
         item(
             L10n.text("Import a document…"),
@@ -394,6 +404,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc private func newDocument() {
         workspace.newDocument()
+    }
+
+    @objc private func newFromTemplate() {
+        workspace.newFromTemplate()
     }
 
     @objc private func openDocument() {
