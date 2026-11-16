@@ -1,7 +1,7 @@
 # Quiet home window: the app opens on a blank page
 
 Date: 2026-11-15
-Status: Phase 7 built 2026-11-16; steps A to D shipped. The gate run was not clean because of machine load and must be repeated on a quiet machine (see "Phase 7 outcome"). Accepted 2026-11-15, with every recommendation (see "Answers"). Every decision that is a choice and not a fact is marked **Choice** so it can be reversed.
+Status: Phase 7 built 2026-11-16; steps A to D shipped. The first gate run was not clean because of machine load; the repeat on 2026-11-16 was clean (see "Gate run repeated"). Accepted 2026-11-15, with every recommendation (see "Answers"). Every decision that is a choice and not a fact is marked **Choice** so it can be reversed.
 Spec: `docs/prose-spec.md`, Sections 3.3, 3.4, 4 and 8. Builds on "Fixes after Phase 5" in `docs/plans/2026-11-09-citations.md` (the home window's close button).
 
 ## Goal
@@ -398,9 +398,19 @@ The two builds are the same within the spread of the runs, and the commit before
 
 ### Open items
 
-- One clean gate run on a quiet machine.
+- The clean gate run is done; see "Gate run repeated (2026-11-16)".
 - A look in the running app at what no test covers: the pointing hand and hover under a real pointer, `⌘W` with a sheet open, the Settings picker, and the sidebar's change from recents to the document's folder at the first key.
 - Launch time on an iCloud library is not measured.
 - If the app quits in the moment between leaving an untouched page and its delete, the page stays as an empty "Untitled" document.
 - Arrow keys do not move through sidebar rows (the file tree and the recents should gain them together).
 - No test checks that the search field and footer are hidden while recents show.
+
+## Gate run repeated (2026-11-16)
+
+Run by the Phase 8 session on commit `28af57f` (Phase 7's code with the Phase 8 design note merged; no source change).
+
+- Lint clean. Release build clean. 319 core tests and 244 app tests passed with no rerun, at a load average of 6 to 15. Coverage 90.50 percent.
+- The book benchmark in the same run failed two gates on War and Peace at a load average of 15 to 18: one Writing mode keystroke took 320.79 ms against 250 ms, and the Focus typewriter step p95 was 54.10 ms against 33 ms.
+- Cause found: a test process from the Phase 6 spike (`typesetTypingSpikeLatencyBooks`, started 2026-11-10 12:52) had no parent and had used a whole core for six days. It was stopped. It ran through all of Phase 7's checks, so it is a likely part of the load those checks met.
+- The benchmark run again at a load average of 4 to 5 passed every gate. Typing p95: Code 6.04 and 3.58 ms (War and Peace, SICP), Writing 6.72 and 4.75 ms, Focus 10.05 and 7.34 ms. Scroll and draw p95: 2.45 and 2.42, 11.25 and 4.28, 7.94 and 6.81 ms. Typewriter step p95: 19.97 and 20.04 ms against 33 ms.
+- The tests and the benchmark were clean in two runs, not one. The tests have no timing dependence on the benchmark, so Phase 7's gate is met.

@@ -164,4 +164,4 @@ Open: Tehran's decision on step 3; one benchmark run on a quiet machine (the gat
 - Found in review: a blank page typed in before the library started stayed marked untouched; fixed in step C.
 - The machine was under outside load all night (13 to 130: `searchpartyd`, FastFolderFinder, Spotlight, Dia, another session). No full run was clean; each failed one to three timing tests that passed alone. The gate run failed the Focus typewriter gate on both books. A comparison with the commit before Phase 7 at the same load gave the same numbers.
 
-Open: one clean gate run on a quiet machine; a look in the running app at the pointing hand, `⌘W` with a sheet, the Settings picker and the sidebar's change at the first key; the open items at the end of the note.
+Gate run repeated clean on 2026-11-16 by the Phase 8 session, after an orphaned Phase 6 spike test process (a whole core since 2026-11-10) was stopped; see the note. Open: a look in the running app at the pointing hand, `⌘W` with a sheet, the Settings picker and the sidebar's change at the first key; the open items at the end of the note.

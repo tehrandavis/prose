@@ -39,7 +39,7 @@ Colours, type, radius and spacing come from Intent (`~/dev/Cadence/Cadence/Theme
 | 4 | Focus mode, floating toolbar, syntax-aware spell check | Done 2026-11-09 |
 | 5 | Citations: `.bib` reload from disk, citation picker, Zotero via Better BibTeX (linked auto-export per project) | Done 2026-11-09 |
 | 6 | Quiet Writing mode: setup lines and comments fold, the open block uses the document's font with faint markers, a spike for typing in the rendered paragraph (`docs/plans/2026-11-09-quiet-writing-mode.md`) | Done 2026-11-10 |
-| 7 | Quiet home window: opens on a blank page, templates behind one toolbar button, rows highlight on hover and selection, recents in the blank page's sidebar (`docs/plans/2026-11-15-quiet-home-window.md`) | Built 2026-11-16; one clean gate run on a quiet machine is owed |
+| 7 | Quiet home window: opens on a blank page, templates behind one toolbar button, rows highlight on hover and selection, recents in the blank page's sidebar (`docs/plans/2026-11-15-quiet-home-window.md`) | Done 2026-11-16 |
 | 8 | Comments: Word-style comments for Typst, anchored to text, shown in the margin, stored in the `.typ` file as Typst comments (decided 2026-11-15) | Not started (asked for 2026-11-15) |
 | 9 | Info popover, export sheet, per-document mode memory, screenshots, writing guide | Not started |
 
