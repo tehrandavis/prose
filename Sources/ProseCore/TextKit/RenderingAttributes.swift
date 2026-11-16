@@ -241,6 +241,62 @@ public final class RenderingAttributes {
         }
     }
 
+    /// The comment highlights (Phase 8 decision 6), as `setBackgrounds` last
+    /// set them, moved with every edit.
+    public private(set) var backgrounds: [(range: NSRange, color: PlatformColor)] = []
+
+    /// Makes `.backgroundColor` cover exactly `runs` (sorted, disjoint), and
+    /// nothing else: the comment highlights in source text. Writes only
+    /// spans that differ from what is drawn, and looks only at the old and
+    /// new runs, so the same runs again write nothing. Call `commit()` after.
+    public func setBackgrounds(_ runs: [(range: NSRange, color: PlatformColor)]) {
+        let whole = NSRange(location: 0, length: mirror.length)
+        let runs = runs.compactMap { run -> (range: NSRange, color: PlatformColor)? in
+            let range = NSIntersectionRange(run.range, whole)
+            return range.length > 0 ? (range, run.color) : nil
+        }
+        let regions = merged(backgrounds.map(\.range) + runs.map(\.range))
+        backgrounds = runs
+        var next = 0
+        for region in regions {
+            while next < runs.count, NSMaxRange(runs[next].range) <= region.location {
+                next += 1
+            }
+            let desired = NSMutableAttributedString(string: String(repeating: " ", count: region.length))
+            var index = next
+            while index < runs.count, runs[index].range.location < NSMaxRange(region) {
+                let piece = NSIntersectionRange(runs[index].range, region)
+                desired.addAttribute(
+                    .backgroundColor,
+                    value: runs[index].color,
+                    range: NSRange(location: piece.location - region.location, length: piece.length),
+                )
+                index += 1
+            }
+            var changes: [(NSRange, Any?)] = []
+            desired.enumerateAttribute(.backgroundColor, in: NSRange(location: 0, length: region.length)) {
+                wanted, span, _ in
+                var cursor = region.location + span.location
+                let end = region.location + NSMaxRange(span)
+                while cursor < end {
+                    var current = NSRange()
+                    let drawn = mirror.attribute(.backgroundColor, at: cursor, effectiveRange: &current)
+                    let stop = min(end, NSMaxRange(current))
+                    guard stop > cursor else {
+                        break
+                    }
+                    if (drawn as? NSObject)?.isEqual(wanted) != true, drawn != nil || wanted != nil {
+                        changes.append((NSRange(location: cursor, length: stop - cursor), wanted))
+                    }
+                    cursor = stop
+                }
+            }
+            for (span, wanted) in changes {
+                set(.backgroundColor, value: wanted, range: span)
+            }
+        }
+    }
+
     /// Number of UTF-16 units the mirror covers (the text length).
     public var length: Int {
         mirror.length
@@ -252,11 +308,16 @@ public final class RenderingAttributes {
         let whole = NSRange(location: 0, length: mirror.length)
         let kept = NSMutableAttributedString(string: String(repeating: " ", count: mirror.length))
         if keepingSpelling {
-            mirror.enumerateAttribute(.spellingState, in: whole) { value, span, _ in
-                if let value {
-                    kept.addAttribute(.spellingState, value: value, range: span)
+            // The comment highlights stay with the spelling state.
+            for key in [NSAttributedString.Key.spellingState, .backgroundColor] {
+                mirror.enumerateAttribute(key, in: whole) { value, span, _ in
+                    if let value {
+                        kept.addAttribute(key, value: value, range: span)
+                    }
                 }
             }
+        } else {
+            backgrounds = []
         }
         mirror = kept
         changes = []
@@ -281,6 +342,18 @@ public final class RenderingAttributes {
             return
         }
         mirror.replaceCharacters(in: range, with: NSAttributedString(string: String(repeating: " ", count: length)))
+        if !backgrounds.isEmpty {
+            // As TextKit moves them: inserted text has none.
+            let delta = length - range.length
+            var emptied = false
+            for index in backgrounds.indices where NSMaxRange(backgrounds[index].range) >= range.location {
+                backgrounds[index].range = SourceStyling.rebase(backgrounds[index].range, editing: range, delta: delta)
+                emptied = emptied || backgrounds[index].range.length == 0
+            }
+            if emptied {
+                backgrounds.removeAll { $0.range.length == 0 }
+            }
+        }
         guard var overlay else {
             return
         }

@@ -65,6 +65,24 @@ enum Theme {
         return NSColor(hex: dark ? 0xD5D9DE : 0x37474F).withAlphaComponent(faintOpacity)
     }
 
+    /// A comment's highlight (Phase 8 decision 6): the warning amber at 28
+    /// percent in light and 32 percent in dark; the active comment's is
+    /// stronger (step D). Body text keeps 4.5:1 or better on it.
+    static let commentHighlightOpacity: (light: CGFloat, dark: CGFloat) = (0.28, 0.26)
+    static let activeCommentHighlightOpacity: CGFloat = 0.5
+    static let commentHighlight = commentFill(light: commentHighlightOpacity.light, dark: commentHighlightOpacity.dark)
+    static let activeCommentHighlight = commentFill(
+        light: activeCommentHighlightOpacity,
+        dark: activeCommentHighlightOpacity,
+    )
+
+    private static func commentFill(light: CGFloat, dark: CGFloat) -> NSColor {
+        NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            return NSColor(hex: 0xE8A838).withAlphaComponent(isDark ? dark : light)
+        }
+    }
+
     static let background = Color(nsColor: nativeBackground)
     static let editor = Color(nsColor: nativeEditor)
     static let panel = Color(nsColor: nativePanel)

@@ -87,6 +87,9 @@ final class WritingController: NSObject {
     /// (`openBlockWaits`) until it is over (`storageEditDidEnd`).
     var storageEditInProgress = false
     var openBlockWaits = false
+    /// Whether comment highlights lay over rendered blocks in view when they
+    /// last changed (`commentHighlightsChanged`).
+    var commentHighlightsShown = false
 
     init(editor: ManuscriptTextView) {
         self.editor = editor
@@ -109,6 +112,7 @@ final class WritingController: NSObject {
                 return
             }
             restart { $0.switchFile(to: file, text: editor.string) }
+            model.setCommentStore(editor.comments.store)
             beginEntry()
             return
         }
@@ -134,6 +138,8 @@ final class WritingController: NSObject {
         }
         model.hidesSetupRows = focused
         model.start(file: file, text: editor.string)
+        // Phase 8: the comment store folds on its own, hidden.
+        model.setCommentStore(editor.comments.store)
         beginEntry()
     }
 

@@ -9,7 +9,7 @@ status=0
 # retry a failing measurement or let an old report stand in for the current run.
 python3 - <<'PYCLEAN'
 from pathlib import Path
-for name in ('war-and-peace.json', 'sicp.json', 'war-and-peace-writing.json', 'sicp-writing.json', 'war-and-peace-focus.json', 'sicp-focus.json', 'syntax.json', 'summary.md', 'book-preview-1.png', 'book-preview-224.png', 'book-preview-448.png'):
+for name in ('war-and-peace-writing-comments.json', 'sicp-writing-comments.json', 'war-and-peace.json', 'sicp.json', 'war-and-peace-writing.json', 'sicp-writing.json', 'war-and-peace-focus.json', 'sicp-focus.json', 'syntax.json', 'summary.md', 'book-preview-1.png', 'book-preview-224.png', 'book-preview-448.png'):
     (Path('build/benchmarks') / name).unlink(missing_ok=True)
 PYCLEAN
 PROSE_INTEGRATION=1 \
@@ -39,6 +39,18 @@ PROSE_INTEGRATION=1 PROSE_FOCUS_MODE=1 PROSE_CODE_WORD="define size" PROSE_SEARC
   PROSE_LARGE_FIXTURE="$PWD/Examples/Books/SICP/main.typ" \
   PROSE_PERFORMANCE_REPORT="$PWD/build/benchmarks/sicp-focus.json" \
   swift test --skip-build --enable-code-coverage --filter realMultiMegabyteDocumentNavigationScrollingAndTyping || status=1
+# Phase 8 decision 9: with PROSE_BENCH_COMMENTS set (500 for the gate),
+# Writing mode runs again on each book with that many comments in it.
+if [ -n "${PROSE_BENCH_COMMENTS:-}" ]; then
+  PROSE_INTEGRATION=1 PROSE_WRITING_MODE=1 \
+    PROSE_LARGE_FIXTURE="$PWD/Examples/Books/WarAndPeace/war-and-peace-highlighted.typ" \
+    PROSE_PERFORMANCE_REPORT="$PWD/build/benchmarks/war-and-peace-writing-comments.json" \
+    swift test --skip-build --enable-code-coverage --filter realMultiMegabyteDocumentNavigationScrollingAndTyping || status=1
+  PROSE_INTEGRATION=1 PROSE_WRITING_MODE=1 PROSE_CODE_WORD="define size" PROSE_SEARCH_WORD=procedure PROSE_BENCH_EXPORT=1 \
+    PROSE_LARGE_FIXTURE="$PWD/Examples/Books/SICP/main.typ" \
+    PROSE_PERFORMANCE_REPORT="$PWD/build/benchmarks/sicp-writing-comments.json" \
+    swift test --skip-build --enable-code-coverage --filter realMultiMegabyteDocumentNavigationScrollingAndTyping || status=1
+fi
 PROSE_SYNTAX_REPORT="$PWD/build/benchmarks/syntax.json" \
   swift test --skip-build --enable-code-coverage --filter bookLengthSourcesParseWithinBudget || status=1
 PROSE_INTEGRATION=1 PROSE_BOOK_PREVIEW=1 \
@@ -47,8 +59,9 @@ python3 - <<'PY'
 import json
 from pathlib import Path
 books = ['war-and-peace', 'sicp', 'war-and-peace-writing', 'sicp-writing', 'war-and-peace-focus', 'sicp-focus']
+books += [name for name in ('war-and-peace-writing-comments', 'sicp-writing-comments') if Path(f'build/benchmarks/{name}.json').exists()]
 def split(name):
-    for suffix, mode in (('-writing', 'Writing'), ('-focus', 'Focus')):
+    for suffix, mode in (('-writing-comments', 'Writing, with comments'), ('-writing', 'Writing'), ('-focus', 'Focus')):
         if name.endswith(suffix):
             return name[:-len(suffix)], mode
     return name, 'Code'

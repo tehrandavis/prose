@@ -109,6 +109,18 @@ public struct WritingGlyphMap: Sendable {
         if selected.contains(where: { $0.location <= block.location && NSMaxRange($0) >= NSMaxRange(block) }) {
             return [bounds]
         }
+        return lineRects(for: selected)
+    }
+
+    /// On each line, from the first to the last glyph of `ranges`, as tall
+    /// as the line's boxes; nothing for a line with none. A comment's
+    /// highlight (Phase 8 decision 6) covers its glyphs this way even when
+    /// its anchor holds the whole block.
+    public func lineRects(for ranges: [NSRange]) -> [CGRect] {
+        let selected = ranges.filter { $0.length > 0 }
+        guard !selected.isEmpty else {
+            return []
+        }
         func isSelected(_ box: Box) -> Bool {
             guard let offset = box.offset else {
                 return false

@@ -20,7 +20,11 @@ extension WritingFlowTests {
         let focusMode = ProcessInfo.processInfo.environment["PROSE_FOCUS_MODE"] == "1"
         let writingMode = focusMode || ProcessInfo.processInfo.environment["PROSE_WRITING_MODE"] == "1"
         let data = try Data(contentsOf: URL(fileURLWithPath: path))
-        let source = try #require(String(data: data, encoding: .utf8))
+        // `PROSE_BENCH_COMMENTS=500` spreads that many comments through the
+        // book first (Phase 8 decision 9's gate); the default run has none.
+        let comments = ProcessInfo.processInfo.environment["PROSE_BENCH_COMMENTS"].flatMap(Int.init) ?? 0
+        let original = try #require(String(data: data, encoding: .utf8))
+        let source = commented(original, count: comments)
         #expect(data.count > 1_000_000)
         let initialMemory = physicalFootprint()
         // On macOS 15 every edit walks each text element TextKit has built
@@ -46,6 +50,7 @@ extension WritingFlowTests {
         let bitmap = try #require(editor.bitmapImageRepForCachingDisplay(in: editor.visibleRect))
         let textSystem = editor.textLayoutManager == nil ? "textkit1" : "textkit2"
         var report: [String: Any] = ["bytes": data.count, "utf16": source.utf16.count, "open_seconds": openTime,
+                                     "comments": comments,
                                      "text_system": textSystem, "memory_before_mib": initialMemory,
                                      "memory_open_mib": physicalFootprint(),
                                      "editor_mode": focusMode ? "focus" : writingMode ? "writing" : "code"]
@@ -87,10 +92,14 @@ extension WritingFlowTests {
         try await engineSettled(state: app.workspace.stateDirectory)
         report["engine_settle_seconds"] = seconds(settleStart.duration(to: .now))
         let ns = source as NSString
+        // Targets in the book without comments; with them, the same line and
+        // column, so both runs jump to and type in the same paragraphs.
+        let plain = original as NSString
         var offsets = [0.1, 0.9, 0.5, 0.99, 0.01, 0.75].map { fraction in
-            let start = Int(Double(ns.length) * fraction)
-            let range = ns.paragraphRange(for: NSRange(location: start, length: 0))
-            return min(ns.length - 1, range.location + min(4, max(0, range.length - 2)))
+            let start = Int(Double(plain.length) * fraction)
+            let range = plain.paragraphRange(for: NSRange(location: start, length: 0))
+            let target = min(plain.length - 1, range.location + min(4, max(0, range.length - 2)))
+            return comments == 0 ? target : sameLine(target, from: plain, in: ns)
         }
         var writing: WritingBenchmark?
         if writingMode {
@@ -890,4 +899,51 @@ private struct UsageSnapshot {
         ["wall_seconds": seconds(time.duration(to: end.time)), "main_thread_cpu_seconds": end.thread - thread,
          "process_cpu_seconds": end.process - process, "children_cpu_seconds": end.children - children]
     }
+}
+
+/// `book` with `count` comments spread through it, each with a reply: an
+/// anchor of four words on every sixth word of plain lines, evenly spaced,
+/// and the store at the end (as the comment index tests build it).
+private func commented(_ book: String, count: Int) -> String {
+    guard count > 0 else {
+        return book
+    }
+    var lines = book.components(separatedBy: "\n")
+    var slots: [(line: Int, word: Int)] = []
+    for (index, line) in lines.enumerated() where line.count > 40 && line.first?.isLetter == true &&
+        !line.contains(where: { "#$@*_<>[]`\\/{}~=".contains($0) })
+    {
+        let words = line.components(separatedBy: " ").count
+        slots += stride(from: 1, to: words - 4, by: 6).map { (index, $0) }
+    }
+    var generator = SystemRandomNumberGenerator()
+    var used: Set<String> = []
+    var records: [CommentSyntax.Record] = []
+    let step = max(1, slots.count / count)
+    for (number, slot) in stride(from: 0, to: slots.count, by: step).map({ slots[$0] }).prefix(count).enumerated() {
+        var words = lines[slot.line].components(separatedBy: " ")
+        let id = CommentSyntax.newID(avoiding: used, using: &generator)
+        used.insert(id)
+        words[slot.word] = CommentSyntax.startMarker(id) + words[slot.word]
+        words[slot.word + 3] += CommentSyntax.endMarker(id)
+        lines[slot.line] = words.joined(separator: " ")
+        let date = String(format: "2026-11-%02dT10:00:00Z", 1 + number % 28)
+        records.append(.init(kind: .comment, id: id, author: "Reader", date: date, text: "Comment \(number)."))
+        records.append(.init(kind: .reply, id: id, author: "Writer", date: date, text: "Reply \(number)."))
+    }
+    let store = ([CommentSyntax.header] + records.sorted { $0.id < $1.id }.map(CommentSyntax.line))
+        .joined(separator: "\n")
+    return lines.joined(separator: "\n") + "\n\n" + store + "\n"
+}
+
+/// The offset in `text` at the line and column of `offset` in `plain`,
+/// for a text that differs from `plain` only inside some of its lines.
+private func sameLine(_ offset: Int, from plain: NSString, in text: NSString) -> Int {
+    let line = plain.substring(to: offset).components(separatedBy: "\n").count - 1
+    let column = offset - plain.lineRange(for: NSRange(location: offset, length: 0)).location
+    var start = 0
+    for _ in 0 ..< line {
+        start = NSMaxRange(text.lineRange(for: NSRange(location: start, length: 0)))
+    }
+    return min(text.length - 1, start + column)
 }

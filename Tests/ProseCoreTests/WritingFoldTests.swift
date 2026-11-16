@@ -856,3 +856,58 @@ private struct SplitMixFolds: RandomNumberGenerator {
     print("Role reads for 4,000 paragraphs: \(roles)")
     #expect(roles < .milliseconds(200))
 }
+
+// MARK: - The comment store (Phase 8 decision 6)
+
+/// The store folds, and closed it is hidden: every paragraph collapsed, no mark. However many
+/// records it holds, it folds. The caret anywhere in it, its first
+/// character included, opens it. An edit inside it while it is closed does
+/// not open it, and with `editsOpenFolds` off no edit opens any fold.
+@Test @MainActor func writingFoldsHideTheCommentStoreAndOpenItOnlyForTheCaret() async throws {
+    let draft = try FoldDraft()
+    let records = (0 ..< 450).map { "// prose:reply k3f9x2 | Ada | 2026-11-15T14:02:11Z | Reply \($0)." }
+    let source = setupInside + "\n// prose:comments 1\n" +
+        "// prose:comment k3f9x2 | Ada | 2026-11-15T14:02:11Z | First.\n" + records.joined(separator: "\n") + "\n"
+    let text = NSMutableString(string: source)
+    let (layout, _) = try await foldModel(source, draft.renderer(), draft)
+    let header = text.range(of: "// prose:comments 1").location
+    let store = NSRange(location: header, length: text.length - 1 - header)
+    // Over 400 lines, it is a long block until the store is known.
+    #expect(layout.fold(holding: header) == nil)
+    layout.setCommentStore(store)
+    #expect(layout.commentStore == store)
+    let fold = try #require(layout.fold(holding: header))
+    #expect(fold.isHidden && !fold.isOpen && fold.span.location == header)
+    for paragraph in paragraphs(text) where paragraph.location >= header {
+        #expect(layout.role(forParagraph: paragraph) == .collapsed)
+    }
+
+    // An edit inside it, made while it is closed, leaves it closed and moves it.
+    let body = text.range(of: "Body").location
+    layout.selectionDidChange(caret: body)
+    replace(text, NSRange(location: text.range(of: "Reply 3.").location, length: 0), "x", layout)
+    #expect(layout.commentStore?.length == store.length + 1)
+    #expect(layout.fold(holding: header)?.isHidden == true)
+    await layout.idle()
+    #expect(layout.fold(holding: header)?.isHidden == true)
+
+    // The caret at its first character opens it; leaving closes it.
+    layout.selectionDidChange(caret: header)
+    #expect(layout.fold(holding: header)?.isOpen == true)
+    layout.selectionDidChange(caret: body)
+    #expect(layout.fold(holding: header).map { !$0.isOpen && $0.isHidden } == true)
+
+    // With edits marked as a comment action's, an edit in a setup fold
+    // leaves it closed; afterwards edits open folds again.
+    let setup = text.range(of: "#set").location
+    layout.editsOpenFolds = false
+    replace(text, text.range(of: "11pt"), "12pt", layout)
+    #expect(layout.fold(holding: setup)?.isOpen == false)
+    layout.editsOpenFolds = true
+    replace(text, text.range(of: "12pt"), "13pt", layout)
+    #expect(layout.fold(holding: setup)?.isOpen == true)
+
+    // No store: a long block again.
+    layout.setCommentStore(nil)
+    #expect(layout.fold(holding: header) == nil)
+}

@@ -420,8 +420,13 @@ final class Workspace: ObservableObject {
         metrics.position(at: selection.location)
     }
 
+    /// The characters that are not white space in the open file's comment
+    /// markers and records (`CommentIndex.hiddenCharacterCount`), which the
+    /// count in the status bar leaves out (Phase 8 decision 8).
+    @Published var commentHiddenCharacters = 0
+
     var wordCount: Int {
-        metrics.wordCount
+        max(0, metrics.wordCount - commentHiddenCharacters)
     }
 
     private var commandResults: (query: String, group: String?, searching: Bool, commands: [WritingCommand])?

@@ -248,6 +248,44 @@ public struct CommentIndex: Equatable, Sendable {
         stored.count
     }
 
+    /// Where an attached comment is: its two markers and its anchor.
+    public struct Anchor: Equatable, Sendable {
+        public let id: String
+        public let startMarker: NSRange
+        public let endMarker: NSRange
+        /// The text between the two markers, without whitespace at its edges.
+        public let range: NSRange
+        public let isResolved: Bool
+
+        public init(id: String, startMarker: NSRange, endMarker: NSRange, range: NSRange, isResolved: Bool) {
+            self.id = id
+            self.startMarker = startMarker
+            self.endMarker = endMarker
+            self.range = range
+            self.isResolved = isResolved
+        }
+    }
+
+    /// Every attached comment's markers and anchor, in document order. It
+    /// reads no record, so it costs much less than `comments`.
+    public var anchors: [Anchor] {
+        stored.compactMap { comment in
+            guard comment.state == .attached, let startPart = comment.start, let endPart = comment.end else {
+                return nil
+            }
+            let start = partRange(startPart), end = partRange(endPart)
+            let lower = NSMaxRange(start) + (comment.inset?.lead ?? 0)
+            let upper = comment.inset.map { end.location - $0.trail } ?? lower
+            return Anchor(
+                id: comment.id,
+                startMarker: start,
+                endMarker: end,
+                range: NSRange(location: lower, length: max(0, upper - lower)),
+                isResolved: !comment.resolutions.isEmpty,
+            )
+        }
+    }
+
     /// Every problem, in source order.
     public var problems: [Problem] {
         storedProblems.map { problem in

@@ -209,7 +209,9 @@ final class ManuscriptTextView: NSTextView {
     }
 
     override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        composing = true
         super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
+        composing = false
         // A composition that replaced a selection in a rendered block opened
         // it; lay it out before the input method asks where the text is.
         writing.editDidEnd()
@@ -221,6 +223,7 @@ final class ManuscriptTextView: NSTextView {
         // composition apply now.
         writing.selectionDidChange()
         workspace?.spelling.selectionDidChange(selectedRange())
+        comments.compositionEnded()
     }
 
     weak var workspace: Workspace?
@@ -271,6 +274,13 @@ final class ManuscriptTextView: NSTextView {
     var holdsSelection = false
     private var characterEditCount = 0
     private var characterEdit: TextReplacement?
+    /// The open file's comments (Phase 8): the index, the highlight and
+    /// the store's fold.
+    lazy var comments = CommentController(editor: self)
+    /// While a comment action or a rule of decision 4 makes its edits.
+    var commentEditDepth = 0
+    /// While `setMarkedText` runs: the edit it makes starts a composition.
+    private(set) var composing = false
 
     private var viewportTask: Task<Void, Never>?
     private var hoverViewportBounds: NSRect?
@@ -359,6 +369,12 @@ final class ManuscriptTextView: NSTextView {
         writing.textDidChange(in: storage, edited: range, delta: delta)
         spellingTextDidChange(edited: range, delta: delta)
         workspace?.spelling.textDidChange(edited: range, delta: delta, in: storage.string as NSString)
+        if range.length - delta >= 0, NSMaxRange(range) <= storage.length {
+            comments.textDidChange(
+                replacing: NSRange(location: range.location, length: range.length - delta),
+                with: (storage.string as NSString).substring(with: range),
+            )
+        }
         characterEditCount += 1
         guard characterEditCount == 1, range.length - delta >= 0,
               NSMaxRange(range) <= storage.length
@@ -400,6 +416,10 @@ final class ManuscriptTextView: NSTextView {
         sourceHover.observeWindow()
         observeUndoManager()
         window?.invalidateCursorRects(for: self)
+    }
+
+    func observeUndoManagerForComments() {
+        observeUndoManager()
     }
 
     private func observeUndoManager() {
@@ -747,7 +767,9 @@ final class ManuscriptTextView: NSTextView {
     override func drawBackground(in rect: NSRect) {
         super.drawBackground(in: rect)
         // Under the fragments: rendered blocks are transparent outside ink,
-        // as NSTextView's own selection view lies under its text.
+        // as NSTextView's own selection view lies under its text. A
+        // comment's highlight lies under the selection (Phase 8 decision 6).
+        writing.drawCommentHighlights(in: rect)
         writing.drawSelection(in: rect)
     }
 
@@ -768,6 +790,7 @@ final class ManuscriptTextView: NSTextView {
         highlight()
         spellingDidLoad(content)
         spellingChanged([NSRange(location: 0, length: (content as NSString).length)])
+        comments.open(content)
         // After the first layout pass. Revealing a distant caret before it
         // makes TextKit 2 lay out every paragraph above it, and each later
         // keystroke then pays for all of them (40 ms in War and Peace).
@@ -784,7 +807,8 @@ final class ManuscriptTextView: NSTextView {
     /// The selection moved: apply styles that waited for a composition. A
     /// mouse drag updates once it ends; `byPointer` marks that update.
     func selectionChanged(byPointer: Bool = false, anchor: Int? = nil) {
-        if !selectingWithMouse {
+        // A comment's edits show Writing mode only the selection they end with.
+        if !selectingWithMouse, commentEditDepth == 0 {
             styler?.selectionDidChange()
             writing.selectionDidChange(byPointer: byPointer, anchor: anchor)
             workspace?.spelling.selectionDidChange(selectedRange())
@@ -859,6 +883,11 @@ final class ManuscriptTextView: NSTextView {
     override func shouldChangeText(in affectedCharRange: NSRange, replacementString: String?) -> Bool {
         guard workspace?.canEditSource != false else {
             return false
+        }
+        // Phase 8 decision 4: an edit near a comment's markers is made
+        // another way, or refused.
+        if let outcome = commentRuleOutcome(affectedCharRange, replacementString) {
+            return outcome
         }
         let accepted = super.shouldChangeText(in: affectedCharRange, replacementString: replacementString)
         if accepted {

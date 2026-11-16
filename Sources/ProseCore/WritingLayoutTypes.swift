@@ -293,6 +293,8 @@ struct FoldRecord {
     /// The blank UTF-16 units after the last block's span that a mark takes.
     var trail: Int
     var pill: WritingPill
+    /// The comment store's fold (Phase 8 decision 6): closed, it is hidden.
+    var store = false
     /// Opened by the pointer or by an edit; only `setFold(open: false, ...)`
     /// and closing every fold clear it.
     var pinned = false

@@ -86,7 +86,7 @@ final class WritingSelectionNavigation: NSTextSelectionNavigation {
         extending: Bool,
         confined: Bool,
     ) -> NSTextSelection? {
-        guard extending, let controller, Thread.isMainThread else {
+        guard let controller, Thread.isMainThread else {
             return super.destinationSelection(
                 for: textSelection,
                 direction: direction,
@@ -95,23 +95,53 @@ final class WritingSelectionNavigation: NSTextSelectionNavigation {
                 confined: confined,
             )
         }
+        let move = WritingKeyboardMove(direction: direction, destination: destination, confined: confined)
         // NSTextSelection is not Sendable; this runs on the main thread.
         nonisolated(unsafe) var result: NSTextSelection?
         nonisolated(unsafe) var handled = false
         nonisolated(unsafe) let navigation = self
-        MainActor.assumeIsolated {
-            let move = WritingKeyboardMove(direction: direction, destination: destination, confined: confined)
-            if let found = controller.keyboardDestination(
-                move,
-                native: { navigation.nativeDestination(from: $0, move) },
-            ) {
-                result = found
-                handled = true
+        if extending {
+            MainActor.assumeIsolated {
+                if let found = controller.keyboardDestination(
+                    move,
+                    native: { navigation.nativeDestination(from: $0, move) },
+                ) {
+                    result = found
+                    handled = true
+                }
             }
         }
-        guard handled else {
-            return super.destinationSelection(
-                for: textSelection,
+        guard !handled else {
+            return result
+        }
+        result = super.destinationSelection(
+            for: textSelection,
+            direction: direction,
+            destination: destination,
+            extending: extending,
+            confined: confined,
+        )
+        guard move.isHorizontalStep else {
+            return result
+        }
+        // A comment's marker is passed in one step (Phase 8 decision 4):
+        // TextKit steps on, a character at a time, until the selection's
+        // ends are out of every marker. Each step is TextKit's own, so the
+        // selection keeps its fixed end.
+        nonisolated(unsafe) let manager = textSelectionDataSource as? NSTextLayoutManager
+        for _ in 0 ..< CommentSyntax.markerLength {
+            guard let current = result else {
+                break
+            }
+            nonisolated(unsafe) let probe = current
+            let inside = MainActor.assumeIsolated {
+                manager.map { controller.endsInsideCommentMarker(probe, in: $0) } ?? false
+            }
+            guard inside else {
+                break
+            }
+            result = super.destinationSelection(
+                for: current,
                 direction: direction,
                 destination: destination,
                 extending: extending,

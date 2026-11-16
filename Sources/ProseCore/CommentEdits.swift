@@ -148,6 +148,44 @@ public enum CommentEdits {
         return removing(parts, index: index, source: source)
     }
 
+    /// Removes every record of the comments `ids`, and the store's header and
+    /// the blank line before it when no record is left. The markers stay:
+    /// the writer's edit that removed them is applied with these
+    /// (decision 4). Empty when the comments have no record.
+    public static func deleteRecords(of ids: Set<String>, index: CommentIndex, source: NSString) -> [TextReplacement] {
+        let parts = index.parts.filter { part in
+            part.record.map { ids.contains($0.id) } ?? false
+        }
+        return parts.isEmpty ? [] : removing(parts, index: index, source: source)
+    }
+
+    /// The store, from the first character of its first line to the end of
+    /// its last line's content; nil when the file has no record.
+    public static func storeRange(index: CommentIndex, source: NSString) -> NSRange? {
+        let parts = store(index, source: source)
+        guard let first = parts.first, let last = parts.last else {
+            return nil
+        }
+        return NSRange(location: first.range.location, length: NSMaxRange(last.range) - first.range.location)
+    }
+
+    /// `store` after one native edit of `edit` (in the text before it) that
+    /// changed the length by `delta`, until the index reads the new text: it
+    /// grows with text inserted at either edge, since a record added at the
+    /// store's end belongs to it. Nil when the edit removed it.
+    public static func rebaseStore(_ store: NSRange, editing edit: NSRange, delta: Int) -> NSRange? {
+        let storeEnd = NSMaxRange(store), editEnd = NSMaxRange(edit), inserted = edit.length + delta
+        if editEnd < store.location {
+            return NSRange(location: store.location + delta, length: store.length)
+        }
+        if edit.location > storeEnd {
+            return store
+        }
+        let start = store.location <= edit.location ? store.location : edit.location
+        let end = storeEnd >= editEnd ? storeEnd + delta : edit.location + inserted
+        return end > start ? NSRange(location: start, length: end - start) : nil
+    }
+
     /// Removes one reply.
     public static func deleteReply(
         _ entry: CommentIndex.Entry,

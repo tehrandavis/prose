@@ -121,6 +121,16 @@ public final class WritingLayout {
     /// next rebuild: entry indices do not survive a new block list, text does.
     private var pendingFolds: (looks: [WritingFold], pins: [NSRange])?
 
+    /// The comment store (Phase 8 decision 6): the comment blocks inside it
+    /// fold on their own, and that fold draws no mark and takes no height
+    /// while closed. The caret anywhere in it opens it. Moved with every
+    /// edit until the view sets it again from the comment index.
+    public private(set) var commentStore: NSRange?
+
+    /// False while a comment action makes its edits: an edit then opens no
+    /// closed fold, so a reply written into the store leaves it closed.
+    public var editsOpenFolds = true
+
     /// Replies received, for tests.
     public private(set) var syncReplies = 0
     public private(set) var renderReplies = 0
@@ -190,6 +200,7 @@ public final class WritingLayout {
         caretHeld = false
         firstRendering = 0
         pendingFolds = nil
+        commentStore = nil
         activeID = nil
         leftID = nil
         contextText = nil
@@ -224,8 +235,9 @@ public final class WritingLayout {
             return
         }
         // Measured in the text before the edit.
-        let pins = closedFolds(touchedBy: original)
+        let pins = editsOpenFolds ? closedFolds(touchedBy: original) : []
         text.replaceCharacters(in: original, with: source.substring(with: edited))
+        commentStore = commentStore.flatMap { CommentEdits.rebaseStore($0, editing: original, delta: delta) }
         revision += 1
         // Paragraph offsets moved, even where no block did.
         changedRoles()
@@ -368,6 +380,25 @@ public final class WritingLayout {
         refreshDue = true
         urgentRefresh = true
         pump()
+    }
+
+    /// Sets the comment store's range in today's text, or none. The blocks
+    /// it gains or loses fold again.
+    public func setCommentStore(_ range: NSRange?) {
+        guard range != commentStore else {
+            return
+        }
+        let old = commentStore
+        commentStore = range
+        guard isRunning, foldsEnabled, !entries.isEmpty else {
+            return
+        }
+        let touched = [old, range].compactMap(\.self).flatMap { entries(intersecting: $0) }
+        guard let low = touched.min(), let high = touched.max() else {
+            return
+        }
+        restate([], refolding: low ... high)
+        flush()
     }
 
     // MARK: - Queries
@@ -876,13 +907,25 @@ public final class WritingLayout {
     /// split while it waits.
     private func isQuiet(_ index: Int) -> Bool {
         let entry = entries[index]
-        guard entry.kind != .include, entry.kind != .raw, entry.aligned, entry.lines <= Self.longBlockLines else {
+        // The store folds however many records it holds.
+        let long = entry.lines > Self.longBlockLines && !inStore(index)
+        guard entry.kind != .include, entry.kind != .raw, entry.aligned, !long else {
             return false
         }
         guard entry.kind.renders else {
             return true
         }
         return entry.failure == nil && (entry.rendering?.blank ?? entry.wasBlank)
+    }
+
+    /// Whether block `index` is a comment block inside the comment store.
+    private func inStore(_ index: Int) -> Bool {
+        guard let store = commentStore, entries[index].kind == .comment else {
+            return false
+        }
+        // A block's range may take the line break after the store's last line.
+        let location = entries[index].range.location
+        return location >= store.location && location < NSMaxRange(store)
     }
 
     /// Whether only blank text lies between block `index` and the next.
@@ -908,7 +951,7 @@ public final class WritingLayout {
             style: .mark(mark),
         )
         let trail = text.blankParagraphsLength(from: end, limit: max(end, limit))
-        return FoldRecord(first: first, last: last, setup: false, trail: trail, pill: pill)
+        return FoldRecord(first: first, last: last, setup: false, trail: trail, pill: pill, store: inStore(first))
     }
 
     private func foldSpan(_ fold: Int) -> NSRange {
@@ -922,7 +965,7 @@ public final class WritingLayout {
         let record = folds[fold]
         let span = foldSpan(fold)
         let open = record.pinned || caretOpen && foldCaret.map { holds(span, $0) } ?? false
-        let hidden = !open && hidesSetupRows && record.setup && foldCaret != span.location
+        let hidden = !open && (record.store || hidesSetupRows && record.setup && foldCaret != span.location)
         return WritingFold(span: span, isOpen: open, pill: record.pill, isHidden: hidden)
     }
 
@@ -959,7 +1002,11 @@ public final class WritingLayout {
             guard look.span.location <= NSMaxRange(edit) else {
                 break
             }
-            if !look.isOpen, NSIntersectionRange(edit, look.span).length > 0 || holds(look.span, edit.location) {
+            // The hidden store opens only for the caret: an undo of a reply
+            // made inside it leaves it closed too.
+            if !look.isOpen, !folds[fold].store,
+               NSIntersectionRange(edit, look.span).length > 0 || holds(look.span, edit.location)
+            {
                 ranges.append(folds[fold].first ... folds[fold].last)
             }
             fold += 1
@@ -1004,7 +1051,9 @@ public final class WritingLayout {
                 continue
             }
             var last = index
-            while last + 1 < entries.count, gapIsBlank(after: last), isQuiet(last + 1) {
+            // The store folds on its own.
+            let store = inStore(index)
+            while last + 1 < entries.count, gapIsBlank(after: last), isQuiet(last + 1), inStore(last + 1) == store {
                 last += 1
             }
             built.append(foldRecord(index, last))
@@ -1061,7 +1110,8 @@ public final class WritingLayout {
             caretHeld = false
         }
         foldCaret = caret
-        if let new, let caret, !caretHeld, caret > foldSpan(new).location {
+        // A hidden store has no row to rest on: its first character opens it too.
+        if let new, let caret, !caretHeld, caret > foldSpan(new).location || folds[new].store {
             caretOpen = true
         }
         return before.flatMap { lookChanged($0.0, from: $0.1) }

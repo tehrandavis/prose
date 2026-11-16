@@ -29,6 +29,11 @@ struct WritingKeyboardMove {
         destination == .character && (direction == .up || direction == .down)
     }
 
+    /// Left, Right, Forward or Backward by one character.
+    var isHorizontalStep: Bool {
+        destination == .character && [.left, .right, .forward, .backward].contains(direction)
+    }
+
     /// Toward the end of the text, for left-to-right text.
     var forward: Bool {
         direction == .forward || direction == .right || direction == .down
@@ -71,12 +76,16 @@ extension WritingController {
         let goal = verticalGoal.flatMap { $0.range == selection ? $0.x : nil }
         verticalGoal = nil
         var x: CGFloat?
-        let end: Int? = if move.isVertical {
+        var end: Int? = if move.isVertical {
             verticalEnd(from: moving, down: move.direction == .down, fixed: fixed, goal: goal, x: &x) {
                 nativeOffset(from: $0, native)
             }
         } else {
             drawnEnd(from: moving, move) ?? nativeOffset(from: moving, native)
+        }
+        if move.isHorizontalStep, let moved = end {
+            // A comment's marker is passed in one step (Phase 8 decision 4).
+            end = pastCommentMarker(moved, from: moving)
         }
         guard let end else {
             return nil
