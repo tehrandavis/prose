@@ -1,7 +1,7 @@
 # Quiet home window: the app opens on a blank page
 
 Date: 2026-11-15
-Status: Accepted 2026-11-15, with every recommendation (see "Answers"). Every decision that is a choice and not a fact is marked **Choice** so it can be reversed.
+Status: Phase 7 built 2026-11-16; steps A to D shipped. The gate run was not clean because of machine load and must be repeated on a quiet machine (see "Phase 7 outcome"). Accepted 2026-11-15, with every recommendation (see "Answers"). Every decision that is a choice and not a fact is marked **Choice** so it can be reversed.
 Spec: `docs/prose-spec.md`, Sections 3.3, 3.4, 4 and 8. Builds on "Fixes after Phase 5" in `docs/plans/2026-11-09-citations.md` (the home window's close button).
 
 ## Goal
@@ -348,3 +348,59 @@ Lint clean. Release build clean. All 319 core tests passed. 1 of 244 app tests f
 
 - No test checks that the search field and the footer are hidden while recents show.
 - The sidebar reads `recent.json` on each redraw while recents show; this was not measured.
+
+## Phase 7 outcome (2026-11-16)
+
+### What shipped
+
+- Prose opens on a blank page that is ready for typing, with a Settings choice for the last document. Only one untouched blank page exists; it is reused, hidden from every list, and deleted when the writer leaves it.
+- The template gallery, the sample book and Universe open from one `grid-four` button in the toolbar, from "New from Template…" (`⌘⇧N`) and from `⌘J`. `⌘N` makes a blank page.
+- Every row that opens something shows the hover wash, the selection fill and the pointing hand, and opens on one click: sidebar files, headings and recents, and the rows of "Your writing…", which also take the arrow keys and Return.
+- A blank page's sidebar lists recent folders and documents. Documents › Open Recent lists them too.
+- `⌘W` closes a sheet, or steps back inside the project, or saves and shows a blank page; on an untouched blank page it quits. The red close button saves and quits.
+- The home state remains only for a library that cannot make a blank page.
+
+### Acceptance tests
+
+All 14 are built and passed in every full run: 1 to 4 in `OpenRowFlowTests.swift`, 5 to 8 in `BlankPageFlowTests.swift`, 9 and 10 in `WindowCloseFlowTests.swift`, 11 and 12 in `LaunchFlowTests.swift`, 13 and 14 in `RecentsFlowTests.swift`.
+
+### The gate run: not clean, because of load
+
+The run started at a load average of 6.4, and the load rose to 9 to 34 during it (FastFolderFinder, Spotlight, another session's compile).
+
+- Lint and the release build were clean. Coverage was 90.46 percent.
+- 2 of 319 core tests and 1 of 244 app tests failed, each on a time limit: `bookLengthSourcesParseWithinBudget`, `httpSourceSaysNotRunningAtOnceWhenNothingListens`, `typingNeverWaitsForTheParser`. No Phase 7 test failed.
+- The book benchmark passed every gate in Code and Writing modes on both books (typing p95 10.8 to 23.3 ms, scroll and draw p95 9.6 to 26.7 ms). It failed the Focus typewriter gate on both: p95 190 ms on War and Peace and 50 ms on SICP against 33 ms.
+
+Phase 7 changed the sidebar (a small AppKit view behind each row, and the sidebar observes the library), and the typewriter step includes SwiftUI layout, so the Focus failure was checked against the commit before Phase 7 (`df4c472`) at the same load (13 to 19), War and Peace in Focus:
+
+| Build | Typewriter step median / p95 (ms) | Key action median / p95 (ms) |
+|-|-|-|
+| Phase 7, run 1 | 54.0 / 139.9 | 31.2 / 114.1 |
+| Before Phase 7, run 1 | 53.5 / 161.0 | 32.5 / 90.2 |
+| Before Phase 7, run 2 | 62.9 / 121.5 | 37.0 / 88.9 |
+| Phase 7, run 2 | 53.2 / 151.4 | 35.2 / 97.7 |
+
+The two builds are the same within the spread of the runs, and the commit before Phase 7 fails the gate at this load too. The comparison shows no cost from Phase 7. It does not replace a gate run: one clean run on a quiet machine (load under about 10 for the whole run) is still owed.
+
+### Decision changes
+
+- The sidebar's group headers use the 11 pt "Outline" style, not the spec's serif header.
+- `⌘W` with a sheet on the writing window closes the sheet. Before, the menu item was disabled there.
+- `⌘W` no longer removes the closed document from recents.
+- The launch setting is stored per Mac, not synced.
+- "Leaving" a blank page is decided by document id, not by URL.
+
+### Costs
+
+- Launch to an editable blank page: about 775 ms on a local library, of which about 50 ms is the wait for the library (one sample, release build).
+- An untouched blank page is one small folder in the library. On an iCloud library, another Mac shows it as an empty "Untitled" document until this Mac leaves the page.
+
+### Open items
+
+- One clean gate run on a quiet machine.
+- A look in the running app at what no test covers: the pointing hand and hover under a real pointer, `⌘W` with a sheet open, the Settings picker, and the sidebar's change from recents to the document's folder at the first key.
+- Launch time on an iCloud library is not measured.
+- If the app quits in the moment between leaving an untouched page and its delete, the page stays as an empty "Untitled" document.
+- Arrow keys do not move through sidebar rows (the file tree and the recents should gain them together).
+- No test checks that the search field and footer are hidden while recents show.

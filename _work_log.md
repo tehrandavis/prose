@@ -157,3 +157,11 @@ Open: Tehran's decision on step 3; one benchmark run on a quiet machine (the gat
 
 - Wrote `docs/plans/2026-11-15-quiet-home-window.md` (`7c92576`, proposed): the app opens on a blank page, templates move behind one toolbar button, every row that opens something shows hover, selection and the pointing hand. Steps A to E, 14 acceptance tests. No code changed.
 - Waiting for Tehran to accept the note and answer its 8 questions (launch, `⌘W`, the red button, recents in the sidebar, one click to open, `⌘N`, the blank page's mode). td issue `td-63b6ef`.
+
+## 2026-11-15 and 16: Phase 7, the quiet home window
+
+- Tehran accepted the design note with every recommendation. Four steps were built by Opus subagents, reviewed and checked by the main session, and pushed: A open rows (`baf8118`), B the blank page and `⌘N` (`255af3b`), C launch and close (`b292e0b`), D recents (`a3768ab`). All 14 acceptance tests pass.
+- Found in review: a blank page typed in before the library started stayed marked untouched; fixed in step C.
+- The machine was under outside load all night (13 to 130: `searchpartyd`, FastFolderFinder, Spotlight, Dia, another session). No full run was clean; each failed one to three timing tests that passed alone. The gate run failed the Focus typewriter gate on both books. A comparison with the commit before Phase 7 at the same load gave the same numbers.
+
+Open: one clean gate run on a quiet machine; a look in the running app at the pointing hand, `⌘W` with a sheet, the Settings picker and the sidebar's change at the first key; the open items at the end of the note.
