@@ -1,7 +1,7 @@
 # Quiet home window: the app opens on a blank page
 
 Date: 2026-11-15
-Status: Proposed. Not accepted yet; no code is written. Every decision that is a choice and not a fact is marked **Choice** so it can be reversed.
+Status: Accepted 2026-11-15, with every recommendation (see "Answers"). Every decision that is a choice and not a fact is marked **Choice** so it can be reversed.
 Spec: `docs/prose-spec.md`, Sections 3.3, 3.4, 4 and 8. Builds on "Fixes after Phase 5" in `docs/plans/2026-11-09-citations.md` (the home window's close button).
 
 ## Goal
@@ -214,3 +214,16 @@ All are `extension WritingFlowTests`; every window goes through `placeOnTestScre
 6. **One click to open in "Your writing…".** This removes "click the title to rename" from the list; rename stays in the context menu and on the toolbar title. Accept? (Recommended: yes.)
 7. **`⌘N`.** A blank page, with templates on `⌘⇧N` and the toolbar button? (Recommended: yes.)
 8. **Mode.** Should a blank page open in Writing mode? (Recommended: yes; other documents are unchanged until Phase 9.)
+
+## Answers (2026-11-15)
+
+Tehran accepted the note and every recommendation.
+
+1. Launch: a blank page at every launch, with the Settings picker for "Last document".
+2. `⌘W` on a blank page quits.
+3. The red close button saves and quits from any document.
+4. `⌘W` on a document always shows a blank page.
+5. Recents show in the sidebar of a blank page.
+6. One click opens a row in "Your writing…"; rename is in the context menu and on the toolbar title.
+7. `⌘N` makes a blank page; templates are on `⌘⇧N` and the toolbar button.
+8. A blank page opens in Writing mode.
