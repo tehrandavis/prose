@@ -147,3 +147,8 @@ Open: nine questions at the end of the note (phase number, arrow keys over a fol
 - The Mac was under heavy outside load for much of the session (CleanMyMac, Spotlight, FastFolderFinder, another project's tests); step C took 7.7 hours for that reason.
 
 Open: Tehran's decision on step 3; one benchmark run on a quiet machine (the gate run's benchmark was at load 22 to 40 and is not valid; step D's passed every gate); the open items at the end of the note.
+
+## 2026-11-15: roadmap
+
+- Tehran asked for two additions: a quieter home window (opens on a blank page, templates behind a small button near the title bar, rows highlight on hover and selection) and a commenting system like Word's and Overleaf's. They are Phases 7 and 8; polish moves to Phase 9. Spec Section 8 and `CLAUDE.md` are updated. No code changed.
+- His answers on APA as the default style, brighter mid greys in dark appearance and skipping "Typst" in spell check confirm what Phase 6 step F already shipped (`0a651a3`).
