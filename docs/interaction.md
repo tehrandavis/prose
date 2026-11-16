@@ -99,7 +99,7 @@ small overlay without a reserved header row. Hovering or activating its label re
 controls; hovering away fades them back. Light/Dark colors, zoom, retained-preview notices and return-to-main actions
 never reduce the page viewport. The native document title measures its text and
 uses available toolbar width before truncating, preserving click-to-rename and
-double-click-to-open-library behavior.
+double-click-to-open-library behavior. Rows that open something (sidebar files, headings and recents, and the rows of "Your writing…") show a hover wash, a selection fill and the pointing hand, and open on one click.
 
 Explicit source jumps (outline, definition, previous location) also reveal the
 corresponding preview position when the preview is visible. Requests wait for both

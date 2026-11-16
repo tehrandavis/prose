@@ -17,7 +17,8 @@ The interface is in English. Your documents can be in any language: Prose draws 
 | Next misspelled word | `⌘;` |
 | Show or hide the preview / read the preview | `⇧⌘P` / `⌥⌘P` |
 | Sidebar / document checks | `⌘0` / `⌘5` |
-| New / library / save | `⌘N` / `⌘O` / `⌘S` |
+| New blank page / new from template | `⌘N` / `⇧⌘N` |
+| Library / save | `⌘O` / `⌘S` |
 | Open a folder / import a document | `⌥⌘O` / `⇧⌘O` |
 | Save as / export PDF | `⇧⌘S` / `⇧⌘E` |
 | Completion / find | `⌃.` / `⌘F` |
@@ -45,7 +46,7 @@ When documentation includes a Typst example, the hover card opens an **Example**
 
 **Go Back** restores the previous file and caret, including nested jumps. `⌘W` closes the current file and returns to the previous one; with nothing to return to, it saves the document and shows a blank page, and on an untouched blank page it quits. The red close button and `⌘Q` quit the app. The original document remains the compilation entry while you inspect dependencies. Your own modules stay editable; package sources display a lock and **Read-only** badge and cannot be overwritten.
 
-**File → Open Folder** opens a folder of Typst files, such as a thesis, and edits the files where they are. Nothing is copied into the library, so Git, Dropbox and iCloud Drive keep working on the folder. The sidebar (`⌘0`) lists the folder's files, folders first, and nests the open file's headings under it. Click a heading to go to it. The search field filters files by name. The `+` button adds a Typst file or a folder, and each item's context menu offers Rename, Reveal in Finder, Set as Main Document and Move to Trash. A pin marks the main document: preview and export always compile it, whichever file is open. Other files, such as PDFs, images and `.bib` files, open in Quick Look. Recent folders appear on the library home and reopen after relaunch.
+**File → Open Folder** opens a folder of Typst files, such as a thesis, and edits the files where they are. Nothing is copied into the library, so Git, Dropbox and iCloud Drive keep working on the folder. The sidebar (`⌘0`) lists the folder's files, folders first, and nests the open file's headings under it. Click a heading to go to it. The search field filters files by name. The `+` button adds a Typst file or a folder, and each item's context menu offers Rename, Reveal in Finder, Set as Main Document and Move to Trash. A pin marks the main document: preview and export always compile it, whichever file is open. Other files, such as PDFs, images and `.bib` files, open in Quick Look. Recent folders appear in the sidebar of a blank page, in **Documents → Open Recent** and in the library (`⌘O`).
 
 The title row shows the file and its folder, a breadcrumb of the headings around the caret, and a status dot. Green means the preview matches your text, amber means it is typesetting, red means the document needs attention, and a hollow grey dot means the typesetting service is not running. Click the dot to see the checks.
 
@@ -137,7 +138,7 @@ While syntax is incomplete or invalid, Prose retains the last successful preview
 
 **Universe** searches the official package index by name, purpose and category. Browse drawing or diagram packages, check their documentation, and insert a pinned version. The index is cached for 24 hours and remains available offline. Packages that need a newer typesetting engine cannot be imported through the browser.
 
-The library presents document titles and searchable content without requiring you to manage source filenames. Import a document or an entire project folder, rename it, or move it to the recoverable Trash. Source projects remain exportable. Command-N opens Templates, with an offline blank page and an original Prose guide featuring equations, a diagram, a table and numbered code. The guide’s pinned packages are included; code is displayed, not executed. New writing and existing files autosave after a short pause and retain a local recovery copy. Prose preserves the current draft before switching documents, and refuses to silently overwrite a file changed by another application. **Documents → Recover Draft Copy** reopens preserved drafts.
+The library presents document titles and searchable content without requiring you to manage source filenames. Import a document or an entire project folder, rename it, or move it to the recoverable Trash. Source projects remain exportable. Prose opens on a blank page, and Command-N makes one; a page you never type in is not kept. Command-Shift-N, or the grid button in the toolbar, opens Templates, with an original Prose guide featuring equations, a diagram, a table and numbered code. The guide’s pinned packages are included; code is displayed, not executed. New writing and existing files autosave after a short pause and retain a local recovery copy. Prose preserves the current draft before switching documents, and refuses to silently overwrite a file changed by another application. **Documents → Recover Draft Copy** reopens preserved drafts.
 
 **Documents → Document History** compares and restores the latest seven source snapshots. Edited documents create checkpoints hourly by default, or daily in Settings; unchanged documents create none. Restoration first preserves current writing and remains undoable. History stays on this Mac and covers the current source file. See [document history](document-history.md).
 

@@ -269,6 +269,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             modifiers: [.command, .option],
             target: self,
         )
+        file.addItem(makeOpenRecentItem())
         item(L10n.text("Open external file…"), #selector(openDocument), "", file, target: self)
         file.addItem(.separator())
         item(L10n.text("Save"), #selector(saveDocument), "s", file, target: self)
@@ -503,6 +504,66 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let sender = NSMenuItem()
         sender.tag = NSTextFinder.Action.showFindInterface.rawValue
         workspace.editor?.performFindPanelAction(sender)
+    }
+}
+
+extension AppDelegate: NSMenuDelegate {
+    /// Documents › Open Recent is filled each time it opens, so it is current.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard menu.identifier == Self.openRecentIdentifier else {
+            return
+        }
+        fillOpenRecent(menu)
+    }
+
+    static let openRecentIdentifier = NSUserInterfaceItemIdentifier("documents.openRecent")
+
+    func makeOpenRecentItem() -> NSMenuItem {
+        let title = L10n.text("Open Recent")
+        let menu = NSMenu(title: title)
+        menu.identifier = Self.openRecentIdentifier
+        menu.autoenablesItems = false
+        menu.delegate = self
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.submenu = menu
+        fillOpenRecent(menu)
+        return item
+    }
+
+    /// Up to 5 folders, a separator when both groups have items, and up to
+    /// 10 documents; one disabled item when there are none.
+    func fillOpenRecent(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let recents = workspace.recents(documentLimit: SidebarRecents.menuDocumentLimit)
+        guard !recents.isEmpty else {
+            let empty = NSMenuItem(title: L10n.text("No Recent Items"), action: nil, keyEquivalent: "")
+            empty.isEnabled = false
+            menu.addItem(empty)
+            return
+        }
+        func add(_ row: LibraryRow, title: String, toolTip: String? = nil) {
+            let item = NSMenuItem(title: title, action: #selector(openRecentItem(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = row
+            item.toolTip = toolTip
+            menu.addItem(item)
+        }
+        for record in recents.folders {
+            add(.folder(record), title: record.name, toolTip: SidebarRecents.parentPath(record))
+        }
+        if !recents.folders.isEmpty, !recents.documents.isEmpty {
+            menu.addItem(.separator())
+        }
+        for document in recents.documents {
+            add(.document(document), title: document.title)
+        }
+    }
+
+    @objc func openRecentItem(_ sender: NSMenuItem) {
+        guard let row = sender.representedObject as? LibraryRow else {
+            return
+        }
+        workspace.openLibraryRow(row)
     }
 }
 

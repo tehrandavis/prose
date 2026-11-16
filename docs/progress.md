@@ -28,7 +28,7 @@ Deleting the active document previously created a new Untitled as a safe landing
 
 ## 0.4 acceptance follow-up · Direct document controls
 
-- Single-click managed-document titles to rename inline; Return commits and Escape cancels. Double-click the toolbar title for the library, or a library title to open its document. Library rows provide direct trash/restore icons.
+- Single-click managed-document titles to rename inline; Return commits and Escape cancels. Double-click the toolbar title for the library. In the library, one click on a row opens its document and Rename is in the row's context menu (Phase 7). A library row shows its trash or restore icon while it is hovered or selected.
 - Preview color controls retain a centered, fixed-size hit target in both states. Native menu icons use a compact intrinsic size.
 - All native interface scenarios now run in a shared serialized suite, avoiding cross-test interference from AppKit's process-wide focus, menus and sheet presentation.
 - Local acceptance: **70 Swift tests passed**, three profile-validation checks passed, and production source-line coverage reached **88.13% (4048/4593)**. A relocated app launched with build resources hidden, loaded its Chinese welcome document and connected to Tinymist.

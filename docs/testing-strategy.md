@@ -115,7 +115,7 @@ Real iCloud delivery remains a two-Mac acceptance check: offline edits, nonoverl
 - The native SwiftPM builder emitted `zh-hans.lproj` while the newer builder preserved `zh-Hans.lproj`. Bundle lookup is case-sensitive; localization now selects the actual bundled identifier. The failure and fix were reproduced locally with the native builder.
 - Native menu labels ignored the SwiftUI image frame and used the PDF icon's 256-point artboard. The shared template images now have a compact intrinsic size, with a resource regression check.
 - A packaged native SwiftPM app could still depend on the build checkout for localized resources. App-bundle resource lookup and the relocated launch gate remove that dependency.
-- Managed-document titles support single-click inline rename and double-click navigation; the library exposes direct trash/restore actions. Preview colors keep a fixed 68 × 28 hit target in both states.
+- The toolbar title supports single-click inline rename and double-click navigation; library rows open on one click and show a trash or restore action while hovered or selected. Preview colors keep a fixed 68 × 28 hit target in both states.
 - Managed-document export dialogs now suggest the document title instead of the internal `main` filename.
 
 The first two were caught by CI and the icon defect by a real-window visual check. This is why Prose needs complementary behavior and visual checks, in addition to its line-coverage target.

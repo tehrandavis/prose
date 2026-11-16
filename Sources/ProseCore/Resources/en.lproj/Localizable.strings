@@ -3,6 +3,7 @@
 "%@ packages · Local index %@" = "%@ packages · Local index %@";
 "%@ packages · Updated %@" = "%@ packages · Updated %@";
 "%@ words" = "%@ words";
+"%@, document" = "%@, document";
 "%@, document, edited %@" = "%@, document, edited %@";
 "%@, file" = "%@, file";
 "%@, folder" = "%@, folder";
@@ -28,6 +29,7 @@
 "Align paragraphs to both left and right edges." = "Align paragraphs to both left and right edges.";
 "Aligned Equations" = "Aligned Equations";
 "Alignment · left / center / right" = "Alignment · left / center / right";
+"All writing…" = "All writing…";
 "All Packages" = "All Packages";
 "Another app changed this file. Your work is safe; reload from disk or save a copy." = "Another app changed this file. Your work is safe; reload from disk or save a copy.";
 "Apply Settings" = "Apply Settings";
@@ -181,6 +183,7 @@
 "First-line Indent" = "First-line Indent";
 "First-line indent · em" = "First-line indent · em";
 "Flyers" = "Flyers";
+"Folders" = "Folders";
 "Focus on Writing" = "Focus on Writing";
 "Follow System" = "Follow System";
 "Font name" = "Font name";
@@ -294,6 +297,7 @@
 "New Blank Page" = "New Blank Page";
 "Start writing on a blank page." = "Start writing on a blank page.";
 "Start from a template, the sample book or a Typst Universe template." = "Start from a template, the sample book or a Typst Universe template.";
+"No Recent Items" = "No Recent Items";
 "No Guesses Found" = "No Guesses Found";
 "No completions are available here." = "No completions are available here.";
 "No matching commands" = "No matching commands";
@@ -307,6 +311,7 @@
 "On this Mac" = "On this Mac";
 "Only changes preview colors. Exported PDFs are unchanged." = "Only changes preview colors. Exported PDFs are unchanged.";
 "Open Diagnostic Logs" = "Open Diagnostic Logs";
+"Open Recent" = "Open Recent";
 "Open Document" = "Open Document";
 "Open a .typ document." = "Open a .typ document.";
 "Open external file…" = "Open external file…";

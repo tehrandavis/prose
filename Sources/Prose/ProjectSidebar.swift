@@ -65,15 +65,28 @@ extension Workspace {
 
 struct ProjectSidebar: View {
     @ObservedObject var workspace: Workspace
+    /// Observed so the blank page's recents follow the library: the page
+    /// becoming kept, documents changing, recents reordering.
+    @ObservedObject private var library: LibraryController
     @State private var query = ""
     @State private var renaming: URL?
     @State private var draftName = ""
     @State private var targetFolder: URL?
     @FocusState private var renameFocused: Bool
 
+    init(workspace: Workspace) {
+        self.workspace = workspace
+        library = workspace.library
+    }
+
     var body: some View {
+        // An untouched blank page shows recents in place of its own folder
+        // (Phase 7, decision 4), with no search field and no footer.
+        let showsRecents = workspace.showsSidebarRecents
         VStack(spacing: 0) {
-            if workspace.project != nil {
+            if showsRecents {
+                Color.clear.frame(height: 6)
+            } else if workspace.project != nil {
                 TextField(L10n.text("Search Files"), text: $query)
                     .textFieldStyle(.plain).font(.system(size: 12))
                     .padding(.horizontal, 9).frame(height: 26)
@@ -92,7 +105,9 @@ struct ProjectSidebar: View {
                 LazyVStack(alignment: .leading, spacing: 1) {
                     // Rebuilt when files change on disk or the open file changes.
                     let _ = workspace.projectRevision
-                    if let project = workspace.project, !query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    if showsRecents {
+                        recents(workspace.recents())
+                    } else if let project = workspace.project, !query.trimmingCharacters(in: .whitespaces).isEmpty {
                         ForEach(ProjectTree.search(query, in: project.root), id: \.id) { node in
                             fileRow(node, depth: 0, detail: workspace.relative(
                                 node.url.deletingLastPathComponent(),
@@ -114,7 +129,7 @@ struct ProjectSidebar: View {
                     }
                 }.padding(.horizontal, 6).padding(.vertical, 4)
             }
-            if workspace.project != nil {
+            if workspace.project != nil, !showsRecents {
                 Rectangle().fill(Theme.border).frame(height: 1)
                 footer
             }
@@ -285,6 +300,74 @@ struct ProjectSidebar: View {
         // The current heading keeps its accent text and no fill: the open
         // file's row above it already carries the selection fill.
         .openRow("heading:\(index)", hover: workspace.sidebarHover)
+    }
+
+    /// Recent folders, recent documents and "All writing…" (Phase 7,
+    /// decision 4). Group headers use the "Outline" header's style.
+    @ViewBuilder private func recents(_ recents: SidebarRecents) -> some View {
+        if !recents.folders.isEmpty {
+            groupHeader(L10n.text("Folders"))
+            ForEach(recents.folders) { record in
+                recentRow(
+                    "recent.folder:" + record.id.uuidString,
+                    icon: "folder-simple",
+                    title: record.name,
+                    label: L10n.format("%@, folder", record.name),
+                    identifier: "sidebar.recent.folder." + record.name,
+                ) { workspace.openLibraryRow(.folder(record)) }
+                    .help(SidebarRecents.parentPath(record))
+            }
+        }
+        if !recents.documents.isEmpty {
+            groupHeader(L10n.text("Documents"))
+            ForEach(recents.documents) { document in
+                recentRow(
+                    "recent.document:" + document.id.uuidString,
+                    icon: "file-text",
+                    title: document.title,
+                    label: L10n.format("%@, document", document.title),
+                    identifier: "sidebar.recent.document.\(document.id)",
+                ) { workspace.openLibraryRow(.document(document)) }
+            }
+        }
+        recentRow(
+            "recent.all",
+            icon: "files",
+            title: L10n.text("All writing…"),
+            label: L10n.text("All writing…"),
+            identifier: "sidebar.recent.all",
+        ) { workspace.openLibrary() }
+            .padding(.top, recents.isEmpty ? 0 : 8)
+    }
+
+    private func groupHeader(_ title: String) -> some View {
+        Text(title).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.secondary)
+            .padding(.horizontal, 8).frame(maxWidth: .infinity, alignment: .leading).frame(height: 26)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    /// One recents row: one click opens; no row is selected, because the
+    /// blank page is in no list.
+    private func recentRow(
+        _ id: String,
+        icon: String,
+        title: String,
+        label: String,
+        identifier: String,
+        action: @escaping () -> Void,
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 7) {
+                PhosphorIcon(name: icon, size: 14).foregroundStyle(Theme.secondary)
+                Text(title).font(.system(size: 13)).lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Theme.text)
+            .padding(.horizontal, 8).frame(height: 26)
+            .openRow(id, hover: workspace.sidebarHover)
+        }.buttonStyle(.plain)
+            .accessibilityLabel(label)
+            .accessibilityIdentifier(identifier)
     }
 
     private func moreRow(_ count: Int, depth: Int) -> some View {

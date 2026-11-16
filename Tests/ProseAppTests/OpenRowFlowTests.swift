@@ -232,7 +232,7 @@ extension WritingFlowTests {
         rows.opensRows = true
     }
 
-    /// Acceptance test 4. The recents rows on a blank page are step D's.
+    /// Acceptance test 4.
     @Test func openRowsAreButtonsForVoiceOver() async throws {
         let app = try WritingFixture(text: "= Keep the manuscript\n", startService: false)
         defer { app.close() }
@@ -316,6 +316,27 @@ extension WritingFlowTests {
         #expect(label2h == "Notes, document, edited 2 hours ago")
         app.workspace.libraryOpen = false
         try await app.wait { app.window.attachedSheet == nil }
+
+        // The recents rows on a blank page (step D): one button each, named
+        // with its kind; none is selected.
+        try await library.openBlankPage()
+        var recents: [AXNode] = []
+        try await app.wait {
+            root.layoutSubtreeIfNeeded()
+            recents = AXNode.tree(root)
+            return recents.contains { $0.identifier == "sidebar.recent.all" }
+        }
+        let recentFolder = try element("sidebar.recent.folder.Thesis", in: recents)
+        #expect(recentFolder.role == NSAccessibility.Role.button.rawValue)
+        #expect(recentFolder.label == "Thesis, folder")
+        #expect(!recentFolder.selected)
+        let recentDocument = try element("sidebar.recent.document.\(notes)", in: recents)
+        #expect(recentDocument.role == NSAccessibility.Role.button.rawValue)
+        #expect(recentDocument.label == "Notes, document")
+        #expect(!recentDocument.selected)
+        let all = try element("sidebar.recent.all", in: recents)
+        #expect(all.role == NSAccessibility.Role.button.rawValue)
+        #expect(all.label == L10n.text("All writing…"))
     }
 
     private func openRowThesis(in root: URL) throws -> URL {
@@ -345,7 +366,7 @@ private func openYourWriting(_ app: WritingFixture, rows: Int) async throws -> N
 }
 
 @MainActor
-private func descendantViews(_ view: NSView?) -> [NSView] {
+func descendantViews(_ view: NSView?) -> [NSView] {
     guard let view else {
         return []
     }
@@ -354,7 +375,7 @@ private func descendantViews(_ view: NSView?) -> [NSView] {
 
 /// Each open row's pointer area, by row id: the row's frame on screen.
 @MainActor
-private func openRowAreas(_ view: NSView?) -> [String: NSView] {
+func openRowAreas(_ view: NSView?) -> [String: NSView] {
     var areas: [String: NSView] = [:]
     for case let area as OpenRowArea in descendantViews(view) where area.window != nil {
         areas[area.rowID] = area
@@ -365,7 +386,7 @@ private func openRowAreas(_ view: NSView?) -> [String: NSView] {
 /// A click on a row at `x` (a fraction of its width) through the window, as
 /// AppKit delivers it.
 @MainActor
-private func openRowClick(_ window: NSWindow, _ area: NSView, x: CGFloat) throws {
+func openRowClick(_ window: NSWindow, _ area: NSView, x: CGFloat) throws {
     let point = area.convert(NSPoint(x: area.bounds.width * x, y: area.bounds.midY), to: nil)
     for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
         try window.sendEvent(#require(NSEvent.mouseEvent(
@@ -409,7 +430,7 @@ private func sheetKey(
 /// The colour drawn at `inset` points from the row's right end, at its
 /// vertical middle, in sRGB 0 to 255.
 @MainActor
-private func rowColour(_ root: NSView, _ area: NSView, inset: CGFloat = 26) throws -> [Int] {
+func rowColour(_ root: NSView, _ area: NSView, inset: CGFloat = 26) throws -> [Int] {
     let rect = area.convert(area.bounds, to: root)
     let sample = NSRect(x: rect.maxX - inset - 1, y: rect.midY - 1, width: 2, height: 2).integral
     let bitmap = try #require(root.bitmapImageRepForCachingDisplay(in: sample))
@@ -423,7 +444,7 @@ private func rowColour(_ root: NSView, _ area: NSView, inset: CGFloat = 26) thro
 /// in `root` and read back as `rowColour` reads a row: the bitmap holds
 /// display colours, so the expected colour goes through the same path.
 @MainActor
-private func swatch(_ fill: NSColor, in root: NSView, over base: NSColor? = nil) throws -> [Int] {
+func swatch(_ fill: NSColor, in root: NSView, over base: NSColor? = nil) throws -> [Int] {
     let view = Swatch(frame: NSRect(x: 0, y: 0, width: 8, height: 8))
     view.fill = fill
     view.base = base
@@ -451,7 +472,7 @@ private final class Swatch: NSView {
     }
 }
 
-private func near(_ left: [Int], _ right: [Int], within tolerance: Int = 3) -> Bool {
+func near(_ left: [Int], _ right: [Int], within tolerance: Int = 3) -> Bool {
     left.count == 3 && right.count == 3 && zip(left, right).allSatisfy { abs($0 - $1) <= tolerance }
 }
 

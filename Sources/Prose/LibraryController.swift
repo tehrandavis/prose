@@ -22,8 +22,9 @@ final class LibraryController: ObservableObject {
     private let locationURL: URL
     private let recentURL: URL
     private let blankPageURL: URL
-    /// Library documents opened, most recent first.
-    private(set) var recentDocumentIDs: [UUID]
+    /// Library documents opened, most recent first. Published so the blank
+    /// page's sidebar recents follow it.
+    @Published private(set) var recentDocumentIDs: [UUID]
     /// The untouched blank page (Phase 7, decision 2), stored in
     /// `blank-page.json`, local to this Mac. There is at most one. The first
     /// edit or rename clears it, and the page is an ordinary document.

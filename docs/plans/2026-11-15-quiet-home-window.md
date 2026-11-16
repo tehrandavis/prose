@@ -325,3 +325,26 @@ Lint clean. Release build clean. Coverage 90.49 percent. The full run was not cl
 
 - A real `⌘W` with a sheet as the key window, and the Settings picker's layout, are not checked in the running app.
 - `floatingToolbarKeepsTheEditorFocusedAndFollowsFocusMode` failed once in step B's first run and once here, both under load. The gate run must show it clean on a quiet machine.
+
+## Step D outcome (2026-11-16)
+
+Recents are built as decisions 4 and 6 describe.
+
+### What was built
+
+- `Sources/Prose/SidebarRecents.swift` (new). `SidebarRecents` holds the recent folders and documents and the limits: 5 folders, 8 documents in the sidebar, 10 in the menu. `LibraryController.recentDocuments(limit:)` lists the reopenable recents first, then the other listed documents, newest first; never the untouched blank page and never a trashed document. The sidebar and the menu read the same value.
+- Sidebar. While `Workspace.showsSidebarRecents` is true (the open document is the untouched blank page), `ProjectSidebar` shows "Folders", "Documents" and "All writing…" in place of the tree, with no search field and no footer. A blank page has a `.library` project, so this condition, not `project`, decides. Rows are 26 pt open rows on `sidebarHover`; none is selected. A folder row's hover help is its parent path. The group headers use the "Outline" header's style (11 pt medium), which the sheet's "Folders" and "Documents" headers also use; nothing in the sidebar uses the spec's serif header. The sidebar now observes `LibraryController`, and `recentDocumentIDs` is published, so the list follows the library.
+- Documents › Open Recent, between "Open Folder…" and "Open external file…". `AppDelegate` is the submenu's `NSMenuDelegate` and fills it in `menuNeedsUpdate(_:)`: up to 5 folders, a separator when both groups have items, up to 10 documents, or one disabled "No Recent Items".
+
+### Tests
+
+Acceptance tests 13 and 14 are in `Tests/ProseAppTests/RecentsFlowTests.swift`. Test 13 checks the model and the real view (row order on screen, the hover wash in pixels, real clicks on a document row and on "All writing…", the switch to the page's own folder after one typed word, both limits). `openRowsAreButtonsForVoiceOver` now also checks the recents rows. Six helpers in `OpenRowFlowTests.swift` became internal so the new file can use them.
+
+### Checks (main session, load average 15 to 35 from other apps)
+
+Lint clean. Release build clean. All 319 core tests passed. 1 of 244 app tests failed: `writingModeDrawsRendersPillsAndSource` (a paragraph's render had not arrived when the test read it); it passed alone. Coverage 90.50 percent. The subagent's run passed all 244 app tests and failed the known core timing test.
+
+### Open
+
+- No test checks that the search field and the footer are hidden while recents show.
+- The sidebar reads `recent.json` on each redraw while recents show; this was not measured.
