@@ -152,3 +152,8 @@ Open: Tehran's decision on step 3; one benchmark run on a quiet machine (the gat
 
 - Tehran asked for two additions: a quieter home window (opens on a blank page, templates behind a small button near the title bar, rows highlight on hover and selection) and a commenting system like Word's and Overleaf's. They are Phases 7 and 8; polish moves to Phase 9. Spec Section 8 and `CLAUDE.md` are updated. No code changed.
 - His answers on APA as the default style, brighter mid greys in dark appearance and skipping "Typst" in spell check confirm what Phase 6 step F already shipped (`0a651a3`).
+
+## 2026-11-15: Phase 7 design note
+
+- Wrote `docs/plans/2026-11-15-quiet-home-window.md` (`7c92576`, proposed): the app opens on a blank page, templates move behind one toolbar button, every row that opens something shows hover, selection and the pointing hand. Steps A to E, 14 acceptance tests. No code changed.
+- Waiting for Tehran to accept the note and answer its 8 questions (launch, `⌘W`, the red button, recents in the sidebar, one click to open, `⌘N`, the blank page's mode). td issue `td-63b6ef`.
