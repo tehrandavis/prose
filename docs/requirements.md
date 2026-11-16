@@ -35,7 +35,7 @@ Users can switch between writing, side-by-side preview and full preview. Unsaved
 
 - Create, open, save and save copies of UTF-8 documents, including Unicode paths.
 - Save existing files atomically and preserve recovery copies for untitled drafts.
-- Restore the recent document after relaunch. Clearly report write failures; never claim that failed writes were saved.
+- Open a blank page at launch, or the last document when Settings › General › "When Prose opens" says so; always restore unsaved work. Clearly report write failures; never claim that failed writes were saved.
 - Preserve local edits when another application changes the same file. Offer reload or save-as without silently overwriting.
 - Resolve relative images and included documents from the document's directory; support a main compilation entry.
 - Show headings in an outline with source navigation. Keep standard menus and shortcuts for common document actions.

@@ -5,7 +5,7 @@ import ProseCore
 import Testing
 
 extension WritingFlowTests {
-    @Test func diagnosticPackageSourceIsReadOnlyAndCommandWReturnsToDocument() throws {
+    @Test func diagnosticPackageSourceIsReadOnlyAndCommandWReturnsToDocument() async throws {
         let app = try WritingFixture(text: "= Original\n\nBody\n", startService: false)
         defer { app.close() }
         let workspace = app.workspace
@@ -51,22 +51,30 @@ extension WritingFlowTests {
             NSApp.windowsMenu = previousWindows
         }
         delegate.installMenu()
+        var terminations = 0
+        delegate.terminateApplication = { terminations += 1 }
+        delegate.keyWindow = { app.window }
         let menu = try #require(NSApp.mainMenu)
-        #expect(!delegate.windowShouldClose(app.window))
+        // `⌘W` steps back from the package source to the document.
+        delegate.closeFront(nil)
         #expect(workspace.documentURL == app.document)
         #expect(workspace.mainFileURL == nil)
         #expect(workspace.selection.location == 5)
         #expect(editor.isEditable)
         #expect(editor.string == "= Original\n\nBody\n")
         editor.insertSnippet(Snippet(text: "More"), replacing: NSRange(location: editor.string.utf16.count, length: 0))
-        #expect(!delegate.windowShouldClose(app.window))
-        #expect(workspace.isLibraryHome)
-        #expect(workspace.discoveryMode == .templates)
+        // With nothing left to step back to, `⌘W` saves and shows a blank page.
+        delegate.closeFront(nil)
+        try await app.wait {
+            workspace.library.blankPageID != nil && workspace.managedDocumentID == workspace.library.blankPageID &&
+                !workspace.documentTransitionInProgress
+        }
+        #expect(!workspace.isLibraryHome)
+        #expect(workspace.discoveryMode == nil)
+        #expect(terminations == 0)
         #expect(try String(contentsOf: app.document, encoding: .utf8).hasSuffix("More"))
         #expect(!delegate.applicationShouldTerminateAfterLastWindowClosed(NSApp))
-        // On the library home the close button quits through NSApp.terminate.
-        var terminations = 0
-        delegate.terminateApplication = { terminations += 1 }
+        // The close button quits through NSApp.terminate.
         #expect(delegate.windowShouldClose(app.window) == false)
         #expect(terminations == 1)
         let documents = try #require(menu.items

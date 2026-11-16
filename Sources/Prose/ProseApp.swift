@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         private let previewUpdater = PreviewUpdater()
     #endif
 
-    init(workspace: Workspace = Workspace()) {
+    init(workspace: Workspace = .launching()) {
         self.workspace = workspace
         super.init()
     }
@@ -68,7 +68,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         workspace.onShortcutChange = { [weak self] in self?.installMenu() }
         workspace.startService()
         Task {
-            await workspace.library.start()
+            // Starts the library, then opens the blank page launch waits for.
+            await workspace.launch()
             await workspace.agentConnection.resume()
         }
         NSApp.activate(ignoringOtherApps: true)
@@ -112,15 +113,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     /// `applicationShouldTerminate` saves and drains history. Tests replace it.
     var terminateApplication: () -> Void = { NSApp.terminate(nil) }
 
-    /// The window is never closed: closing a document returns to the previous
-    /// document or the library home, and closing the library home quits.
+    /// The red close button quits (Phase 7, decision 7). The window itself is
+    /// never closed; `applicationShouldTerminate` saves before the app ends.
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        if workspace.isLibraryHome {
+        terminateApplication()
+        return false
+    }
+
+    /// The key window, which `closeFront` closes when it is not the writing
+    /// window. Tests replace it: a test host's windows cannot become key.
+    var keyWindow: () -> NSWindow? = { NSApp.keyWindow }
+
+    /// Documents › Close Document (`⌘W`). On the writing window it closes the
+    /// document, which steps back inside the project or shows a blank page;
+    /// on an untouched blank page, or with no document open, it quits. A
+    /// sheet on the writing window closes instead. Any other window (Settings,
+    /// an auxiliary window) closes as it always did.
+    @objc func closeFront(_ sender: Any?) {
+        let writing = workspace.window ?? window
+        if let key = keyWindow(), let writing, (key.sheetParent ?? key) !== writing {
+            key.performClose(sender)
+            return
+        }
+        if writing?.attachedSheet != nil {
+            workspace.closeSheet()
+        } else if workspace.isLibraryHome || workspace.launchPending || workspace.isOnUntouchedBlankPage {
             terminateApplication()
         } else {
             workspace.closeDocument()
         }
-        return false
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -257,7 +278,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         file.addItem(.separator())
         item(L10n.text("Print…"), #selector(printDocument), "p", file, target: self)
         file.addItem(.separator())
-        item(L10n.text("Close Document"), #selector(NSWindow.performClose(_:)), "w", file)
+        item(L10n.text("Close Document"), #selector(closeFront(_:)), "w", file, target: self)
         let edit = section(L10n.text("Edit"))
         item(L10n.text("Undo"), Selector(("undo:")), "z", edit)
         item(L10n.text("Redo"), Selector(("redo:")), "z", edit, modifiers: [.command, .shift])

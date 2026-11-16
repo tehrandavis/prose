@@ -65,6 +65,9 @@ public struct RecoverySnapshot: Codable, Sendable {
     public let selection: Int
     public let mainFileURL: URL?
     public let libraryHome: Bool?
+    /// The id of the untouched blank page when it was the open document, so
+    /// the next launch can reopen it with no wait (Phase 7, decision 1).
+    public let blankPageID: UUID?
     public init(
         fileURL: URL?,
         text: String,
@@ -72,6 +75,7 @@ public struct RecoverySnapshot: Codable, Sendable {
         selection: Int,
         mainFileURL: URL? = nil,
         libraryHome: Bool? = nil,
+        blankPageID: UUID? = nil,
     ) {
         self.fileURL = fileURL
         self.text = text
@@ -79,5 +83,6 @@ public struct RecoverySnapshot: Codable, Sendable {
         self.selection = selection
         self.mainFileURL = mainFileURL
         self.libraryHome = libraryHome
+        self.blankPageID = blankPageID
     }
 }

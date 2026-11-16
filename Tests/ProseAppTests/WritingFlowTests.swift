@@ -488,7 +488,15 @@ final class WritingFixture {
     /// Set by the one test that forces TextKit 1 on purpose.
     var allowsTextKit1 = false
 
-    init(text: String, startService: Bool = true, linkedState: Bool = false, defaults: UserDefaults? = nil) throws {
+    /// `launching` builds the workspace as the app does (`Workspace.launching`),
+    /// with the launch setting read from `defaults`.
+    init(
+        text: String,
+        startService: Bool = true,
+        linkedState: Bool = false,
+        defaults: UserDefaults? = nil,
+        launching: Bool = false,
+    ) throws {
         if let defaults {
             self.defaults = defaults
             ownedDefaults = nil
@@ -516,7 +524,8 @@ final class WritingFixture {
         }
         let snapshot = RecoverySnapshot(fileURL: document, text: text, savedText: text, selection: text.utf16.count)
         try JSONEncoder().encode(snapshot).write(to: state.appendingPathComponent("recovery.json"))
-        workspace = Workspace(stateDirectory: state)
+        workspace = launching ? Workspace.launching(stateDirectory: state, defaults: self.defaults) :
+            Workspace(stateDirectory: state)
         window = WritingWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1220, height: 820),
             styleMask: [.titled, .closable, .resizable],

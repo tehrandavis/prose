@@ -6,6 +6,8 @@ import SwiftUI
 import Testing
 
 extension WritingFlowTests {
+    /// The gallery's "Blank page" over a document, and over the blank page
+    /// that `⌘W` left (Phase 7: it reuses that page, so one document remains).
     @Test(arguments: [false, true])
     func blankCreationReturnsToWriting(closeFirst: Bool) async throws {
         let app = try WritingFixture(text: "= Preserve this document\n", startService: false)
@@ -20,19 +22,26 @@ extension WritingFlowTests {
         app.window.delegate = delegate
         defer { app.window.delegate = nil }
         app.window.orderFront(nil)
+        var closedTo: UUID?
         if closeFirst {
-            #expect(!delegate.windowShouldClose(app.window))
+            delegate.terminateApplication = { Issue.record("⌘W on a document must not quit") }
+            delegate.keyWindow = { app.window }
+            delegate.closeFront(nil)
+            try await app.wait {
+                app.workspace.library.blankPageID != nil &&
+                    app.workspace.managedDocumentID == app.workspace.library.blankPageID &&
+                    !app.workspace.documentTransitionInProgress
+            }
+            closedTo = app.workspace.managedDocumentID
             await app.layout()
         }
-        #expect(app.workspace.isLibraryHome == closeFirst)
-        #expect(app.workspace.discoveryMode == (closeFirst ? .templates : nil))
+        #expect(!app.workspace.isLibraryHome)
+        #expect(app.workspace.discoveryMode == nil, "Closing never opens the gallery by itself")
         app.workspace.openDiscovery(.templates)
         await app.layout()
-        #expect(app.workspace.libraryOpen == !closeFirst)
-        if !closeFirst {
-            try await app.wait { app.window.attachedSheet != nil }
-        }
-        let browserWindow = app.window.attachedSheet ?? app.window
+        #expect(app.workspace.libraryOpen)
+        try await app.wait { app.window.attachedSheet != nil }
+        let browserWindow = try #require(app.window.attachedSheet)
         func blankButton(in view: NSView) -> HelpAnchor? {
             if let anchor = view as? HelpAnchor, anchor.title == L10n.text("Start with a blank page") {
                 return anchor
@@ -68,6 +77,9 @@ extension WritingFlowTests {
         #expect(documents.count == 1)
         let document = try #require(documents.first)
         #expect(app.workspace.managedDocumentID == document.id)
+        if let closedTo {
+            #expect(document.id == closedTo, "The gallery reuses the untouched blank page")
+        }
         #expect(app.workspace.fileURL == document.sourceURL)
         #expect(app.workspace.editor?.string == DocumentTemplate.blank.source)
         #expect(app.workspace.editor?.isEditable == true)

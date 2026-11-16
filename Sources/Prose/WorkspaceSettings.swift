@@ -127,6 +127,10 @@ struct WritingSettingsView: View {
                     Text("⌘J").tag("j")
                     Text("⌘K").tag("k")
                 }
+                Picker(L10n.text("When Prose opens"), selection: $workspace.launchPage) {
+                    Text(L10n.text("Blank page")).tag(LaunchPage.blankPage)
+                    Text(L10n.text("Last document")).tag(LaunchPage.lastDocument)
+                }.accessibilityIdentifier("settings.launchPage")
             }
             #if PROSE_PREVIEW
                 if let updater {

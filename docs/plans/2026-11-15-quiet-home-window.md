@@ -283,3 +283,45 @@ Existing tests changed: `newDocumentDiscoversTemplates…` is `newFromTemplateDi
 ### Checks (main session, load average 25 to 50 from other apps)
 
 Lint clean. Release build clean. Coverage 90.38 percent. The full run was not clean at this load: 1 of 319 core tests and 2 of 240 app tests failed on a time limit (`httpSourceSaysNotRunningAtOnceWhenNothingListens`, `previewCoversBlankPaneUntilFirstPaintAndAgainAfterReopen`, `writingFoldAccessibilityFramesAndMarkedText`), and each passed alone. The subagent's run at load 16 to 43 failed four other timing tests, which also passed alone. No blank-page test failed in either run. The gate run in step E must be clean on a quiet machine.
+
+## Step C outcome (2026-11-16)
+
+Close and launch are built as decisions 1, 3 and 7 describe.
+
+### What was built
+
+- **Launch.** The app makes its workspace with `Workspace.launching()` and calls `launch()` once the window is up (`WorkspaceLaunch.swift`). `Workspace.init` takes the launch setting. It restores the snapshot when the text is unsaved, when the setting is "Last document", or when the last session ended on the untouched blank page (the snapshot now records `blankPageID`, so that page opens at once, in Writing mode, with the caret at the end). Otherwise it sets `launchPending`: an empty page that cannot be typed in, with no service, no snapshot write and no Welcome adoption. `launch()` starts the library and opens the blank page. A snapshot of the home state leads to a blank page under either setting. A first launch opens the Welcome guide. A file opened from Finder ends the wait and opens that file.
+- **The setting.** Settings › General › "When Prose opens": Blank page (default) or Last document. It is stored in this Mac's user defaults (`launchPage`), not in the synced preferences, because the snapshot and `blank-page.json` it reads are local to the Mac.
+- **`⌘W`.** The menu item calls `AppDelegate.closeFront(_:)`. Another key window (Settings, an auxiliary window) closes as before. A sheet on the writing window (the library, the gallery, history, the object editor) closes, as Escape does; before, the item was disabled there. On the home state, a waiting launch or an untouched blank page, the app quits. On any other document, `closeDocument()` steps back inside the project or, with nothing left, saves and opens a blank page with no flash of the list.
+- **The red button.** `windowShouldClose` always quits through `terminateApplication`.
+- **Recents.** `closeToRecentDocument` and `LibraryController.reopenRecent` are gone. `⌘W` no longer removes the closed document from recents.
+- **Home state.** A document found trashed at start leads to a blank page. If the library cannot start or cannot make a page, the window shows the list in place with the error, and the gallery does not open.
+- **Found in review and fixed.** A blank page restored at launch has no document id until the library starts. A page typed in during that time stayed marked untouched until the next edit, so it was hidden from the lists and `⌘W` on it would have quit. `LibraryController.start()` now keeps it.
+
+### Launch time
+
+One sample each, release build, local library in a temporary state directory, load average about 9: 774 ms from the workspace's creation to an editable blank page when launch waits for the library, and 726 ms when the page is restored at once. The wait for the library is about 50 ms. A first launch (Welcome guide) took 1,376 ms. An iCloud library was not timed. The `launch.ready` log line records the time at every launch.
+
+### Tests
+
+Acceptance tests 9 and 10 are in `WindowCloseFlowTests.swift`; tests 11 and 12 are in the new `LaunchFlowTests.swift` and use `Workspace.launching` and `launch()`, the path the app uses. Test 12 makes `Library/Documents` read-only. Plain `Workspace(stateDirectory:)` still restores a snapshot as saved, which is what tests that reopen a state directory need.
+
+Existing tests changed:
+
+- `closeCommandUsesTheWindowResponder`: the item is `closeFront` with the delegate as its target; the Settings and auxiliary-window cases stay; a sheet case is new.
+- `closeDocumentReturnsToPreviouslyOpenedWritingThenTemplates` is test 9, `closeCommandOnADocumentShowsABlankPage`.
+- `closeDocumentSkipsUnavailableRecentWritingAcrossLaunches` is `closeDocumentAfterARelaunchShowsABlankPageAndKeepsRecents`. Its check that close skips unreadable recents no longer applies, because close reopens nothing; it now checks that the reopenable recents leave out trashed and missing documents.
+- `closeButtonReturnsHomeThenQuitsFromTheLibraryHome` is test 10, `closeCommandOnABlankPageAndTheCloseButtonQuit`.
+- `commandQOnTheLibraryHomeReachesTheQuitItem` reaches the home state with `showLibraryHome()`; every Quit check stays.
+- `blankCreationReturnsToWriting(closeFirst:)` and `diagnosticPackageSourceIsReadOnlyAndCommandWReturnsToDocument` use `closeFront` and expect a blank page.
+
+`docs/writing-guide.md` and `docs/requirements.md` have the new `⌘W` and launch sentences.
+
+### Checks (main session, load average 13 to 33 from other apps)
+
+Lint clean. Release build clean. Coverage 90.49 percent. The full run was not clean: 1 of 319 core tests (`httpSourceSaysNotRunningAtOnceWhenNothingListens`, a 6 s limit, the same test as in step B) and 1 of 242 app tests (`floatingToolbarKeepsTheEditorFocusedAndFollowsFocusMode`, the toolbar's position read once after a key) failed, and each passed alone. The subagent's run passed all 242 app tests. No close, launch, library or blank-page test failed in either run.
+
+### Open
+
+- A real `⌘W` with a sheet as the key window, and the Settings picker's layout, are not checked in the running app.
+- `floatingToolbarKeepsTheEditorFocusedAndFollowsFocusMode` failed once in step B's first run and once here, both under load. The gate run must show it clean on a quiet machine.

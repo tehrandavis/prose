@@ -34,7 +34,7 @@ final class Workspace: ObservableObject {
     }
 
     var canEditSource: Bool {
-        !isLibraryHome && !isPackageSource
+        !isLibraryHome && !isPackageSource && !launchPending
     }
 
     var editorIsEditable: Bool {
@@ -261,6 +261,19 @@ final class Workspace: ObservableObject {
         @escaping (NSApplication.ModalResponse) -> Void,
     ) -> Void = Workspace.showPanel
     @Published private(set) var isLibraryHome = false
+    /// Launch waits for the library to give a blank page (Phase 7, decision
+    /// 1): the editor shows an empty page that cannot be typed in, never the
+    /// home list or the last document. Opening any document ends it.
+    @Published private(set) var launchPending = false
+    /// When the app created this workspace; `launch()` records the time to an
+    /// editable page.
+    var launchStartedAt: ContinuousClock.Instant?
+    /// "When Prose opens", in this Mac's user defaults (`LaunchPreference`).
+    @Published var launchPage: LaunchPage {
+        didSet { LaunchPreference.set(launchPage, in: launchDefaults) }
+    }
+
+    private let launchDefaults: UserDefaults
     @Published var documentTemplate: DocumentTemplate = .blank
     @Published var managedDocumentID: UUID?
     @Published var managedTitle: String?
@@ -442,7 +455,12 @@ final class Workspace: ObservableObject {
         command.keyPath
     }
 
-    init(stateDirectory directory: URL? = nil) {
+    /// `opening` is the launch setting. `nil` restores the snapshot exactly as
+    /// it was saved, which is what a test that reopens a state directory asks;
+    /// the app passes the writer's setting through `Workspace.launching`.
+    init(stateDirectory directory: URL? = nil, opening: LaunchPage? = nil, defaults: UserDefaults = .standard) {
+        launchDefaults = defaults
+        launchPage = LaunchPreference.value(in: defaults)
         if let directory {
             stateDirectory = directory
         } else {
@@ -468,28 +486,20 @@ final class Workspace: ObservableObject {
                from: data,
            )
         {
-            fileURL = snapshot.fileURL
-            mainFileURL = snapshot.mainFileURL
-            text = snapshot.text
-            savedText = snapshot.savedText
-            selection = NSRange(location: min(snapshot.selection, text.utf16.count), length: 0)
-            isLibraryHome = snapshot.libraryHome == true
-            if let fileURL {
-                baseline = DiskBaseline(data: snapshot.savedText.map { Data($0.utf8) })
-                if let disk = try? DocumentStorage.read(fileURL), snapshot.text == snapshot.savedText {
-                    text = disk.0
-                    savedText = disk.0
-                    baseline = disk.1
-                }
-                // A file in a remembered folder reopens with its sidebar.
-                updateProject(for: fileURL)
+            if waitsForBlankPage(snapshot, opening: opening) {
+                launchPending = true
+                text = ""
+                savedText = ""
+            } else {
+                restore(snapshot)
             }
         } else {
             text = Self.welcome
             try? WelcomeDocument.prepareAssets(in: stateDirectory)
             layout = .split
         }
-        saveStatus = fileURL == nil ? "Local Draft" : (text == savedText ? "Saved" : "Unsaved Work Restored")
+        saveStatus = launchPending ? "" :
+            (fileURL == nil ? "Local Draft" : (text == savedText ? "Saved" : "Unsaved Work Restored"))
         client.onNotification = { [weak self] method, params in self?.receive(method, params) }
         client.onDisconnect = { [weak self] message in
             self?.recordOperation("service.disconnected", ["reason": message])
@@ -502,12 +512,63 @@ final class Workspace: ObservableObject {
         updateSourceAccess()
     }
 
+    /// Launch shows a blank page, not the snapshot's document, unless the
+    /// snapshot holds unsaved text, the setting is "Last document", or the
+    /// last session ended on the untouched blank page (restored at once, with
+    /// no wait). A snapshot of the home state always leads to a blank page.
+    private func waitsForBlankPage(_ snapshot: RecoverySnapshot, opening: LaunchPage?) -> Bool {
+        guard let opening, snapshot.text == snapshot.savedText else {
+            return false
+        }
+        if snapshot.libraryHome == true {
+            return true
+        }
+        guard opening == .blankPage, let url = snapshot.fileURL else {
+            // A snapshot with no file is the single draft of old versions;
+            // `LibraryController.start()` adopts it.
+            return false
+        }
+        return !restoresBlankPage(snapshot, at: url)
+    }
+
+    /// Whether the snapshot's document is still the untouched blank page.
+    private func restoresBlankPage(_ snapshot: RecoverySnapshot, at url: URL) -> Bool {
+        guard let id = snapshot.blankPageID, id == library.blankPageID else {
+            return false
+        }
+        return (try? DocumentStorage.read(url).0) == DocumentTemplate.blank.source
+    }
+
+    private func restore(_ snapshot: RecoverySnapshot) {
+        fileURL = snapshot.fileURL
+        mainFileURL = snapshot.mainFileURL
+        text = snapshot.text
+        savedText = snapshot.savedText
+        selection = NSRange(location: min(snapshot.selection, text.utf16.count), length: 0)
+        isLibraryHome = snapshot.libraryHome == true
+        if let fileURL {
+            baseline = DiskBaseline(data: snapshot.savedText.map { Data($0.utf8) })
+            if let disk = try? DocumentStorage.read(fileURL), snapshot.text == snapshot.savedText {
+                text = disk.0
+                savedText = disk.0
+                baseline = disk.1
+            }
+            // A file in a remembered folder reopens with its sidebar.
+            updateProject(for: fileURL)
+            if restoresBlankPage(snapshot, at: fileURL), text == savedText {
+                // As `LibraryController.openBlankPage()` opens it.
+                editorMode = .writing
+                selection = NSRange(location: text.utf16.count, length: 0)
+            }
+        }
+    }
+
     /// `reusingEngine` keeps a running engine when only the visible file changed
     /// within the same compilation entry (and therefore the same root). Restarting
     /// would discard Tinymist's compile cache and preview, recompiling a whole book.
     func startService(reusingEngine: Bool = false) {
         updateWritingMode()
-        guard !isLibraryHome else {
+        guard !isLibraryHome, !launchPending else {
             return
         }
         if previewCompilationURL != compilationURL {
@@ -757,6 +818,11 @@ final class Workspace: ObservableObject {
     }
 
     @discardableResult func saveRecovery() -> Bool {
+        // While launch waits for a blank page, the last session's snapshot
+        // stays as it is: nothing is open that could be lost.
+        guard !launchPending else {
+            return true
+        }
         history.flush(current: text)
         let snapshot = RecoverySnapshot(
             fileURL: fileURL,
@@ -765,6 +831,7 @@ final class Workspace: ObservableObject {
             selection: selection.location,
             mainFileURL: mainFileURL,
             libraryHome: isLibraryHome,
+            blankPageID: isOnUntouchedBlankPage ? managedDocumentID : nil,
         )
         do { try JSONEncoder().encode(snapshot).write(to: recoveryURL, options: .atomic)
             return true
@@ -915,7 +982,7 @@ final class Workspace: ObservableObject {
     }
 
     private func preserveCurrent() -> Bool {
-        guard !isLibraryHome else {
+        guard !isLibraryHome, !launchPending else {
             return true
         }
         saveTask?.cancel()
@@ -968,6 +1035,7 @@ final class Workspace: ObservableObject {
             savedText = content
             baseline = disk
             isLibraryHome = false
+            launchPending = false
             library.associate(url)
             if let managedDocumentID {
                 library.noteOpened(managedDocumentID)
@@ -993,6 +1061,10 @@ final class Workspace: ObservableObject {
 
     /// `⌘N`: a blank page. While the blank page is untouched, nothing new is made.
     func newDocument() {
+        // Launch is already opening the blank page.
+        guard !launchPending else {
+            return
+        }
         recordOperation("document.new")
         closePalette()
         library.perform { [weak self] in try await self?.library.openBlankPage() }
@@ -1005,18 +1077,28 @@ final class Workspace: ObservableObject {
     }
 
     /// Clears the current document as `showLibraryHome()` does, then opens the
-    /// blank page. If the library cannot give one, the window stays in the
-    /// home state with the error shown; the gallery does not open by itself.
-    func showBlankPage() async {
-        if !isLibraryHome {
+    /// blank page. `keepingCurrent` skips the clear when the current document
+    /// is already preserved, so the window goes straight from it to the page.
+    /// If the library cannot give one, the window is in the home state with
+    /// the error shown; the gallery does not open by itself.
+    func showBlankPage(keepingCurrent: Bool = false) async {
+        if !keepingCurrent, !isLibraryHome, !launchPending {
             showLibraryHome()
         }
         do { try await library.openBlankPage() }
         catch {
             recordOperation("library.blankPageUnavailable", ["error": error.localizedDescription])
+            if !isLibraryHome {
+                showLibraryHome()
+            }
             library.report(error)
             showMessage(error.localizedDescription, persistent: true)
         }
+    }
+
+    /// Whether the open document is the untouched blank page.
+    var isOnUntouchedBlankPage: Bool {
+        !isLibraryHome && managedDocumentID.map(library.isUntouchedBlankPage) == true
     }
 
     func openLibrary() {
@@ -1051,6 +1133,7 @@ final class Workspace: ObservableObject {
         client.stop()
         historyOpen = false
         isLibraryHome = true
+        launchPending = false
         fileURL = nil
         mainFileURL = nil
         managedDocumentID = nil
@@ -2355,8 +2438,12 @@ extension Workspace {
         jump(to: destination.position.offset(in: text))
     }
 
+    /// `⌘W` on a document: steps back inside the project (navigation history,
+    /// then the main entry). With nothing left, it saves the document and
+    /// shows a blank page (Phase 7, decision 7). The earlier document stays in
+    /// recents; close no longer returns to it.
     func closeDocument() {
-        guard !isLibraryHome, !documentTransitionInProgress, !applyingCommand else {
+        guard !isLibraryHome, !launchPending, !documentTransitionInProgress, !applyingCommand else {
             return
         }
         window?.makeFirstResponder(nil)
@@ -2367,42 +2454,33 @@ extension Workspace {
             // A recovered session may have a compilation entry but no in-memory history.
             _ = open(mainFileURL)
         } else if preserveCurrent() {
-            closeToRecentDocument()
+            recordOperation("document.closeToBlankPage")
+            // Text that could not be saved is already in a draft copy; clear
+            // it so opening the page cannot copy it twice.
+            let preserved = text == savedText
+            documentTransitionInProgress = true
+            editor?.isEditable = false
+            Task { [weak self] in
+                guard let self else {
+                    return
+                }
+                await showBlankPage(keepingCurrent: preserved)
+                documentTransitionInProgress = false
+                editor?.isEditable = editorIsEditable
+            }
         }
     }
 
-    /// Closing a library document returns to the one opened before it, like closing a tab.
-    /// With nothing left to return to, the template page offers a fresh start.
-    private func closeToRecentDocument() {
-        if let managedDocumentID {
-            library.forgetRecent(managedDocumentID)
-        }
-        let candidates = library.reopenableRecentIDs
-        guard !candidates.isEmpty else {
-            showLibraryHome()
-            openDiscovery(.templates)
-            return
-        }
-        recordOperation("document.closeToRecent")
-        if text != savedText {
-            // Already preserved as a draft copy; clear it so the next open cannot copy it twice.
-            showLibraryHome()
-        }
-        documentTransitionInProgress = true
-        editor?.isEditable = false
-        Task { [weak self] in
-            guard let self else {
-                return
-            }
-            let reopened = await library.reopenRecent(candidates)
-            documentTransitionInProgress = false
-            editor?.isEditable = editorIsEditable
-            if !reopened {
-                if !isLibraryHome {
-                    showLibraryHome()
-                }
-                openDiscovery(.templates)
-            }
+    /// `⌘W` with a sheet on the writing window closes the sheet, as Escape
+    /// does, and leaves the document open. An alert or a file panel stays.
+    func closeSheet() {
+        if objectEditSession != nil {
+            objectEditSession = nil
+        } else if historyOpen {
+            historyOpen = false
+        } else if libraryOpen, !library.busy {
+            libraryOpen = false
+            discoveryMode = nil
         }
     }
 }

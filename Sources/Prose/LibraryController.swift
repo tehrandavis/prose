@@ -22,7 +22,7 @@ final class LibraryController: ObservableObject {
     private let locationURL: URL
     private let recentURL: URL
     private let blankPageURL: URL
-    /// Library documents opened and not yet closed, most recent first; Command-W returns to the next one.
+    /// Library documents opened, most recent first.
     private(set) var recentDocumentIDs: [UUID]
     /// The untouched blank page (Phase 7, decision 2), stored in
     /// `blank-page.json`, local to this Mac. There is at most one. The first
@@ -47,6 +47,11 @@ final class LibraryController: ObservableObject {
         )
     }
 
+    /// False before `start()` and after iCloud failed to resume in it.
+    var isStarted: Bool {
+        started
+    }
+
     func start() async {
         guard !started else {
             return
@@ -68,10 +73,18 @@ final class LibraryController: ObservableObject {
         await refresh()
         if let workspace, let url = workspace.fileURL {
             associate(url)
-            if documents.contains(where: { $0.id == workspace.managedDocumentID && $0.trashedAt != nil }) {
-                workspace.showLibraryHome()
+            // A blank page restored at launch and typed in before this point
+            // had no document id yet, so `edited()` could not keep it.
+            if let id = blankPageID, id == workspace.managedDocumentID,
+               workspace.text != DocumentTemplate.blank.source
+            {
+                keepBlankPage()
             }
-        } else if let workspace, !workspace.isLibraryHome {
+            if documents.contains(where: { $0.id == workspace.managedDocumentID && $0.trashedAt != nil }) {
+                // A blank page takes the trashed document's place (Phase 7, decision 3).
+                await workspace.showBlankPage()
+            }
+        } else if let workspace, !workspace.isLibraryHome, !workspace.launchPending {
             // One-time adoption of the previous single-draft model.
             do {
                 let mark = workspace.stateDirectory.appendingPathComponent(WelcomeDocument.markFilename)
@@ -358,19 +371,6 @@ final class LibraryController: ObservableObject {
                 try FileManager.default.removeItem(at: blankPageURL)
             }
         } catch { workspace?.recordOperation("library.blankPageFailed", ["error": error.localizedDescription]) }
-    }
-
-    /// Opens the first recent document that still reads; unreadable entries are dropped.
-    func reopenRecent(_ candidates: [UUID]) async -> Bool {
-        for id in candidates {
-            do { try await open(id)
-                return true
-            } catch {
-                workspace?.recordOperation("library.reopenFailed", ["documentID": id.uuidString])
-                forgetRecent(id)
-            }
-        }
-        return false
     }
 
     private func updateRecent(_ change: (inout [UUID]) -> Void) {
