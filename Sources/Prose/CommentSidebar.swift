@@ -84,6 +84,28 @@ extension Workspace {
     /// the list's Return do. The comment becomes active and its anchor
     /// scrolls into view; the editor keeps the keyboard.
     func openSidebarComment(_ row: CommentListRow) {
+        // A click opens the comment, so its card must be able to show: turn
+        // comments on, and resolved comments too when the row is resolved.
+        if case let .comment(id) = row.target, let comment = commentListIndex?.comment(id) {
+            var changed = false
+            if !showsComments {
+                showsComments = true
+                changed = true
+            }
+            if !comment.resolutions.isEmpty, !showsResolvedComments {
+                showsResolvedComments = true
+                changed = true
+            }
+            if changed {
+                returnKeyboardToEditor()
+                // The margin takes the new setting in this turn of the run
+                // loop; go to the comment in the next one.
+                DispatchQueue.main.async { [weak self] in
+                    self?.showCommentRow(row)
+                }
+                return
+            }
+        }
         if case let .comment(id) = row.target, let editor,
            !CommentOverlay.items(editor.comments).contains(where: { $0.id == id && $0.kind != .draft }),
            let anchor = commentListIndex?.comment(id)?.anchor, anchor.length > 0

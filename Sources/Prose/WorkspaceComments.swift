@@ -484,7 +484,27 @@ extension Workspace {
             editor.reveal(NSRange(location: range.location, length: 0))
         }
         commentOverlay?.refresh()
+        openCommentCard(id)
         recordOperation("comment.visited", ["id": id])
+    }
+
+    /// Opens comment `id`'s card where the margin shows only icons (a narrow
+    /// pane): the popover that a click on its icon opens. With cards in the
+    /// margin the active card is already open. The icon exists once the
+    /// margin has drawn the place the view scrolled to, so one more turn of
+    /// the run loop is tried.
+    func openCommentCard(_ id: String, retry: Bool = true) {
+        guard let overlay = commentOverlay, overlay.gutter == .icons else {
+            return
+        }
+        if let icon = overlay.icons[id], !icon.dimmed {
+            overlay.showPopover(for: id, relativeTo: icon)
+        } else if retry {
+            DispatchQueue.main.async { [weak self] in
+                self?.commentOverlay?.refresh()
+                self?.openCommentCard(id, retry: false)
+            }
+        }
     }
 
     /// Reply: the keyboard goes to the active card's Reply field.
