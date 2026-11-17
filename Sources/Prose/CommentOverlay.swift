@@ -103,6 +103,11 @@ final class CommentOverlay: NSView {
     /// For tests: full refreshes made.
     private(set) var refreshes = 0
     private var refreshScheduled = false
+    /// Previous, Next and the count, pinned at the top of the gutter (or of
+    /// the pane in the icon layout). It does not scroll with the cards.
+    let navigator = CommentNavigatorView()
+    /// Space between the navigator and the pane's top edge.
+    static let navigatorTop: CGFloat = 8
 
     override var isFlipped: Bool {
         true
@@ -114,6 +119,12 @@ final class CommentOverlay: NSView {
         editor.commentOverlay = self
         editor.comments.showsComments = workspace.showsComments
         editor.comments.showsResolved = workspace.showsResolvedComments
+        navigator.run = { [weak workspace] id in
+            guard let workspace, let command = WritingCommand.all.first(where: { $0.id == id }) else {
+                return
+            }
+            workspace.execute(command)
+        }
         setAccessibilityElement(true)
         setAccessibilityRole(.group)
         setAccessibilityLabel(L10n.text("Comments"))
@@ -248,6 +259,54 @@ final class CommentOverlay: NSView {
         }
         updateModels(items, comments)
         place(items, gutter: gutter, editor: editor, comments: comments)
+        placeNavigator(items, gutter: gutter, editor: editor, active: comments.activeID)
+    }
+
+    /// The navigator's count: "3 of 12" for the active comment's place
+    /// among the comments Next and Previous visit, in document order, or
+    /// the total when no comment is active.
+    static func navigatorCount(_ items: [CommentCardItem], active: String?) -> String {
+        let visited = items.filter { $0.kind != .draft }
+        if let active, let position = visited.firstIndex(where: { $0.id == active }) {
+            return L10n.format("%@ of %@", String(position + 1), String(visited.count))
+        }
+        return visited.count == 1 ? L10n.text("1 comment") : L10n.format("%@ comments", String(visited.count))
+    }
+
+    /// Shows the navigator while a comment can be visited: at the top of the
+    /// gutter over the cards' column, or in the pane's top right corner in
+    /// the icon layout.
+    private func placeNavigator(
+        _ items: [CommentCardItem],
+        gutter: CommentGutter,
+        editor: ManuscriptTextView,
+        active: String?,
+    ) {
+        guard gutter != .hidden, items.contains(where: { $0.kind != .draft }), let container = editor.textContainer
+        else {
+            if navigator.superview != nil {
+                navigator.removeFromSuperview()
+            }
+            return
+        }
+        navigator.count = Self.navigatorCount(items, active: active)
+        let size = navigator.fittingSize
+        let x: CGFloat
+        if gutter.showsCards {
+            let columnRight = convert(
+                NSPoint(x: editor.textContainerOrigin.x + container.size.width, y: 0),
+                from: editor,
+            ).x
+            x = columnRight + CommentGutter.gap + (CommentGutter.width - Self.cardWidth) / 2
+        } else {
+            // Clear of the vertical scroller.
+            x = bounds.width - size.width - 16
+        }
+        navigator.frame = NSRect(x: x.rounded(), y: Self.navigatorTop, width: size.width, height: size.height)
+        // Above the cards, which scroll beneath it.
+        if subviews.last !== navigator {
+            addSubview(navigator, positioned: .above, relativeTo: nil)
+        }
     }
 
     private func updateModels(_ items: [CommentCardItem], _ comments: CommentController) {
@@ -569,6 +628,226 @@ final class CommentIconView: NSView {
             return
         }
         let size = CommentOverlay.iconSize
+        let rect = NSRect(x: (bounds.width - size) / 2, y: (bounds.height - size) / 2, width: size, height: size)
+        let tinted = NSImage(size: rect.size, flipped: false) { frame in
+            image.draw(in: frame)
+            Theme.nativeSecondary.set()
+            frame.fill(using: .sourceAtop)
+            return true
+        }
+        tinted.draw(in: rect)
+    }
+}
+
+/// Previous, Next and the count, pinned at the top of the comments' gutter.
+/// The buttons run Previous Comment and Next Comment through the same path
+/// as their shortcuts, and never take the keyboard from the editor.
+@MainActor
+final class CommentNavigatorView: NSView {
+    static let height: CGFloat = 24
+    /// Runs the command with this id.
+    var run: ((String) -> Void)?
+    let previous = CommentNavigatorButton(
+        icon: "arrow-up",
+        command: "previousComment",
+        label: L10n.text("Previous Comment"),
+        shortcut: "⌃⌥P",
+    )
+    let next = CommentNavigatorButton(
+        icon: "arrow-down",
+        command: "nextComment",
+        label: L10n.text("Next Comment"),
+        shortcut: "⌃⌥N",
+    )
+    private let label = NSTextField(labelWithString: "")
+
+    var count: String {
+        get { label.stringValue }
+        set {
+            if label.stringValue != newValue {
+                label.stringValue = newValue
+                invalidateIntrinsicContentSize()
+            }
+        }
+    }
+
+    override var isFlipped: Bool {
+        true
+    }
+
+    init() {
+        super.init(frame: NSRect(x: 0, y: 0, width: 100, height: Self.height))
+        label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        label.textColor = Theme.nativeSecondary
+        label.lineBreakMode = .byClipping
+        label.setAccessibilityIdentifier("comment.navigator.count")
+        for button in [previous, next] {
+            button.action = { [weak self] id in self?.run?(id) }
+            addSubview(button)
+        }
+        addSubview(label)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.group)
+        setAccessibilityLabel(L10n.text("Go to a comment"))
+        setAccessibilityIdentifier("comment.navigator")
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
+        nil
+    }
+
+    override var fittingSize: NSSize {
+        intrinsicContentSize
+    }
+
+    override var intrinsicContentSize: NSSize {
+        let side = CommentNavigatorButton.side
+        return NSSize(width: ceil(2 * side + 6 + label.intrinsicContentSize.width + 8), height: Self.height)
+    }
+
+    override func layout() {
+        super.layout()
+        let side = CommentNavigatorButton.side
+        let top = (bounds.height - side) / 2
+        previous.frame = NSRect(x: 0, y: top, width: side, height: side)
+        next.frame = NSRect(x: side, y: top, width: side, height: side)
+        let text = label.intrinsicContentSize
+        label.frame = NSRect(
+            x: 2 * side + 6,
+            y: ((bounds.height - text.height) / 2).rounded(),
+            width: max(0, bounds.width - 2 * side - 6),
+            height: text.height,
+        )
+    }
+
+    /// The page colour behind it, so cards that scroll under it do not show
+    /// through.
+    override func draw(_: NSRect) {
+        Theme.nativeEditor.setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: 6, yRadius: 6).fill()
+    }
+
+    override var acceptsFirstResponder: Bool {
+        false
+    }
+}
+
+/// An up or down button of the navigator: a Phosphor icon with the quiet
+/// hover and press wash, the accessibility of a button and no keyboard
+/// focus. It runs on mouse up inside it.
+@MainActor
+final class CommentNavigatorButton: NSView {
+    static let side: CGFloat = 22
+    static let iconSize: CGFloat = 13
+    let command: String
+    var action: ((String) -> Void)?
+    private var tracking: NSTrackingArea?
+
+    private var hovering = false {
+        didSet {
+            if hovering != oldValue {
+                needsDisplay = true
+            }
+        }
+    }
+
+    private var pressed = false {
+        didSet {
+            if pressed != oldValue {
+                needsDisplay = true
+            }
+        }
+    }
+
+    private let icon: String
+
+    init(icon: String, command: String, label: String, shortcut: String) {
+        self.icon = icon
+        self.command = command
+        super.init(frame: NSRect(x: 0, y: 0, width: Self.side, height: Self.side))
+        toolTip = label + " (" + shortcut + ")"
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel(label)
+        setAccessibilityHelp(toolTip)
+        setAccessibilityIdentifier("comment.navigator." + command)
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
+        nil
+    }
+
+    override var acceptsFirstResponder: Bool {
+        false
+    }
+
+    override var canBecomeKeyView: Bool {
+        false
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        false
+    }
+
+    override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
+        true
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        action?(command)
+        return true
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let tracking {
+            removeTrackingArea(tracking)
+        }
+        let area = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+        )
+        addTrackingArea(area)
+        tracking = area
+    }
+
+    override func mouseEntered(with _: NSEvent) {
+        hovering = true
+    }
+
+    override func mouseExited(with _: NSEvent) {
+        hovering = false
+    }
+
+    override func mouseDown(with _: NSEvent) {
+        pressed = true
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        pressed = bounds.contains(convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        let fire = pressed && bounds.contains(convert(event.locationInWindow, from: nil))
+        pressed = false
+        if fire {
+            action?(command)
+        }
+    }
+
+    override func draw(_: NSRect) {
+        let alpha: CGFloat = pressed ? 0.14 : (hovering ? 0.08 : 0)
+        if alpha > 0 {
+            Theme.nativeSecondary.withAlphaComponent(alpha).setFill()
+            NSBezierPath(roundedRect: bounds, xRadius: 5, yRadius: 5).fill()
+        }
+        guard let image = IconStore.image(icon) else {
+            return
+        }
+        let size = Self.iconSize
         let rect = NSRect(x: (bounds.width - size) / 2, y: (bounds.height - size) / 2, width: size, height: size)
         let tinted = NSImage(size: rect.size, flipped: false) { frame in
             image.draw(in: frame)

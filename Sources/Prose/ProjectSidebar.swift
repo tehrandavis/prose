@@ -69,6 +69,8 @@ struct ProjectSidebar: View {
     /// becoming kept, documents changing, recents reordering.
     @ObservedObject private var library: LibraryController
     @State private var query = ""
+    /// The search of the Comments view, apart from the files' search.
+    @State private var commentQuery = ""
     @State private var renaming: URL?
     @State private var draftName = ""
     @State private var targetFolder: URL?
@@ -83,51 +85,30 @@ struct ProjectSidebar: View {
         // An untouched blank page shows recents in place of its own folder
         // (Phase 7, decision 4), with no search field and no footer.
         let showsRecents = workspace.showsSidebarRecents
+        let showsComments = workspace.sidebarShowsComments && !showsRecents
         VStack(spacing: 0) {
             if showsRecents {
                 Color.clear.frame(height: 6)
-            } else if workspace.project != nil {
-                TextField(L10n.text("Search Files"), text: $query)
-                    .textFieldStyle(.plain).font(.system(size: 12))
-                    .padding(.horizontal, 9).frame(height: 26)
-                    .background(Theme.editor.opacity(0.7), in: RoundedRectangle(cornerRadius: 7))
-                    .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.border))
-                    .padding(.horizontal, 10).padding(.top, 10).padding(.bottom, 6)
-                    .accessibilityIdentifier("sidebar.search")
             } else {
-                HStack {
-                    Text(L10n.text("Outline")).font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Theme.secondary)
-                    Spacer()
-                }.padding(.horizontal, 14).frame(height: 36)
+                SidebarModeControl(workspace: workspace, comments: workspace.commentSidebar)
+                    .padding(.horizontal, 10).padding(.top, 10)
+                if showsComments {
+                    searchField(L10n.text("Search Comments"), text: $commentQuery)
+                } else if workspace.project != nil {
+                    searchField(L10n.text("Search Files"), text: $query)
+                } else {
+                    Color.clear.frame(height: 6)
+                }
             }
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 1) {
-                    // Rebuilt when files change on disk or the open file changes.
-                    let _ = workspace.projectRevision
-                    if showsRecents {
-                        recents(workspace.recents())
-                    } else if let project = workspace.project, !query.trimmingCharacters(in: .whitespaces).isEmpty {
-                        ForEach(ProjectTree.search(query, in: project.root), id: \.id) { node in
-                            fileRow(node, depth: 0, detail: workspace.relative(
-                                node.url.deletingLastPathComponent(),
-                                in: project.root,
-                            ))
-                        }
-                    } else {
-                        ForEach(workspace.sidebarRows) { row in
-                            switch row {
-                            case let .item(node, depth): fileRow(node, depth: depth)
-                            case let .heading(index, depth): headingRow(index, depth: depth)
-                            case let .more(_, count, depth): moreRow(count, depth: depth)
-                            }
-                        }
-                        if workspace.project == nil, workspace.outline.isEmpty {
-                            Text(L10n.text("Write your first heading with =")).font(.system(size: 11))
-                                .foregroundStyle(Theme.muted).padding(14)
-                        }
-                    }
-                }.padding(.horizontal, 6).padding(.vertical, 4)
+            if showsComments {
+                CommentSidebarList(
+                    workspace: workspace,
+                    model: workspace.commentSidebar,
+                    hover: workspace.sidebarHover,
+                    query: commentQuery,
+                )
+            } else {
+                files(showsRecents: showsRecents)
             }
             if workspace.project != nil, !showsRecents {
                 Rectangle().fill(Theme.border).frame(height: 1)
@@ -137,6 +118,50 @@ struct ProjectSidebar: View {
         .background(Theme.background)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("sidebar")
+        .onAppear { workspace.refreshCommentSidebar() }
+    }
+
+    private func searchField(_ title: String, text: Binding<String>) -> some View {
+        TextField(title, text: text)
+            .textFieldStyle(.plain).font(.system(size: 12))
+            .padding(.horizontal, 9).frame(height: 26)
+            .background(Theme.editor.opacity(0.7), in: RoundedRectangle(cornerRadius: 7))
+            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.border))
+            .padding(.horizontal, 10).padding(.top, 6).padding(.bottom, 6)
+            .accessibilityIdentifier("sidebar.search")
+    }
+
+    /// The file tree with the open file's outline, the files that match
+    /// the search, or the blank page's recents.
+    private func files(showsRecents: Bool) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 1) {
+                // Rebuilt when files change on disk or the open file changes.
+                let _ = workspace.projectRevision
+                if showsRecents {
+                    recents(workspace.recents())
+                } else if let project = workspace.project, !query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    ForEach(ProjectTree.search(query, in: project.root), id: \.id) { node in
+                        fileRow(node, depth: 0, detail: workspace.relative(
+                            node.url.deletingLastPathComponent(),
+                            in: project.root,
+                        ))
+                    }
+                } else {
+                    ForEach(workspace.sidebarRows) { row in
+                        switch row {
+                        case let .item(node, depth): fileRow(node, depth: depth)
+                        case let .heading(index, depth): headingRow(index, depth: depth)
+                        case let .more(_, count, depth): moreRow(count, depth: depth)
+                        }
+                    }
+                    if workspace.project == nil, workspace.outline.isEmpty {
+                        Text(L10n.text("Write your first heading with =")).font(.system(size: 11))
+                            .foregroundStyle(Theme.muted).padding(14)
+                    }
+                }
+            }.padding(.horizontal, 6).padding(.vertical, 4)
+        }
     }
 
     private var footer: some View {

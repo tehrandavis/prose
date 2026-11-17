@@ -41,10 +41,22 @@ struct CommentListRow: Identifiable, Equatable {
     let replies: Int
     let state: String
     let location: Int
+    /// The first entry's date as written in the record; empty for a problem.
+    var date = ""
+    /// The start of the commented words, on one line, when the rows were
+    /// built with the source; empty otherwise.
+    var quote = ""
 
     /// The rows for `index` that match `query` by author or text: the open
     /// comments in document order, then Resolved, Not attached and Problems.
     static func rows(for index: CommentIndex, matching query: String) -> [Self] {
+        filter(rows(for: index), matching: query)
+    }
+
+    /// Every row for `index`, in the list's order. With `source`, the text
+    /// the index describes, each attached comment's row holds a quote of its
+    /// commented words.
+    static func rows(for index: CommentIndex, source: NSString? = nil) -> [Self] {
         var rows: [Self] = []
         for comment in index.comments where comment.state != .usedMoreThanOnce {
             let first = comment.entries.first
@@ -66,6 +78,8 @@ struct CommentListRow: Identifiable, Equatable {
                 replies: comment.replies.count,
                 state: state,
                 location: comment.location,
+                date: first?.date ?? "",
+                quote: source.map { quote(comment.anchor, in: $0) } ?? "",
             ))
         }
         for (offset, problem) in index.problems.enumerated() {
@@ -80,10 +94,35 @@ struct CommentListRow: Identifiable, Equatable {
                 location: problem.ranges.first?.location ?? 0,
             ))
         }
+        return rows.sorted { ($0.section.rawValue, $0.location) < ($1.section.rawValue, $1.location) }
+    }
+
+    /// The rows that match every word of `query` by author or text.
+    static func filter(_ rows: [Self], matching query: String) -> [Self] {
         let words = query.lowercased().split(whereSeparator: \.isWhitespace)
+        guard !words.isEmpty else {
+            return rows
+        }
         return rows.filter { row in
             words.allSatisfy { row.author.lowercased().contains($0) || row.text.lowercased().contains($0) }
-        }.sorted { ($0.section.rawValue, $0.location) < ($1.section.rawValue, $1.location) }
+        }
+    }
+
+    /// Up to 80 characters of `anchor` in `source`, with runs of white
+    /// space made one space.
+    static func quote(_ anchor: NSRange?, in source: NSString) -> String {
+        guard let anchor, anchor.length > 0, NSMaxRange(anchor) <= source.length else {
+            return ""
+        }
+        let cut = NSRange(location: anchor.location, length: min(anchor.length, 80))
+        // The markers of a comment nested inside this one are not words.
+        let text = source.substring(with: cut).replacingOccurrences(
+            of: #"/\*<?[A-Za-z0-9]+>?\*/"#,
+            with: "",
+            options: .regularExpression,
+        )
+        let words = text.split(whereSeparator: { $0.isWhitespace || $0.isNewline })
+        return words.joined(separator: " ") + (anchor.length > cut.length ? "…" : "")
     }
 
     static func firstLine(_ text: String) -> String {
@@ -186,6 +225,11 @@ extension Workspace {
     /// source.
     func openCommentRow(_ row: CommentListRow) {
         closePalette()
+        showCommentRow(row)
+    }
+
+    /// Goes to the row's comment, or selects the problem's source.
+    func showCommentRow(_ row: CommentListRow) {
         switch row.target {
         case let .comment(id):
             if let editor, CommentOverlay.items(editor.comments).contains(where: { $0.id == id }) {

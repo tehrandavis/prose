@@ -57,6 +57,13 @@ extension Workspace {
             openCommentList()
             return
         }
+        if id == "showCommentsSidebar" {
+            if paletteOpen {
+                closePalette()
+            }
+            toggleCommentsSidebar()
+            return
+        }
         if paletteOpen {
             closePalette()
         }

@@ -520,7 +520,7 @@ extension WritingFlowTests {
         let group = try #require(CommandGroup.all.first { $0.id == "comments" })
         #expect(group.key == "k" && group.parentID == nil)
         let keys = WritingCommand.all.filter { $0.group == "comments" }.map(\.keyPath)
-        #expect(keys == ["k a", "k r", "k e", "k d", "k n", "k p", "k s", "k h", "k l", "k u"])
+        #expect(keys == ["k a", "k r", "k e", "k d", "k n", "k p", "k s", "k h", "k l", "k u", "k b"])
         #expect(WritingCommand.all.first { $0.id == "comment" }?.title == "Toggle Source Comment")
         // No shortcut of the comments clashes with another command's.
         let labels = WritingCommand.all.flatMap { command in command.shortcuts.map { ($0.label, command.id) } }

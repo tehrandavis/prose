@@ -387,6 +387,7 @@ public struct WritingCommand: Identifiable, Sendable {
         "showResolvedComments": "checks",
         "allComments": "list-magnifying-glass",
         "showCommentSource": "code-block",
+        "showCommentsSidebar": "chats",
     ]
     public func acceptsContext(_ mode: String) -> Bool {
         mode == "markup" || (supportsMath && mode == "math")
@@ -1536,6 +1537,15 @@ public struct WritingCommand: Identifiable, Sendable {
             "Show Comment Source",
             "Open the comment lines at the end of the file.",
             "comment source store records",
+            isInsertion: false,
+        ),
+        .init(
+            "showCommentsSidebar",
+            "comments",
+            "b",
+            "Show Comments in Sidebar",
+            "Switch the sidebar between the files and this document's comments.",
+            "comment sidebar list files",
             isInsertion: false,
         ),
     ]

@@ -400,7 +400,10 @@ final class CommentController {
         let changed = drawn.map {
             $0.highlights != highlights || $0.underlines != underlines || $0.store != store || $0.hidden != hidden
         } ?? true
-        defer { editor.commentOverlay?.setNeedsRefresh() }
+        defer {
+            editor.commentOverlay?.setNeedsRefresh()
+            editor.workspace?.commentsDidChange()
+        }
         if changed {
             if drawn.map({ $0.underlines != underlines }) ?? !underlines.isEmpty {
                 editor.setNeedsDisplay(editor.visibleRect)

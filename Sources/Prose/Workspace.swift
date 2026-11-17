@@ -117,6 +117,8 @@ final class Workspace: ObservableObject {
     /// The open row under the pointer in the sidebar and in the "Your
     /// writing…" sheet, and the sheet's keyboard selection (Phase 7 step A).
     let sidebarHover = RowHover()
+    /// The open file's comments as the sidebar's Comments view lists them.
+    let commentSidebar = CommentSidebarModel()
     let libraryHover = RowHover()
     let libraryRows = LibraryRowSelection()
     /// Spell check of the open file (decisions 7 and 8 of the Phase 4 note).
@@ -226,6 +228,9 @@ final class Workspace: ObservableObject {
     /// All Comments, the comment list in the command panel (Phase 8
     /// decision 7), while it is open.
     @Published var commentList: CommentList?
+    /// Whether the sidebar shows the open file's comments in place of the
+    /// file tree. Kept per window for the session.
+    @Published var sidebarShowsComments = false
     /// How far the comments' gutter moved the column left (decision 6).
     @Published var commentColumnShift: CGFloat = 0
     /// Show Comments, on by default, stored on this Mac (decision 7).
@@ -1575,7 +1580,7 @@ final class Workspace: ObservableObject {
             navigateBack()
         case "cite": openCitationPicker()
         case "addComment", "replyComment", "resolveComment", "deleteComment", "nextComment", "previousComment",
-             "showComments", "showResolvedComments", "allComments", "showCommentSource":
+             "showComments", "showResolvedComments", "allComments", "showCommentSource", "showCommentsSidebar":
             executeComment(command.id)
         default: insert(command)
         }
