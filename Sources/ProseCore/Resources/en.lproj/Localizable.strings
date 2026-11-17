@@ -445,6 +445,7 @@
 "Superscript" = "Superscript";
 "Symbols & Letterforms" = "Symbols & Letterforms";
 "Sync update" = "Sync update";
+"Update from Disk" = "Update from Disk";
 "Sync with iCloud" = "Sync with iCloud";
 "Syntax Reference ↗" = "Syntax Reference ↗";
 "Table" = "Table";
@@ -483,7 +484,7 @@
 "This document's library metadata could not be read. Its files have been preserved." = "This document's library metadata could not be read. Its files have been preserved.";
 "This file's text encoding is unsupported. Please use UTF-8." = "This file's text encoding is unsupported. Please use UTF-8.";
 "This package version is already imported." = "This package version is already imported.";
-"This paragraph changed on another device. Your writing is safe; resolve the conflict before saving." = "This paragraph changed on another device. Your writing is safe; resolve the conflict before saving.";
+"This paragraph changed outside Prose. Your writing is safe; resolve the conflict before saving." = "This paragraph changed outside Prose. Your writing is safe; resolve the conflict before saving.";
 "This version is pinned. Typst downloads and caches the package when needed. See the documentation for usage." = "This version is pinned. Typst downloads and caches the package when needed. See the documentation for usage.";
 "This version requires a newer Typst. Check Universe for a compatible version." = "This version requires a newer Typst. Check Universe for a compatible version.";
 "Title" = "Title";

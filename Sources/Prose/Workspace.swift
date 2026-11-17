@@ -171,6 +171,8 @@ final class Workspace: ObservableObject {
     /// Project files changed on disk, waiting for the burst to end.
     var pendingProjectChanges: [URL] = []
     var projectChangeTask: Task<Void, Never>?
+    /// Waits out a burst of writes to the open file before `refreshFromDisk`.
+    var diskRefreshTask: Task<Void, Never>?
     /// How long a burst of changes on disk must pause before the engine reads
     /// them (citations note, decision 1). Tests shorten it.
     var projectChangeDelay: Duration = .milliseconds(300)
@@ -1226,7 +1228,18 @@ final class Workspace: ObservableObject {
     /// Incorporate an external save without replacing the text view or moving the
     /// viewport. Conflicting paragraphs stay in the live buffer and recovery file.
     func refreshFromLibrary() async {
-        guard managedDocumentID != nil, let url = fileURL, let base = savedText,
+        guard managedDocumentID != nil else {
+            return
+        }
+        await refreshFromDisk()
+    }
+
+    /// The same merge for any open file: a library document, or a file in a
+    /// folder opened in place that another program (an agent, Git, another
+    /// editor) wrote. Prose's own save leaves the disk equal to `savedText`,
+    /// so it changes nothing here.
+    func refreshFromDisk() async {
+        guard let url = fileURL, let base = savedText, !isPackageSource,
               !documentTransitionInProgress, editor?.hasMarkedText() != true
         else {
             return
@@ -1249,7 +1262,7 @@ final class Workspace: ObservableObject {
             showMessage(
                 L10n
                     .text(
-                        "This paragraph changed on another device. Your writing is safe; resolve the conflict before saving.",
+                        "This paragraph changed outside Prose. Your writing is safe; resolve the conflict before saving.",
                     ),
                 persistent: true,
             )
@@ -1271,7 +1284,7 @@ final class Workspace: ObservableObject {
                 replacing: NSRange(location: 0, length: text.utf16.count),
                 focus: false,
             )
-            editor.undoManager?.setActionName(L10n.text("Sync update"))
+            editor.undoManager?.setActionName(L10n.text("Update from Disk"))
             editor.setSelectedRange(merged.selection)
         } else {
             edited(merged.text)

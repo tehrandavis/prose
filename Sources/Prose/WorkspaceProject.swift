@@ -269,6 +269,21 @@ extension Workspace {
         return text == savedText
     }
 
+    /// When the open file is among files changed on disk, merges the disk's
+    /// version into the buffer once the burst of writes pauses for 300 ms.
+    func openFileChangedOnDisk(among files: [URL]) {
+        guard let open = fileURL?.resolvingSymlinksInPath().path,
+              files.contains(where: { $0.resolvingSymlinksInPath().path == open })
+        else {
+            return
+        }
+        diskRefreshTask?.cancel()
+        diskRefreshTask = Task { [weak self] in
+            do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+            await self?.refreshFromDisk()
+        }
+    }
+
     private func watchProject() {
         let root = project?.root
         if projectWatcher?.root == root {
@@ -279,6 +294,7 @@ extension Workspace {
             ProjectWatcher(root: root) { [weak self] files in
                 self?.projectRevision += 1
                 self?.projectFilesChanged(files)
+                self?.openFileChangedOnDisk(among: files)
             }
         }
     }
