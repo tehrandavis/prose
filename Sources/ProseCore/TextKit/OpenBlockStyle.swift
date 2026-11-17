@@ -60,13 +60,16 @@ public final class OpenBlockStyle {
         /// engine's baseline distance on screen), with no space between
         /// paragraphs, for text in `font`.
         public static func paragraphStyle(pitch: CGFloat, font: NSFont) -> NSParagraphStyle {
+            // A fixed line height. TextKit adds the font's own leading to it,
+            // so that is taken off first. Line spacing on top of the font's
+            // natural height was 0.4 to 1 pt short of the pitch, because
+            // TextKit's natural height is not the rounded sum of the font's
+            // metrics, and the open block's lines then sat closer together
+            // than the rendered paragraph's.
             let style = NSMutableParagraphStyle()
-            let natural = ceil(font.ascender - font.descender + font.leading)
-            if pitch >= natural {
-                style.lineSpacing = pitch - natural
-            } else {
-                style.maximumLineHeight = pitch
-            }
+            let height = max(1, pitch - max(0, font.leading))
+            style.minimumLineHeight = height
+            style.maximumLineHeight = height
             style.paragraphSpacing = 0
             style.paragraphSpacingBefore = 0
             return style

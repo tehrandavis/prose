@@ -198,9 +198,14 @@ private func testFonts(pitch: CGFloat = 24) throws -> OpenBlockStyle.Fonts {
     let base = try #require(NSFont(name: "Times New Roman", size: 18) ?? NSFont(name: "Times", size: 18))
     let natural = ceil(base.ascender - base.descender + base.leading)
     let wide = OpenBlockStyle.Fonts.paragraphStyle(pitch: natural + 6, font: base)
-    #expect(wide.lineSpacing == 6 && wide.maximumLineHeight == 0 && wide.paragraphSpacing == 0)
+    // Every line is exactly the pitch tall: a fixed height, less the font's
+    // own leading, which TextKit adds back.
+    let leading = max(0, base.leading)
+    #expect(wide.lineSpacing == 0 && wide.paragraphSpacing == 0)
+    #expect(wide.minimumLineHeight == natural + 6 - leading && wide.maximumLineHeight == natural + 6 - leading)
     let tight = OpenBlockStyle.Fonts.paragraphStyle(pitch: natural - 4, font: base)
-    #expect(tight.lineSpacing == 0 && tight.maximumLineHeight == natural - 4)
+    #expect(tight.lineSpacing == 0 && tight.minimumLineHeight == natural - 4 - leading)
+    #expect(tight.maximumLineHeight == natural - 4 - leading)
     let fonts = try testFonts()
     #expect(fonts.font(forStyle: 0) == fonts.base && fonts.font(forStyle: 1) == fonts.base)
     #expect(fonts.font(forStyle: 8 | 2) == fonts.strong && fonts.font(forStyle: 32) == fonts.code)
