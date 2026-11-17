@@ -145,3 +145,57 @@ extension WritingController {
         return offset > previous ? NSMaxRange(marker) : marker.location
     }
 }
+
+/// Resolved comments while Show Resolved Comments is on (decision 6): a 1 pt
+/// underline in the secondary text colour under the anchor, no fill. Drawn
+/// in `drawBackground(in:)` in every mode, so nothing reaches the storage.
+extension ManuscriptTextView {
+    static let resolvedUnderlineWidth: CGFloat = 1
+
+    /// The underline rectangles of `range` in container coordinates: under
+    /// each drawn line of its glyphs in rendered blocks and pills, and under
+    /// each line of its source text elsewhere.
+    func resolvedUnderlineRects(of range: NSRange) -> [CGRect] {
+        guard let manager = textLayoutManager else {
+            return []
+        }
+        var lines: [CGRect] = []
+        var source = [range]
+        if let drawn = writing.drawnRects(of: range) {
+            lines = drawn.rects
+            source = drawn.source
+        }
+        for piece in source where piece.length > 0 {
+            lines += TextKit2Geometry.segments(piece, type: .standard, in: manager)
+        }
+        let width = Self.resolvedUnderlineWidth
+        return lines.filter { $0.width > 0 }.map {
+            CGRect(x: $0.minX, y: $0.maxY - 2 * width, width: $0.width, height: width)
+        }
+    }
+
+    /// Draws the underline of every resolved comment in view.
+    func drawResolvedCommentUnderlines(in dirty: NSRect) {
+        let ranges = comments.resolvedUnderlines
+        guard !ranges.isEmpty, let manager = textLayoutManager,
+              let viewport = manager.textViewportLayoutController.viewportRange
+        else {
+            return
+        }
+        let start = TextKit2Geometry.offset(of: viewport.location, in: manager)
+        let view = NSRange(
+            location: start,
+            length: TextKit2Geometry.offset(of: viewport.endLocation, in: manager) - start,
+        )
+        let origin = textContainerOrigin
+        Theme.nativeSecondary.setFill()
+        for range in ranges where NSIntersectionRange(range, view).length > 0 {
+            for rect in resolvedUnderlineRects(of: NSIntersectionRange(range, view)) {
+                let rect = rect.offsetBy(dx: origin.x, dy: origin.y)
+                if rect.intersects(dirty) {
+                    rect.fill()
+                }
+            }
+        }
+    }
+}

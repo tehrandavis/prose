@@ -70,6 +70,7 @@ extension WritingFlowTests {
         let keys: [ToolbarAction: [(String, UInt16)]] = [
             .style: [("s", 1)], .insert: [("i", 34)],
             .table: [("i", 34), ("t", 17)], .equation: [("i", 34), ("e", 14)], .image: [("i", 34), ("i", 34)],
+            .comment: [("k", 40), ("a", 0)],
         ]
         for action in ToolbarAction.allCases {
             let source = editor.string
@@ -99,6 +100,8 @@ extension WritingFlowTests {
                 if app.workspace.paletteOpen {
                     app.workspace.closePalette()
                 }
+                // Add Comment opened a draft; nothing is written until it is posted.
+                app.workspace.cancelDraft()
                 if editor.string != source {
                     undo.undo()
                 }
@@ -124,6 +127,9 @@ extension WritingFlowTests {
             case .image:
                 #expect(toolbar.paletteOpen && toolbar.command == "image")
                 #expect(toolbar.events.contains("command.selected image"))
+            case .comment:
+                #expect(!toolbar.paletteOpen && toolbar.text == source)
+                #expect(toolbar.events.contains("command.execute addComment"))
             case .table, .equation:
                 #expect(!toolbar.paletteOpen && toolbar.text != source, "\(action) inserted")
                 #expect(toolbar.events.contains("command.execute \(action.rawValue)"))
@@ -187,7 +193,8 @@ extension WritingFlowTests {
         #expect(ToolbarAction.style.title == "Text Style" && ToolbarAction.style.keyPath == "s")
         #expect(ToolbarAction.table.keyPath == "i t" && ToolbarAction.equation.keyPath == "i e")
         #expect(ToolbarAction.image.keyPath == "i i" && ToolbarAction.insert.keyPath == "i")
-        #expect(ToolbarAction.allCases.map(\.icon) == ["text-aa", "table", "function", "image", "plus"])
+        #expect(ToolbarAction.comment.keyPath == "k a" && ToolbarAction.comment.title == "Comment")
+        #expect(ToolbarAction.allCases.map(\.icon) == ["text-aa", "table", "function", "image", "chat-circle", "plus"])
         #expect(ToolbarAction.allCases.allSatisfy { IconStore.image($0.icon) != nil })
 
         // A real click on Text style: the click leaves the editor first
@@ -221,6 +228,8 @@ extension WritingFlowTests {
             if app.workspace.paletteOpen {
                 app.workspace.closePalette()
             }
+            await app.layout()
+            app.workspace.cancelDraft()
             if editor.string != toolbarSource {
                 try #require(editor.undoManager).undo()
             }

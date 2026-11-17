@@ -221,6 +221,42 @@ final class Workspace: ObservableObject {
     @Published var selectedCommandIndex = 0
     /// The citation picker in the command panel, while it is open.
     @Published var citationPicker: CitationPicker?
+    /// All Comments, the comment list in the command panel (Phase 8
+    /// decision 7), while it is open.
+    @Published var commentList: CommentList?
+    /// How far the comments' gutter moved the column left (decision 6).
+    @Published var commentColumnShift: CGFloat = 0
+    /// Show Comments, on by default, stored on this Mac (decision 7).
+    @Published var showsComments = CommentPreferences.showsComments() {
+        didSet {
+            if showsComments != oldValue {
+                CommentPreferences.set(showsComments, for: CommentPreferences.showsCommentsKey)
+                editor?.comments.showsComments = showsComments
+            }
+        }
+    }
+
+    /// Show Resolved Comments, off by default, stored on this Mac.
+    @Published var showsResolvedComments = CommentPreferences.showsResolvedComments() {
+        didSet {
+            if showsResolvedComments != oldValue {
+                CommentPreferences.set(showsResolvedComments, for: CommentPreferences.showsResolvedKey)
+                editor?.comments.showsResolved = showsResolvedComments
+            }
+        }
+    }
+
+    /// "Name for comments" in Settings (decision 5), stored on this Mac.
+    @Published var commentAuthorName = CommentPreferences.authorName() {
+        didSet {
+            if commentAuthorName != oldValue {
+                CommentPreferences.setAuthorName(commentAuthorName)
+            }
+        }
+    }
+
+    /// The time a comment action stamps; tests set it.
+    var commentClock: () -> Date = { Date() }
     /// The project's bibliography entries for the picker, read through
     /// Writing mode's engine.
     let bibliographyIndex = BibliographyIndex()
@@ -1284,6 +1320,7 @@ final class Workspace: ObservableObject {
         paletteOpen = false
         activeCommand = nil
         citationPicker = nil
+        commentList = nil
         resourceSelection = nil
         availableResources = []
         availableLibraryDocuments = []
@@ -1296,6 +1333,12 @@ final class Workspace: ObservableObject {
 
     func backPalette() {
         commandError = nil
+        if let list = commentList {
+            commentList = nil
+            query = list.returnQuery
+            selectedCommandIndex = 0
+            return
+        }
         if let picker = citationPicker {
             if picker.stage == .list {
                 citationPicker = nil
@@ -1355,6 +1398,9 @@ final class Workspace: ObservableObject {
         }
         if citationPicker != nil {
             return handleCitationKey(event)
+        }
+        if commentList != nil {
+            return handleCommentListKey(event)
         }
         guard event.modifierFlags.isDisjoint(with: [.command, .control, .option]) else {
             return false
@@ -1515,6 +1561,9 @@ final class Workspace: ObservableObject {
         case "navigateBack": closePalette()
             navigateBack()
         case "cite": openCitationPicker()
+        case "addComment", "replyComment", "resolveComment", "deleteComment", "nextComment", "previousComment",
+             "showComments", "showResolvedComments", "allComments", "showCommentSource":
+            executeComment(command.id)
         default: insert(command)
         }
     }

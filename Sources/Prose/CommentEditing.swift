@@ -76,7 +76,8 @@ extension ManuscriptTextView {
         actionName: String?,
         selection: (NSRange) -> NSRange,
     ) {
-        var kept = selectedRange()
+        let before = selectedRange()
+        var kept = before
         commentEditDepth += 1
         let model = writing.model
         let opened = model?.editsOpenFolds ?? true
@@ -84,6 +85,10 @@ extension ManuscriptTextView {
         observeUndoManagerForComments()
         breakUndoCoalescing()
         undoManager?.beginUndoGrouping()
+        let restores = actionName != nil
+        if restores {
+            registerSelectionOnUndo(before)
+        }
         for replacement in replacements.reversed() {
             insertText(replacement.text, replacementRange: replacement.range)
             kept = SourceStyling.rebase(
@@ -92,6 +97,10 @@ extension ManuscriptTextView {
                 delta: (replacement.text as NSString).length - replacement.range.length,
             )
         }
+        let after = selection(kept)
+        if restores {
+            registerSelectionOnRedo(after)
+        }
         undoManager?.endUndoGrouping()
         if let actionName {
             undoManager?.setActionName(actionName)
@@ -99,7 +108,41 @@ extension ManuscriptTextView {
         breakUndoCoalescing()
         model?.editsOpenFolds = opened
         commentEditDepth -= 1
-        setSelectedRange(selection(kept))
+        keepsActiveComment = true
+        setSelectedRange(after)
         selectionChanged()
+        keepsActiveComment = false
+    }
+
+    /// Registered first in a comment action's undo group, so an undo runs it
+    /// last: the selection goes back to `range`, where it was before the
+    /// action, and not into the store where the last undone edit left it.
+    /// It registers itself again through the redo, so the next undo of the
+    /// same action does the same.
+    private func registerSelectionOnUndo(_ range: NSRange) {
+        undoManager?.registerUndo(withTarget: self) { editor in
+            editor.restoreCommentSelection(range)
+            editor.undoManager?.registerUndo(withTarget: editor) { again in
+                again.registerSelectionOnUndo(range)
+            }
+        }
+    }
+
+    /// Registered last, so an undo runs it first and a redo runs what it
+    /// registers last: after a redo the selection is `range`, where the
+    /// action left it.
+    private func registerSelectionOnRedo(_ range: NSRange) {
+        undoManager?.registerUndo(withTarget: self) { editor in
+            editor.undoManager?.registerUndo(withTarget: editor) { again in
+                again.restoreCommentSelection(range)
+                again.registerSelectionOnRedo(range)
+            }
+        }
+    }
+
+    private func restoreCommentSelection(_ range: NSRange) {
+        let length = (string as NSString).length
+        let location = min(max(0, range.location), length)
+        setSelectedRange(NSRange(location: location, length: min(range.length, length - location)))
     }
 }

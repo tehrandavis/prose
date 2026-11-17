@@ -67,7 +67,7 @@ Three columns, left to right, in a single `NSSplitView` under a `unifiedCompact`
 
 **Title row.** On the left, three quiet buttons: sidebar (`⌘0`), "Your writing" (`files`, `⌘O`) and Templates (`grid-four`, `⌘⇧N`), which opens the template gallery as a sheet. Then the file name in 14 pt semibold (15 pt does not fit two lines in the compact toolbar) with the project name in muted text under it. Center: a breadcrumb built from the heading ancestors of the caret position, then a status dot. Green means the last compile succeeded and matches the buffer. Amber means compiling. Red means the last compile failed and the preview is stale. A hollow grey dot means Tinymist is not running. Clicking the dot opens the diagnostics list. Right: mode control, info button (word count, reading time, compile time, fonts in use), export button (PDF, and the share sheet), preview toggle.
 
-**Center column.** The editor in one of the three modes. Measure is 65 to 72 characters at 16 pt body, centered, with the same margins LeftBlank uses now. The floating toolbar sits 16 pt above the bottom edge of the editor pane, centered, with an 8 pt radius, the panel colour, a hairline border, no shadow and Phosphor Regular icons at 16 pt. It appears only in Writing and Focus modes, never in Code mode or when the editor pane is hidden. It has five actions, and each one makes the same calls as its `⌘J` path, so the toolbar is a second entry point to the same registry, not a second implementation:
+**Center column.** The editor in one of the three modes. Measure is 65 to 72 characters at 16 pt body, centered, with the same margins LeftBlank uses now. The floating toolbar sits 16 pt above the bottom edge of the editor pane, centered, with an 8 pt radius, the panel colour, a hairline border, no shadow and Phosphor Regular icons at 16 pt. It appears only in Writing and Focus modes, never in Code mode or when the editor pane is hidden. It has six actions, and each one makes the same calls as its `⌘J` path, so the toolbar is a second entry point to the same registry, not a second implementation:
 
 | Button | Icon | `⌘J` path | What it does |
 |-|-|-|-|
@@ -75,6 +75,7 @@ Three columns, left to right, in a single `NSSplitView` under a `unifiedCompact`
 | Table | `table` | `⌘J → i t` | Opens the table form |
 | Equation (`f(x)`) | `function` | `⌘J → i e` | Inserts an equation at the caret or around the selection |
 | Image | `image` | `⌘J → i i` | Opens the resource picker |
+| Comment | `chat-circle` | `⌘J → k a` | Add Comment: opens a draft card for the selection or the word at the caret (Phase 8) |
 | Insert (`+`) | `plus` | `⌘J → i` | Opens the command panel at the Insert group |
 
 The buttons are AppKit views that refuse first responder, so a click leaves the editor its keyboard focus and the command reads the selection as it was at the click. Each button has an accessibility label and hover help with its `⌘J` path. Full Keyboard Access does not reach the buttons; the `⌘J` paths are the keyboard route. In Focus mode the toolbar fades out while the user types and comes back when the pointer moves; in Writing mode it stays visible. So that the last line can scroll above the toolbar, the editor keeps at least 64 pt below the text in Writing and Focus modes. The toolbar still covers the text under it in the middle of a document, as any overlay does.

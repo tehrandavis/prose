@@ -1,8 +1,8 @@
 import AppKit
 import ProseCore
 
-/// How strongly a comment's anchor is filled (Phase 8 decision 6). Step D's
-/// active comment draws `active`.
+/// How strongly a comment's anchor is filled (Phase 8 decision 6). The
+/// active comment and a draft draw `active`.
 enum CommentHighlightStrength: Int, Comparable {
     case normal
     case active
@@ -24,6 +24,14 @@ struct CommentHighlight: Equatable {
     let id: String
     let range: NSRange
     let strength: CommentHighlightStrength
+}
+
+/// A new comment before it is posted (decision 7): its range in today's
+/// text, which follows edits.
+struct CommentDraft: Equatable {
+    /// The id the draft's card and highlight use; never a valid comment id.
+    static let id = "draft"
+    var range: NSRange
 }
 
 /// An attached comment where it is in today's text: its markers move with
@@ -91,9 +99,35 @@ final class CommentController {
     private var cachedComments: [CommentIndex.Comment]?
     private(set) var viewsWait = false
     /// What the views last drew, so a reply that changes nothing draws nothing.
-    private var drawn: (highlights: [CommentHighlight], store: NSRange?, hidden: Int)?
+    private var drawn: (highlights: [CommentHighlight], underlines: [NSRange], store: NSRange?, hidden: Int)?
     /// For tests: replies applied to the views.
     private(set) var viewUpdates = 0
+    /// The active comment (decision 7): the one whose card was clicked, or
+    /// whose anchor holds the caret. `CommentDraft.id` while a draft is open.
+    private(set) var activeID: String?
+    /// A new comment before it is posted: its range follows edits, and
+    /// nothing is in the source yet.
+    private(set) var draft: CommentDraft?
+    /// Show Comments and Show Resolved Comments (decision 7).
+    var showsComments = true {
+        didSet {
+            if showsComments != oldValue {
+                applyToViews()
+            }
+        }
+    }
+
+    var showsResolved = false {
+        didSet {
+            if showsResolved != oldValue {
+                applyToViews()
+            }
+        }
+    }
+
+    /// The comments as the last current index gave them, by id, for the
+    /// cards while an index is on its way.
+    private(set) var lastComments: [String: CommentIndex.Comment] = [:]
 
     init(editor: ManuscriptTextView) {
         self.editor = editor
@@ -115,6 +149,7 @@ final class CommentController {
         }
         let comments = snapshot.index.comments
         cachedComments = comments
+        lastComments = Dictionary(comments.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         return comments
     }
 
@@ -131,6 +166,9 @@ final class CommentController {
         cachedComments = nil
         placed = []
         store = nil
+        lastComments = [:]
+        draft = nil
+        activeID = nil
         applyToViews()
         let generation = generation
         Task {
@@ -149,6 +187,11 @@ final class CommentController {
         unapplied.append(edit)
         cachedComments = nil
         move(through: edit)
+        // The draft is in today's text only: it moves once per edit.
+        if let range = draft?.range {
+            let delta = (text as NSString).length - edit.range.length
+            draft?.range = SourceStyling.rebase(range, editing: edit.range, delta: delta)
+        }
         send()
     }
 
@@ -227,15 +270,94 @@ final class CommentController {
     // MARK: - What the views draw
 
     /// The anchors to fill, sorted by location: every attached comment that
-    /// is not resolved and whose anchor holds text.
+    /// is not resolved and whose anchor holds text, the active one stronger,
+    /// and the draft's range; none while comments are hidden.
     var highlights: [CommentHighlight] {
-        placed.compactMap { comment in
+        guard showsComments else {
+            return []
+        }
+        var highlights = placed.compactMap { comment -> CommentHighlight? in
             let anchor = comment.anchor
             guard !comment.isResolved, anchor.length > 0 else {
                 return nil
             }
-            return CommentHighlight(id: comment.id, range: anchor, strength: .normal)
-        }.sorted { $0.range.location < $1.range.location }
+            return CommentHighlight(
+                id: comment.id,
+                range: anchor,
+                strength: comment.id == activeID ? .active : .normal,
+            )
+        }
+        if let draft, draft.range.length > 0 {
+            highlights.append(CommentHighlight(id: CommentDraft.id, range: draft.range, strength: .active))
+        }
+        return highlights.sorted { $0.range.location < $1.range.location }
+    }
+
+    /// The anchors of resolved comments while they are shown: a 1 pt
+    /// underline in the secondary text colour, no fill (decision 6).
+    var resolvedUnderlines: [NSRange] {
+        guard showsComments, showsResolved else {
+            return []
+        }
+        return placed.compactMap { $0.isResolved && $0.anchor.length > 0 ? $0.anchor : nil }
+    }
+
+    /// Whether comment `id` is shown: comments are shown, and it is not
+    /// resolved or resolved comments are shown.
+    func isShown(_ comment: CommentIndex.Comment) -> Bool {
+        showsComments && (!comment.isResolved || showsResolved)
+    }
+
+    // MARK: - The active comment and the draft (decision 7)
+
+    /// Makes `id` the active comment; nil for none.
+    func setActive(_ id: String?) {
+        guard id != activeID else {
+            return
+        }
+        activeID = id
+        applyToViews()
+    }
+
+    /// The selection changed: the comment whose anchor holds it becomes
+    /// active, the innermost when anchors nest; with none there, no comment
+    /// is active. A draft stays active until it is posted or cancelled.
+    func selectionDidChange(_ selection: NSRange) {
+        guard draft == nil else {
+            return
+        }
+        setActive(innermost(holding: selection)?.id)
+    }
+
+    /// The attached comment whose anchor holds `selection`, the shortest
+    /// when anchors nest. Hidden comments are never found.
+    func innermost(holding selection: NSRange) -> PlacedComment? {
+        guard showsComments else {
+            return nil
+        }
+        return placed.filter { comment in
+            let anchor = comment.anchor
+            return (showsResolved || !comment.isResolved) && anchor.location <= selection.location &&
+                NSMaxRange(selection) <= NSMaxRange(anchor)
+        }.min { $0.anchor.length < $1.anchor.length }
+    }
+
+    /// Opens a draft at `range` and makes it active.
+    func openDraft(_ range: NSRange) {
+        draft = CommentDraft(range: range)
+        activeID = CommentDraft.id
+        applyToViews()
+    }
+
+    /// Ends the draft, posted or cancelled; `active` is the comment to make
+    /// active after it.
+    func closeDraft(active: String? = nil) {
+        guard draft != nil else {
+            return
+        }
+        draft = nil
+        activeID = active
+        applyToViews()
     }
 
     /// The anchors to fill that share characters with `range`.
@@ -273,11 +395,17 @@ final class CommentController {
         guard let editor else {
             return
         }
-        let highlights = highlights
+        let highlights = highlights, underlines = resolvedUnderlines
         let hidden = snapshot?.index.hiddenCharacterCount ?? 0
-        let changed = drawn.map { $0.highlights != highlights || $0.store != store || $0.hidden != hidden } ?? true
+        let changed = drawn.map {
+            $0.highlights != highlights || $0.underlines != underlines || $0.store != store || $0.hidden != hidden
+        } ?? true
+        defer { editor.commentOverlay?.setNeedsRefresh() }
         if changed {
-            drawn = (highlights, store, hidden)
+            if drawn.map({ $0.underlines != underlines }) ?? !underlines.isEmpty {
+                editor.setNeedsDisplay(editor.visibleRect)
+            }
+            drawn = (highlights, underlines, store, hidden)
             viewUpdates += 1
             if let colors = editor.styler?.colors {
                 colors.setBackgrounds(Self.runs(highlights))

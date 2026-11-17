@@ -309,6 +309,11 @@ extension WritingFlowTests {
             record("typewriter")
             report["paragraphs_built"] = built
         }
+        if comments > 0, let writing {
+            try await commentGutterCost(app, writing.model, report: &report)
+            record("gutter")
+            report["paragraphs_built"] = built
+        }
         report["preview_status"] = app.workspace.serviceStatus
         if ProcessInfo.processInfo.environment["PROSE_BENCH_EXPORT"] == "1" {
             let started = ContinuousClock.now
@@ -946,4 +951,55 @@ private func sameLine(_ offset: Int, from plain: NSString, in text: NSString) ->
         start = NSMaxRange(text.lineRange(for: NSRange(location: start, length: 0)))
     }
     return min(text.length - 1, start + column)
+}
+
+/// Phase 8 decision 6 on a book: with the editor pane alone, the gutter
+/// comes and goes (Show Comments off and on), which moves the column. Counts
+/// the paragraphs built and the blocks rendered by that, and times scroll
+/// steps with the cards in view (the overlay moves them in the same turn).
+@MainActor
+private func commentGutterCost(
+    _ app: WritingFixture,
+    _ model: WritingLayout,
+    report: inout [String: Any],
+) async throws {
+    let editor = try #require(app.workspace.editor)
+    let overlay = try #require(editor.commentOverlay)
+    let clip = try #require(editor.enclosingScrollView?.contentView)
+    app.workspace.layout = .writing
+    await app.layout()
+    try await Task.sleep(for: .seconds(1))
+    await model.idle()
+    await app.layout()
+    let gutter = overlay.gutter
+    let built = SourceStyler.paragraphsBuilt, renders = model.renderReplies
+    let width = editor.textContainer?.size.width
+    app.workspace.showsComments = false
+    overlay.refresh()
+    await app.layout()
+    app.workspace.showsComments = true
+    overlay.refresh()
+    await app.layout()
+    await model.idle()
+    let paragraphs = SourceStyler.paragraphsBuilt - built, rendered = model.renderReplies - renders
+    #expect(editor.textContainer?.size.width == width, "The gutter changed the column's width")
+    // Scroll steps with the cards: the clip view's move and the overlay's.
+    var steps: [Double] = []
+    let top = clip.bounds.minY
+    for step in 1 ... 60 {
+        let start = ContinuousClock.now
+        clip.scroll(to: NSPoint(x: 0, y: top + CGFloat(step * 40)))
+        editor.enclosingScrollView?.reflectScrolledClipView(clip)
+        steps.append(seconds(start.duration(to: .now)) * 1000)
+        try await Task.sleep(for: .milliseconds(10))
+    }
+    let sorted = steps.sorted()
+    let p95 = sorted[min(sorted.count - 1, Int(Double(sorted.count) * 0.95))]
+    report["comment_gutter"] = [
+        "layout": String(describing: gutter), "paragraphs_built": paragraphs, "renders": rendered,
+        "cards": overlay.cards.count, "icons": overlay.icons.count, "scroll_step_p95_ms": p95,
+        "scroll_step_median_ms": sorted[sorted.count / 2], "refreshes": overlay.refreshes,
+    ]
+    print("PROSE LARGE gutter \(gutter): paragraphs built \(paragraphs), renders \(rendered), " +
+        "scroll step median \(sorted[sorted.count / 2]) ms, p95 \(p95) ms, cards \(overlay.cards.count)")
 }

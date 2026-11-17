@@ -155,6 +155,15 @@ struct WritingSettingsView: View {
                 Toggle(L10n.text("Check Spelling While Typing"), isOn: $workspace.checkSpellingWhileTyping)
             } header: { Text(L10n.text("Editor")) }
             Section {
+                TextField(
+                    L10n.text("Name for comments"),
+                    text: $workspace.commentAuthorName,
+                    prompt: Text(NSFullUserName()),
+                ).accessibilityIdentifier("settings.commentAuthor")
+                Text(L10n.text("Shown on your comments and replies. Stored on this Mac only."))
+                    .font(.footnote).foregroundStyle(Theme.secondary)
+            } header: { Text(L10n.text("Comments")) }
+            Section {
                 Toggle(L10n.text("Dark preview"), isOn: $workspace.previewDark)
             } header: { Text(L10n.text("Preview")) }
         }.formStyle(.grouped)

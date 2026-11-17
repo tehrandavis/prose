@@ -2,14 +2,16 @@ import AppKit
 import ProseCore
 import SwiftUI
 
-/// The five actions of the floating toolbar (decision 6 of the Phase 4 note,
-/// spec Section 3.3). Each is a step of the `⌘J` panel, so the toolbar is a
-/// second entry point to the command registry, not a second implementation.
+/// The six actions of the floating toolbar (decision 6 of the Phase 4 note,
+/// spec Section 3.3; Comment from Phase 8 decision 7). Each is a step of the
+/// `⌘J` panel, so the toolbar is a second entry point to the command
+/// registry, not a second implementation.
 enum ToolbarAction: String, CaseIterable, Identifiable {
     case style
     case table
     case equation
     case image
+    case comment
     case insert
 
     var id: String {
@@ -23,6 +25,7 @@ enum ToolbarAction: String, CaseIterable, Identifiable {
         case .table: "table"
         case .equation: "function"
         case .image: "image"
+        case .comment: "chat-circle"
         case .insert: "plus"
         }
     }
@@ -33,7 +36,11 @@ enum ToolbarAction: String, CaseIterable, Identifiable {
 
     /// The panel group the action opens, or the group its command lies in.
     var group: ProseCore.CommandGroup? {
-        let id = self == .style ? "style" : "insert"
+        let id = switch self {
+        case .style: "style"
+        case .comment: "comments"
+        default: "insert"
+        }
         return CommandGroup.all.first { $0.id == id }
     }
 
@@ -42,12 +49,13 @@ enum ToolbarAction: String, CaseIterable, Identifiable {
         switch self {
         case .style, .insert: nil
         case .table, .equation, .image: WritingCommand.all.first { $0.id == rawValue }
+        case .comment: WritingCommand.all.first { $0.id == "addComment" }
         }
     }
 
     /// The panel entry's title: the command's, or the group's.
     var title: String {
-        command?.title ?? group?.title ?? rawValue
+        self == .comment ? L10n.text("Comment") : command?.title ?? group?.title ?? rawValue
     }
 
     /// The panel entry's description.
@@ -104,7 +112,7 @@ extension Workspace {
     }
 }
 
-/// The floating toolbar: five quiet buttons at the bottom center of the
+/// The floating toolbar: six quiet buttons at the bottom center of the
 /// editor pane, 16 pt above its bottom edge, and above Focus mode's status
 /// bar while that shows. In Focus mode it fades out while the user types and
 /// comes back when the pointer moves. Its buttons never take keyboard focus.

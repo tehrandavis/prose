@@ -686,6 +686,8 @@ final class WritingController: NSObject {
     /// typewriter scroll the last caret change asked for.
     func flush() {
         flushScheduled = false
+        // Swaps, renders and the typewriter scroll move the cards' anchors.
+        defer { editor?.commentOverlay?.setNeedsRefresh() }
         guard let editor, let manager = editor.textLayoutManager else {
             pending = []
             return

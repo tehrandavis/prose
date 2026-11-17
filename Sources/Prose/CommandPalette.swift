@@ -6,7 +6,7 @@ struct CommandPalette: View {
     @ObservedObject var workspace: Workspace
     private var root: Bool {
         workspace.paletteGroup == nil && !workspace.searchMode && workspace.activeCommand == nil
-            && workspace.citationPicker == nil
+            && workspace.citationPicker == nil && workspace.commentList == nil
     }
 
     var body: some View {
@@ -19,6 +19,8 @@ struct CommandPalette: View {
                     Group {
                         if let picker = workspace.citationPicker {
                             CitationPickerPane(workspace: workspace, picker: picker)
+                        } else if workspace.commentList != nil {
+                            CommentListPane(workspace: workspace)
                         } else if let command = workspace.activeCommand {
                             parameterForm(command)
                         } else if !workspace.paletteGroups.isEmpty {
@@ -33,6 +35,8 @@ struct CommandPalette: View {
                             ZoteroGuide(workspace: workspace)
                         } else if workspace.citationPicker != nil {
                             CitationGuide(workspace: workspace)
+                        } else if workspace.commentList != nil {
+                            CommentListGuide(workspace: workspace)
                         } else {
                             commandGuide
                         }
@@ -63,6 +67,13 @@ struct CommandPalette: View {
                 } else {
                     Text(breadcrumb).font(.system(size: 12, weight: .medium))
                 }
+            } else if workspace.commentList != nil {
+                PaletteTextField(
+                    text: $workspace.query,
+                    label: L10n.text("Search Comments"),
+                    placeholder: L10n.text("Search by author or text…"),
+                )
+                .frame(height: 22).onChange(of: workspace.query) { _, _ in workspace.selectedCommandIndex = 0 }
             } else if workspace.searchMode, workspace.activeCommand == nil {
                 PaletteTextField(
                     text: $workspace.query,
@@ -74,7 +85,9 @@ struct CommandPalette: View {
                 Text(breadcrumb).font(.system(size: 12, weight: .medium))
             }
             Spacer(minLength: 8)
-            if !workspace.searchMode, workspace.activeCommand == nil, workspace.citationPicker == nil {
+            if !workspace.searchMode, workspace.activeCommand == nil, workspace.citationPicker == nil,
+               workspace.commentList == nil
+            {
                 Button { workspace.searchMode = true
                     workspace.selectedCommandIndex = 0
                 } label: {
@@ -94,9 +107,18 @@ struct CommandPalette: View {
         }.padding(.horizontal, 24)
     }
 
+    /// A root grid of up to nine groups has rows 66 pt high; ten groups
+    /// need four rows, which fit the fixed panel at 50 pt.
+    static func groupHeight(_ count: Int, root: Bool) -> CGFloat {
+        root && count > 9 ? 50 : 66
+    }
+
     private var breadcrumb: String {
         if workspace.citationPicker != nil {
             return L10n.format("Commands  /  %@", L10n.text("Cite a Source"))
+        }
+        if workspace.commentList != nil {
+            return L10n.format("Commands  /  %@", L10n.text("All Comments"))
         }
         if let command = workspace.activeCommand {
             return L10n.format("Commands  /  %@", command.title)
@@ -123,7 +145,8 @@ struct CommandPalette: View {
                         }
                         Spacer(minLength: 0)
                         Keycap(value: group.key)
-                    }.padding(.horizontal, 14).frame(height: 66).contentShape(Rectangle())
+                    }.padding(.horizontal, 14).frame(height: Self.groupHeight(groups.count, root: root))
+                        .contentShape(Rectangle())
                 }.buttonStyle(QuietControlStyle())
                     .background(
                         index == workspace.selectedCommandIndex ? Theme.secondary.opacity(0.08) : Color.clear,
@@ -348,6 +371,8 @@ struct CommandPalette: View {
             } else if let picker = workspace.citationPicker {
                 Text(CitationPickerPane.hint(picker))
                     .font(.system(size: 10)).foregroundStyle(Theme.muted)
+            } else if workspace.commentList != nil {
+                Text(CommentListPane.hint).font(.system(size: 10)).foregroundStyle(Theme.muted)
             } else {
                 Text(workspace.activeCommand == nil ? L10n
                     .text("Letters to explore · ↑ ↓ to select · ↵ to confirm") : L10n

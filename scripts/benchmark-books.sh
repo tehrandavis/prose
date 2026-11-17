@@ -5,6 +5,10 @@ cd "$(dirname "$0")/.."
 source scripts/environment.sh
 mkdir -p build/benchmarks
 status=0
+# The comment count reaches only the two comment runs, so the other runs
+# measure the books as they are.
+bench_comments="${PROSE_BENCH_COMMENTS:-}"
+unset PROSE_BENCH_COMMENTS
 # Keep the other book and preview evidence even if one scenario fails. Never
 # retry a failing measurement or let an old report stand in for the current run.
 python3 - <<'PYCLEAN'
@@ -41,12 +45,12 @@ PROSE_INTEGRATION=1 PROSE_FOCUS_MODE=1 PROSE_CODE_WORD="define size" PROSE_SEARC
   swift test --skip-build --enable-code-coverage --filter realMultiMegabyteDocumentNavigationScrollingAndTyping || status=1
 # Phase 8 decision 9: with PROSE_BENCH_COMMENTS set (500 for the gate),
 # Writing mode runs again on each book with that many comments in it.
-if [ -n "${PROSE_BENCH_COMMENTS:-}" ]; then
-  PROSE_INTEGRATION=1 PROSE_WRITING_MODE=1 \
+if [ -n "$bench_comments" ]; then
+  PROSE_BENCH_COMMENTS="$bench_comments" PROSE_INTEGRATION=1 PROSE_WRITING_MODE=1 \
     PROSE_LARGE_FIXTURE="$PWD/Examples/Books/WarAndPeace/war-and-peace-highlighted.typ" \
     PROSE_PERFORMANCE_REPORT="$PWD/build/benchmarks/war-and-peace-writing-comments.json" \
     swift test --skip-build --enable-code-coverage --filter realMultiMegabyteDocumentNavigationScrollingAndTyping || status=1
-  PROSE_INTEGRATION=1 PROSE_WRITING_MODE=1 PROSE_CODE_WORD="define size" PROSE_SEARCH_WORD=procedure PROSE_BENCH_EXPORT=1 \
+  PROSE_BENCH_COMMENTS="$bench_comments" PROSE_INTEGRATION=1 PROSE_WRITING_MODE=1 PROSE_CODE_WORD="define size" PROSE_SEARCH_WORD=procedure PROSE_BENCH_EXPORT=1 \
     PROSE_LARGE_FIXTURE="$PWD/Examples/Books/SICP/main.typ" \
     PROSE_PERFORMANCE_REPORT="$PWD/build/benchmarks/sicp-writing-comments.json" \
     swift test --skip-build --enable-code-coverage --filter realMultiMegabyteDocumentNavigationScrollingAndTyping || status=1

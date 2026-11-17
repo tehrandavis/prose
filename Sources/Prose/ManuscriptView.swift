@@ -2,10 +2,36 @@ import AppKit
 import ProseCore
 import SwiftUI
 
+/// The editor pane: the scroll view with the editor, and over it, as a
+/// sibling, the comments' overlay (Phase 8 decision 6). The overlay is
+/// outside the text view and the text system.
+@MainActor
+final class ManuscriptPane: NSView {
+    let scroll: NSScrollView
+    let overlay: CommentOverlay
+
+    init(scroll: NSScrollView) {
+        self.scroll = scroll
+        overlay = CommentOverlay(frame: scroll.frame)
+        super.init(frame: scroll.frame)
+        scroll.frame = bounds
+        scroll.autoresizingMask = [.width, .height]
+        overlay.frame = bounds
+        overlay.autoresizingMask = [.width, .height]
+        addSubview(scroll)
+        addSubview(overlay)
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
+        nil
+    }
+}
+
 struct ManuscriptView: NSViewRepresentable {
     @ObservedObject var workspace: Workspace
 
-    func makeNSView(context: Context) -> NSScrollView {
+    func makeNSView(context: Context) -> ManuscriptPane {
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 800, height: 700))
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
@@ -46,12 +72,14 @@ struct ManuscriptView: NSViewRepresentable {
         editor.toolbarClearance = workspace.showsToolbarMode
         workspace.editor = editor
         editor.observeViewport(scroll.contentView)
+        let pane = ManuscriptPane(scroll: scroll)
+        pane.overlay.attach(editor: editor, workspace: workspace)
         editor.load(workspace.text, selection: workspace.selection)
-        return scroll
+        return pane
     }
 
-    func updateNSView(_ scroll: NSScrollView, context: Context) {
-        guard let editor = scroll.documentView as? ManuscriptTextView else {
+    func updateNSView(_ pane: ManuscriptPane, context: Context) {
+        guard let editor = pane.scroll.documentView as? ManuscriptTextView else {
             return
         }
         workspace.editor = editor
@@ -281,6 +309,23 @@ final class ManuscriptTextView: NSTextView {
     var commentEditDepth = 0
     /// While `setMarkedText` runs: the edit it makes starts a composition.
     private(set) var composing = false
+    /// While a comment action, an undo or a redo moves the selection: the
+    /// active comment stays.
+    var keepsActiveComment = false
+    /// The comments' cards over the editor pane (Phase 8 decision 6).
+    weak var commentOverlay: CommentOverlay?
+    /// How far the gutter's second layout moves the column left (decision
+    /// 6). The container's width does not change, so nothing lays out or
+    /// renders again; only its origin moves.
+    var commentColumnShift: CGFloat = 0 {
+        didSet {
+            guard commentColumnShift != oldValue else {
+                return
+            }
+            invalidateTextContainerOrigin()
+            needsDisplay = true
+        }
+    }
 
     private var viewportTask: Task<Void, Never>?
     private var hoverViewportBounds: NSRect?
@@ -324,6 +369,8 @@ final class ManuscriptTextView: NSTextView {
     }
 
     @objc private func viewportChanged(_ notification: Notification) {
+        // The cards move with the text in this turn of the run loop.
+        commentOverlay?.viewportScrolled()
         if let clip = notification.object as? NSClipView, hoverViewportBounds != clip.bounds {
             if sourceHover.panel != nil {
                 workspace?.recordOperation("hover.viewportChanged", [
@@ -369,6 +416,7 @@ final class ManuscriptTextView: NSTextView {
         writing.textDidChange(in: storage, edited: range, delta: delta)
         spellingTextDidChange(edited: range, delta: delta)
         workspace?.spelling.textDidChange(edited: range, delta: delta, in: storage.string as NSString)
+        commentOverlay?.setNeedsRefresh()
         if range.length - delta >= 0, NSMaxRange(range) <= storage.length {
             comments.textDidChange(
                 replacing: NSRange(location: range.location, length: range.length - delta),
@@ -475,7 +523,9 @@ final class ManuscriptTextView: NSTextView {
         }
         // The undo's edits are processed; the open block can follow them.
         writing.storageEditDidEnd()
+        keepsActiveComment = true
         selectionChanged()
+        keepsActiveComment = false
     }
 
     override func setFrameSize(_ newSize: NSSize) {
@@ -487,6 +537,7 @@ final class ManuscriptTextView: NSTextView {
         let anchor = widened ? resizeAnchor ?? topLine() : nil
         super.setFrameSize(newSize)
         updateColumnInset()
+        commentOverlay?.setNeedsRefresh()
         if let anchor {
             resizeAnchor = anchor
             keepAtTop(anchor)
@@ -559,7 +610,7 @@ final class ManuscriptTextView: NSTextView {
     /// up to `topInset`, so the space below is `bottomInset`. TextKit 2's
     /// fragment views, hit testing and Prose's geometry all read this origin.
     override var textContainerOrigin: NSPoint {
-        NSPoint(x: super.textContainerOrigin.x, y: appliedTopInset)
+        NSPoint(x: super.textContainerOrigin.x - commentColumnShift, y: appliedTopInset)
     }
 
     /// Sets the margins around the column for the view's size and mode.
@@ -575,6 +626,7 @@ final class ManuscriptTextView: NSTextView {
             return false
         }
         appliedTopInset = top
+        commentOverlay?.setNeedsRefresh()
         if textContainerInset != inset {
             textContainerInset = inset
         } else {
@@ -770,6 +822,7 @@ final class ManuscriptTextView: NSTextView {
         // as NSTextView's own selection view lies under its text. A
         // comment's highlight lies under the selection (Phase 8 decision 6).
         writing.drawCommentHighlights(in: rect)
+        drawResolvedCommentUnderlines(in: rect)
         writing.drawSelection(in: rect)
     }
 
@@ -812,6 +865,9 @@ final class ManuscriptTextView: NSTextView {
             styler?.selectionDidChange()
             writing.selectionDidChange(byPointer: byPointer, anchor: anchor)
             workspace?.spelling.selectionDidChange(selectedRange())
+            if !keepsActiveComment, undoManager?.isUndoing != true, undoManager?.isRedoing != true {
+                comments.selectionDidChange(selectedRange())
+            }
         }
     }
 

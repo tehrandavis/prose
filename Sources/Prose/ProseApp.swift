@@ -310,6 +310,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         ] {
             commandItem(id, in: edit)
         }
+        let comments = NSMenu(title: L10n.text("Comments"))
+        let commentsItem = NSMenuItem(title: comments.title, action: nil, keyEquivalent: "")
+        commentsItem.submenu = comments
+        edit.addItem(commentsItem)
+        for id in Self.commentMenuItems {
+            if id.isEmpty {
+                comments.addItem(.separator())
+            } else {
+                commandItem(id, in: comments)
+            }
+        }
         let view = section(L10n.text("View"))
         item(L10n.text("Discover Commands"), #selector(palette), workspace.commandKey, view, target: self)
         item(L10n.text("Code"), #selector(modeCode), "1", view, target: self)
@@ -346,7 +357,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         NSApp.mainMenu = menu
     }
 
+    /// The Edit menu's Comments submenu (Phase 8 decision 7); an empty id
+    /// is a separator.
+    static let commentMenuItems = [
+        "addComment", "replyComment", "resolveComment", "deleteComment", "",
+        "nextComment", "previousComment", "", "showComments", "showResolvedComments", "", "allComments",
+        "showCommentSource",
+    ]
+
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(runWritingCommand(_:)), let id = menuItem.representedObject as? String {
+            switch id {
+            case "showComments": menuItem.state = workspace.showsComments ? .on : .off
+            case "showResolvedComments": menuItem.state = workspace.showsResolvedComments ? .on : .off
+            default: break
+            }
+        }
         if menuItem.action == #selector(toggleSpellCheck) {
             menuItem.state = workspace.checkSpellingWhileTyping ? .on : .off
             return true

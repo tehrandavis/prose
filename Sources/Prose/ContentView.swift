@@ -84,7 +84,8 @@ struct ContentView: View {
                                 if workspace.layout != .preview, workspace.editorMode != .focus {
                                     FloatingOutline(
                                         workspace: workspace,
-                                        availableMargin: ManuscriptLayout.horizontalInset(for: editorWidth),
+                                        availableMargin: ManuscriptLayout.horizontalInset(for: editorWidth)
+                                            - workspace.commentColumnShift,
                                     )
                                     .padding(.leading, 6).padding(.top, 64)
                                 }

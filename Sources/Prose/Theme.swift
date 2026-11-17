@@ -66,14 +66,16 @@ enum Theme {
     }
 
     /// A comment's highlight (Phase 8 decision 6): the warning amber at 28
-    /// percent in light and 32 percent in dark; the active comment's is
-    /// stronger (step D). Body text keeps 4.5:1 or better on it.
+    /// percent in light and 26 percent in dark (step C: 32 percent gave
+    /// source text 4.39:1). The active comment's is 50 percent in light and
+    /// 30 percent in dark (step D: 50 percent gave the open block's text
+    /// 3.08:1 in dark). Body text keeps 4.5:1 or better on both.
     static let commentHighlightOpacity: (light: CGFloat, dark: CGFloat) = (0.28, 0.26)
-    static let activeCommentHighlightOpacity: CGFloat = 0.5
+    static let activeCommentHighlightOpacity: (light: CGFloat, dark: CGFloat) = (0.5, 0.3)
     static let commentHighlight = commentFill(light: commentHighlightOpacity.light, dark: commentHighlightOpacity.dark)
     static let activeCommentHighlight = commentFill(
-        light: activeCommentHighlightOpacity,
-        dark: activeCommentHighlightOpacity,
+        light: activeCommentHighlightOpacity.light,
+        dark: activeCommentHighlightOpacity.dark,
     )
 
     private static func commentFill(light: CGFloat, dark: CGFloat) -> NSColor {

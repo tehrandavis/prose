@@ -135,7 +135,8 @@ extension WritingFlowTests {
         await app.layout()
         let open = try #require(editor.writing.model?.openBlock)
         #expect(NSLocationInRange(anchor.location, open.span))
-        expectHighlight(editor, anchor, markers)
+        // The caret is in the anchor: the comment is active (step D).
+        expectHighlight(editor, anchor, markers, fill: Theme.activeCommentHighlight)
         let faint = try #require(editor.styler?.colors.overlay?.faint)
         for marker in [markers.start, markers.end] {
             for offset in marker.location ..< NSMaxRange(marker) {
@@ -620,10 +621,15 @@ private func expectIndexInStep(_ editor: ManuscriptTextView) throws {
 
 /// The anchor's characters draw the highlight, the markers' none.
 @MainActor
-private func expectHighlight(_ editor: ManuscriptTextView, _ anchor: NSRange, _ placed: PlacedComment) {
+private func expectHighlight(
+    _ editor: ManuscriptTextView,
+    _ anchor: NSRange,
+    _ placed: PlacedComment,
+    fill: NSColor = Theme.commentHighlight,
+) {
     for offset in [anchor.location, anchor.location + anchor.length / 2, NSMaxRange(anchor) - 1] {
         let drawn = editor.drawnAttribute(.backgroundColor, at: offset) as? NSColor
-        #expect(drawn == Theme.commentHighlight, "Anchor character \(offset) has no highlight")
+        #expect(drawn == fill, "Anchor character \(offset) has no highlight")
     }
     for offset in [placed.start.location, NSMaxRange(placed.start) - 1, placed.end.location] {
         #expect(editor.drawnAttribute(.backgroundColor, at: offset) == nil, "Marker character \(offset) is filled")

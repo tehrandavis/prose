@@ -54,7 +54,8 @@ struct WritingFlowTests {
         #expect(outline.id == "outline")
         #expect(outline.keyPath == "v o")
         #expect(outline.shortcuts.first?.label == "⌘0")
-        #expect(WritingCommand.all.filter { !$0.shortcuts.isEmpty }.count == 34)
+        // Phase 8 added Add Comment, Next Comment and Previous Comment.
+        #expect(WritingCommand.all.filter { !$0.shortcuts.isEmpty }.count == 37)
     }
 
     @Test func discoverInsertUndoRedoAndExport() async throws {
