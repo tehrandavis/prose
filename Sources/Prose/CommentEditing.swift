@@ -78,6 +78,15 @@ extension ManuscriptTextView {
     ) {
         let before = selectedRange()
         var kept = before
+        // A comment action changes the store at the end of the file and two
+        // short markers. The writer is looking at a card, so the view must
+        // stay where it is: the native edit path scrolls to each edit, and
+        // then to the selection, which is at the start of the document when
+        // the writer has only clicked cards.
+        // The writer's own edits that a rule rewrote (no action name) scroll
+        // as typing does.
+        let clip = actionName == nil ? nil : enclosingScrollView?.contentView
+        let origin = clip?.bounds.origin
         commentEditDepth += 1
         let model = writing.model
         let opened = model?.editsOpenFolds ?? true
@@ -112,6 +121,19 @@ extension ManuscriptTextView {
         setSelectedRange(after)
         selectionChanged()
         keepsActiveComment = false
+        if let clip, let origin {
+            let restore = { [weak self] in
+                guard clip.bounds.origin != origin else {
+                    return
+                }
+                clip.scroll(to: origin)
+                self?.enclosingScrollView?.reflectScrolledClipView(clip)
+            }
+            restore()
+            // Writing mode lays out its swaps at the end of this turn of the
+            // run loop, and that can scroll once more.
+            DispatchQueue.main.async(execute: restore)
+        }
     }
 
     /// Registered first in a comment action's undo group, so an undo runs it
