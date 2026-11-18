@@ -240,7 +240,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             "q",
             app,
         )
-        let file = section(L10n.text("Documents"))
+        let file = section(L10n.text("File"))
         item(L10n.text("New Document"), #selector(newDocument), "n", file, target: self)
         item(
             L10n.text("New from Template…"),
@@ -344,7 +344,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         item(L10n.text("Decrease Text Size"), #selector(decreaseFont), "-", view, target: self)
         view.addItem(.separator())
         item(
-            L10n.text("Toggle Full Screen"),
+            L10n.text("Enter Full Screen"),
             #selector(NSWindow.toggleFullScreen(_:)),
             "f",
             view,
@@ -353,7 +353,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let windowMenu = section(L10n.text("Window"))
         item(L10n.text("Minimize"), #selector(NSWindow.performMiniaturize(_:)), "m", windowMenu)
         item(L10n.text("Zoom"), #selector(NSWindow.performZoom(_:)), "", windowMenu)
+        windowMenu.addItem(.separator())
+        item(L10n.text("Bring All to Front"), #selector(NSApplication.arrangeInFront(_:)), "", windowMenu)
         NSApp.windowsMenu = windowMenu
+        // The Help menu holds the system's search field for menu items.
+        NSApp.helpMenu = section(L10n.text("Help"))
         NSApp.mainMenu = menu
     }
 

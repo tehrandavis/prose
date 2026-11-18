@@ -751,7 +751,10 @@
 "Services" = "Services";
 "Hide Others" = "Hide Others";
 "Show All" = "Show All";
-"Toggle Full Screen" = "Toggle Full Screen";
+"Enter Full Screen" = "Enter Full Screen";
+"Bring All to Front" = "Bring All to Front";
+"File" = "File";
+"Help" = "Help";
 
 "Back" = "Back";
 

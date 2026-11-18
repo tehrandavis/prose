@@ -175,7 +175,7 @@ extension WritingFlowTests {
         defer { menu.restore() }
         await app.layout()
 
-        let documents = try #require(menu.menu.items.first { $0.submenu?.title == L10n.text("Documents") }?.submenu)
+        let documents = try #require(menu.menu.items.first { $0.submenu?.title == L10n.text("File") }?.submenu)
         let titles = documents.items.map(\.title)
         let newIndex = try #require(titles.firstIndex(of: L10n.text("New Document")))
         #expect(titles[newIndex + 1] == L10n.text("New from Template…"))

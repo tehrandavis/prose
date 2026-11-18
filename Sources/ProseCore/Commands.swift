@@ -78,7 +78,7 @@ public struct CommandGroup: Identifiable, Sendable {
             icon: "brackets-curly",
         ),
         .init(id: "view", key: "v", title: "Workspace", subtitle: "Editor, preview and writing tools", icon: "desktop"),
-        .init(id: "file", key: "f", title: "Documents", subtitle: "Open, save and export", icon: "folder-open"),
+        .init(id: "file", key: "f", title: "File", subtitle: "Open, save and export", icon: "folder-open"),
         .init(
             id: "comments",
             key: "k",

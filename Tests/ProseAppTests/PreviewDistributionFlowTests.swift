@@ -20,7 +20,7 @@ extension WritingFlowTests {
         let appMenu = try #require(NSApp.mainMenu?.items.first?.submenu)
         #expect(appMenu.title == AppDistribution.current.applicationName)
         #expect(!appMenu.items.contains { $0.identifier?.rawValue == "preview.automaticChecks" })
-        let documentMenu = try #require(NSApp.mainMenu?.items.first { $0.submenu?.title == L10n.text("Documents") }?
+        let documentMenu = try #require(NSApp.mainMenu?.items.first { $0.submenu?.title == L10n.text("File") }?
             .submenu)
         #expect(!documentMenu.items.contains { $0.title == L10n.text("Recover Draft Copy…") })
         let viewMenu = try #require(NSApp.mainMenu?.items.first { $0.submenu?.title == L10n.text("View") }?.submenu)

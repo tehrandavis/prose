@@ -347,10 +347,11 @@ struct WritingFlowTests {
         delegate.installMenu()
         let menu = try #require(NSApp.mainMenu)
         #expect(menu.items.map(\.title) == [AppDistribution.current.applicationName] + [
-            "Documents",
+            "File",
             "Edit",
             "View",
             "Window",
+            "Help",
         ].map { L10n.text($0) })
         let entries = menu.items.flatMap { $0.submenu?.items ?? [] }
         let printItem = try #require(entries.first { $0.title == L10n.text("Print…") })
@@ -365,7 +366,7 @@ struct WritingFlowTests {
             .command,
             .option,
         ] })
-        #expect(entries.contains { $0.title == L10n.text("Toggle Full Screen") && $0.keyEquivalentModifierMask == [
+        #expect(entries.contains { $0.title == L10n.text("Enter Full Screen") && $0.keyEquivalentModifierMask == [
             .command,
             .control,
         ] })

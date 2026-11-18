@@ -133,7 +133,7 @@ extension WritingFlowTests {
             NSApp.windowsMenu = previousWindowsMenu
         }
         delegate.installMenu()
-        let documents = try #require(NSApp.mainMenu?.items.first { $0.submenu?.title == L10n.text("Documents") }?
+        let documents = try #require(NSApp.mainMenu?.items.first { $0.submenu?.title == L10n.text("File") }?
             .submenu)
         let titles = documents.items.map(\.title)
         let recentIndex = try #require(titles.firstIndex(of: L10n.text("Open Recent")))
