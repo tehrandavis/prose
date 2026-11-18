@@ -25,6 +25,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     /// Set when the app was launched or reached by opening a file; the
     /// welcome screen then stays away.
     private(set) var openedFile = false
+    /// The welcome screen's own window, while it shows alone at launch.
+    private var welcomeWindow: WelcomeWindow?
     #if PROSE_PREVIEW
         private let previewUpdater = PreviewUpdater()
     #endif
@@ -63,7 +65,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         window.contentView = NSHostingView(rootView: ContentView(workspace: workspace))
         window.setFrameAutosaveName("ProseMainWindow")
         window.center()
-        window.makeKeyAndOrderFront(nil)
+        // The window stays hidden until launch knows whether the welcome
+        // screen shows first, alone (`showWelcomeAfterLaunch`).
+        if openedFile {
+            window.makeKeyAndOrderFront(nil)
+        }
+        workspace.onWelcomeClose = { [weak self] in self?.revealMainWindow() }
         workspace
             .onTitleChange = { [weak self] title in
                 self?.window?.title = title + " — " + AppDistribution.current.applicationName
@@ -160,14 +167,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard !openedFile, workspace.isOnUntouchedBlankPage, !workspace.libraryOpen,
               !workspace.historyOpen, workspace.window?.attachedSheet == nil
         else {
+            revealMainWindow()
             return
         }
         workspace.showWelcome()
+        // At launch the main window is still hidden: the card shows alone.
+        guard let window, !window.isVisible, welcomeWindow == nil else {
+            return
+        }
+        let welcome = WelcomeWindow(workspace: workspace)
+        welcome.onCancel = { [weak self] in self?.workspace.closeWelcome() }
+        welcome.center()
+        welcomeWindow = welcome
+        welcome.makeKeyAndOrderFront(nil)
+    }
+
+    /// Closes the welcome screen's own window and shows the main window.
+    func revealMainWindow() {
+        welcomeWindow?.orderOut(nil)
+        welcomeWindow = nil
+        if let window, !window.isVisible {
+            window.makeKeyAndOrderFront(nil)
+        }
     }
 
     func application(_ sender: NSApplication, openFiles filenames: [String]) {
         openedFile = true
         workspace.closeWelcome()
+        revealMainWindow()
         if let path = filenames.first {
             workspace.open(URL(fileURLWithPath: path))
         }
@@ -469,6 +496,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 
     @objc func showWelcome() {
+        guard welcomeWindow == nil else {
+            return
+        }
         workspace.closeSheet()
         workspace.showWelcome()
     }

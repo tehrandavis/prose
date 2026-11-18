@@ -56,6 +56,7 @@ extension Workspace {
             return
         }
         showsWelcome = false
+        onWelcomeClose?()
         if let editor, let window, window.attachedSheet == nil {
             window.makeFirstResponder(editor)
         }
@@ -84,16 +85,28 @@ struct WelcomeScreen: View {
     /// Observed so the recents follow the library.
     @ObservedObject private var library: LibraryController
     @StateObject private var hover = RowHover()
+    /// At launch the card is a window by itself, with no backdrop and no
+    /// window behind it (`AppDelegate.showWelcomeAfterLaunch`).
+    var standalone = false
 
     static let cardSize = CGSize(width: 760, height: 465)
     static let actionsWidth: CGFloat = 480
 
-    init(workspace: Workspace) {
+    init(workspace: Workspace, standalone: Bool = false) {
         self.workspace = workspace
+        self.standalone = standalone
         library = workspace.library
     }
 
     var body: some View {
+        if standalone {
+            card
+        } else {
+            overlay
+        }
+    }
+
+    private var overlay: some View {
         ZStack {
             Color.black.opacity(0.28)
                 .contentShape(Rectangle())
@@ -166,7 +179,8 @@ struct WelcomeScreen: View {
                 actionRow(.newFromTemplate, icon: "layout", title: L10n.text("New from Template…"), id: "template")
                 actionRow(.openFile, icon: "file-text", title: L10n.text("Open File…"), id: "file")
             }.padding(.top, 24).padding(.horizontal, 40)
-            Text(L10n.text("Press Esc or click outside to go back to the page."))
+            Text(standalone ? L10n.text("Press Esc to start on a blank page.")
+                : L10n.text("Press Esc or click outside to go back to the page."))
                 .font(.system(size: 11)).foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)
                 .padding(.top, 14).padding(.horizontal, 40)
@@ -266,5 +280,51 @@ struct WelcomeRecent: Equatable {
             return path
         }
         return "~" + path.dropFirst(home.count)
+    }
+}
+
+/// The welcome screen's own window at launch: the card alone, with no title
+/// bar. Escape and `⌘W` close it, which shows the main window on its blank page.
+final class WelcomeWindow: NSWindow {
+    var onCancel: (() -> Void)?
+
+    init(workspace: Workspace) {
+        super.init(
+            contentRect: NSRect(origin: .zero, size: WelcomeScreen.cardSize),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false,
+        )
+        isOpaque = false
+        backgroundColor = .clear
+        hasShadow = true
+        isMovableByWindowBackground = true
+        isReleasedWhenClosed = false
+        contentView = NSHostingView(rootView: WelcomeScreen(workspace: workspace, standalone: true))
+        setAccessibilityLabel(L10n.format("Welcome to %@", AppDistribution.current.applicationName))
+    }
+
+    override var canBecomeKey: Bool {
+        true
+    }
+
+    override var canBecomeMain: Bool {
+        true
+    }
+
+    override func cancelOperation(_ sender: Any?) {
+        onCancel?()
+    }
+
+    override func performClose(_ sender: Any?) {
+        onCancel?()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 {
+            onCancel?()
+        } else {
+            super.keyDown(with: event)
+        }
     }
 }

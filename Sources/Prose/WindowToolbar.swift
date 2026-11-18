@@ -6,9 +6,9 @@ import SwiftUI
 @MainActor
 final class WindowToolbar: NSObject, NSToolbarDelegate {
     private let workspace: Workspace
+    private let navigationID = NSToolbarItem.Identifier("ProseNavigation")
     private let documentID = NSToolbarItem.Identifier("ProseDocument")
     private let actionsID = NSToolbarItem.Identifier("ProseActions")
-    private let locationID = NSToolbarItem.Identifier("ProseLocation")
 
     private let titleSize = ToolbarTitleSize()
     private var subscriptions: Set<AnyCancellable> = []
@@ -24,18 +24,21 @@ final class WindowToolbar: NSObject, NSToolbarDelegate {
     }
 
     private func resizeTitle() {
+        // The widest font the title uses (a folder project's file name).
         let textWidth = (workspace.title as NSString).size(withAttributes: [.font: NSFont.systemFont(
-            ofSize: 12,
-            weight: .medium,
+            ofSize: 14,
+            weight: .semibold,
         )]).width
-        // Reserve traffic lights, native toolbar spacing and the fixed actions.
-        // A short title hugs its content; long names can use the remaining space.
-        // The left group's three buttons take 38 pt each with their spacing.
-        let available = max(120, (workspace.window?.frame.width ?? 820) - 378)
+        let projectWidth = ((workspace.project?.name ?? "") as NSString)
+            .size(withAttributes: [.font: NSFont.systemFont(ofSize: 10)]).width
+        // Reserve the traffic lights, the three buttons on the left, the status
+        // dot and the fixed actions on the right, and the toolbar's spacing.
+        // The whole name shows when the window has the room for it.
+        let available = max(140, (workspace.window?.frame.width ?? 820) - 600)
         let badgeWidth = workspace.isPackageSource ?
             (L10n.text("Read-only") as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 10)])
             .width + 36 : 0
-        let width = min(available, max(198, ceil(textWidth + badgeWidth) + 102))
+        let width = min(available, max(120, ceil(max(textWidth, projectWidth) + badgeWidth) + 40))
         if titleSize.width != width {
             titleSize.width = width
         }
@@ -46,11 +49,13 @@ final class WindowToolbar: NSObject, NSToolbarDelegate {
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
         toolbar.allowsUserCustomization = false
+        // The document's name sits in the middle of the window, as in other Mac apps.
+        toolbar.centeredItemIdentifiers = [documentID]
         return toolbar
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [documentID, .flexibleSpace, locationID, .flexibleSpace, actionsID]
+        [navigationID, .flexibleSpace, documentID, .flexibleSpace, actionsID]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -63,13 +68,14 @@ final class WindowToolbar: NSObject, NSToolbarDelegate {
         willBeInsertedIntoToolbar flag: Bool,
     ) -> NSToolbarItem? {
         let item = NSToolbarItem(itemIdentifier: identifier)
-        if identifier == documentID {
+        if identifier == navigationID {
+            item.label = L10n.text("Headings Around the Caret")
+            item.view = NSHostingView(rootView: TitleNavigation(workspace: workspace).frame(height: 30)
+                .modifier(FocusTitleItem(chrome: workspace.focusChrome)))
+        } else if identifier == documentID {
             item.label = L10n.text("Current Document")
             item.view = NSHostingView(rootView: AdaptiveDocumentTitle(workspace: workspace, size: titleSize)
                 .modifier(FocusTitleItem(chrome: workspace.focusChrome)))
-        } else if identifier == locationID {
-            item.label = L10n.text("Location and Status")
-            item.view = NSHostingView(rootView: TitleLocation(workspace: workspace).frame(height: 30))
         } else if identifier == actionsID {
             item.label = L10n.text("Writing Views and Export")
             item.view = NSHostingView(rootView: WritingActions(workspace: workspace).frame(height: 30)
@@ -97,7 +103,8 @@ private struct AdaptiveDocumentTitle: View {
     }
 }
 
-private struct DocumentTitle: View {
+/// The three buttons at the left edge, then the breadcrumb.
+private struct TitleNavigation: View {
     @ObservedObject var workspace: Workspace
     var body: some View {
         HStack(spacing: 8) {
@@ -116,13 +123,23 @@ private struct DocumentTitle: View {
                 shortcut: WritingCommand.all.first { $0.id == "new" }?.shortcuts.first?.label,
             ) { workspace.newFromTemplate() }
                 .accessibilityIdentifier("toolbar.templates")
+            TitleLocation(workspace: workspace)
+        }.frame(height: 30).foregroundStyle(Theme.text).fixedSize()
+    }
+}
+
+/// The document's name, centred in the window.
+private struct DocumentTitle: View {
+    @ObservedObject var workspace: Workspace
+    var body: some View {
+        HStack(spacing: 8) {
             if let project = workspace.project, case .folder = project.kind, !workspace.isPackageSource {
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .center, spacing: 0) {
                     Text(workspace.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
                         .truncationMode(.middle)
                     Text(project.name).font(.system(size: 10)).foregroundStyle(Theme.secondary).lineLimit(1)
                         .truncationMode(.middle)
-                }.frame(maxWidth: .infinity, alignment: .leading)
+                }.frame(maxWidth: .infinity, alignment: .center)
                     .help(workspace.fileURL?.path ?? workspace.title)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("toolbar.title")
@@ -130,13 +147,14 @@ private struct DocumentTitle: View {
                 Text(workspace.title)
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1).truncationMode(.middle)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
                     .help(workspace.fileURL?.path ?? workspace.title)
                 ReadOnlyPackageBadge()
             } else {
                 EditableDocumentName(
                     title: workspace.title,
                     documentID: workspace.managedDocumentID,
+                    centered: true,
                     onOpen: { workspace.openLibrary() },
                     onRename: { [id = workspace.managedDocumentID] title in
                         guard let id else {
@@ -182,6 +200,7 @@ private struct WritingActions: View {
     @ObservedObject var workspace: Workspace
     var body: some View {
         HStack(spacing: 6) {
+            StatusDot(workspace: workspace)
             ModeControl(workspace: workspace)
             Rectangle().fill(Theme.border.opacity(0.65)).frame(width: 1, height: 12).padding(.horizontal, 5)
             QuietButton(
@@ -237,7 +256,7 @@ extension EditorMode {
     }
 }
 
-/// The breadcrumb of headings around the caret, then the compile status dot.
+/// The breadcrumb of headings around the caret.
 private struct TitleLocation: View {
     @ObservedObject var workspace: Workspace
     var body: some View {
@@ -257,7 +276,6 @@ private struct TitleLocation: View {
                         .lineLimit(1).truncationMode(.tail).frame(maxWidth: 180)
                 }.buttonStyle(.plain).accessibilityIdentifier("breadcrumb.\(item.offset)")
             }
-            StatusDot(workspace: workspace)
         }.fixedSize().disabled(workspace.isLibraryHome).opacity(workspace.isLibraryHome ? 0 : 1)
     }
 }

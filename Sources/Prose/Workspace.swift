@@ -330,6 +330,9 @@ final class Workspace: ObservableObject {
     /// The welcome screen over the window (`WelcomeScreen`). Only the app
     /// delegate shows it at launch, never `init`, so tests never see it.
     @Published var showsWelcome = false
+    /// Runs when the welcome screen closes, before the page takes the
+    /// keyboard. At launch the app delegate uses it to show the main window.
+    var onWelcomeClose: (() -> Void)?
     /// Shows file panels; tests replace it (see `present`).
     var showPanel: @MainActor (
         NSSavePanel,

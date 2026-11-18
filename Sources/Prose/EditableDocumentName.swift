@@ -8,6 +8,7 @@ struct EditableDocumentName: NSViewRepresentable {
     var fontSize: CGFloat = 12
     var identifier = "document-title"
     var help = "Click to rename. Double-click to open your writing."
+    var centered = false
     var onOpen: () -> Void
     var onRename: (String) -> Void
     var onFinish: (() -> Void)?
@@ -19,6 +20,7 @@ struct EditableDocumentName: NSViewRepresentable {
     func updateNSView(_ field: DocumentTitleField, context: Context) {
         field.update(title: title, documentID: documentID)
         field.font = .systemFont(ofSize: fontSize, weight: .medium)
+        field.alignment = centered ? .center : .natural
         field.onOpenLibrary = onOpen
         field.onRename = onRename
         field.onFinish = onFinish

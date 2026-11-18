@@ -60,7 +60,7 @@ extension WritingFlowTests {
         let item = try #require(app.window.toolbar?.items.first { $0.itemIdentifier.rawValue == "ProseDocument" })
         let view = try #require(item.view)
         let wide = view.fittingSize.width
-        #expect(wide > 340)
+        #expect(wide > 300)
         app.workspace.managedTitle = String(repeating: "A very long title ", count: 10)
         await app.layout()
         let long = view.fittingSize.width
