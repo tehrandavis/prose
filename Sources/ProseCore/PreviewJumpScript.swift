@@ -23,9 +23,14 @@ public extension PreviewScripts {
     /// The glow's diameter in points.
     static let jumpGlowSize = 32
     /// The glow's fade, in milliseconds.
-    static let jumpGlowFadeMilliseconds = 900
+    static let jumpGlowFadeMilliseconds = 1800
     /// With Reduce Motion, the glow shows still for this long, in milliseconds.
-    static let jumpGlowStillMilliseconds = 600
+    static let jumpGlowStillMilliseconds = 1000
+    /// The glow starts when the page has stood still for this long, in
+    /// milliseconds, so it shows after the scroll to the spot and not during it.
+    static let jumpGlowSettleMilliseconds = 160
+    /// The glow starts after this long even if the page still moves, in milliseconds.
+    static let jumpGlowLongestWaitMilliseconds = 1500
     /// A mark waits this long for its jump, in milliseconds. Tinymist sends
     /// no jump when the caret is on something it cannot place.
     static let jumpMarkLifetimeMilliseconds = 2000
@@ -70,33 +75,50 @@ public extension PreviewScripts {
                 const color = accent();
                 element.style.background = `radial-gradient(circle, ${color}73 0%, ${color}40 45%, ${color}00 70%)`;
                 element.style.boxShadow = `0 0 12px ${color}59`;
-                // The page may scroll to the spot after the glow appears. Keep
-                // the glow on the spot by placing it from the document each frame.
-                let alive = true;
+                // The page scrolls to the spot after this call. Follow the spot
+                // from the document each frame, and start the glow only when the
+                // page has stood still.
+                let alive = true, started = false, lastLeft = NaN, lastTop = NaN;
+                const born = performance.now();
+                let stillSince = born;
+                const remove = () => { alive = false; element.remove(); };
+                const show = () => {
+                    if (reduceMotion() || typeof element.animate !== 'function') {
+                        element.style.opacity = '1';
+                        setTimeout(remove, \(jumpGlowStillMilliseconds));
+                        return;
+                    }
+                    const fade = element.animate([
+                        {opacity: 0, transform: 'scale(0.6)'},
+                        {opacity: 1, transform: 'scale(1)', offset: 0.3},
+                        {opacity: 1, transform: 'scale(1.05)', offset: 0.5},
+                        {opacity: 0, transform: 'scale(1.15)'}
+                    ], {duration: \(jumpGlowFadeMilliseconds), easing: 'ease-in-out'});
+                    fade.onfinish = remove;
+                    fade.oncancel = remove;
+                };
                 const place = () => {
                     if (!alive) return;
                     const box = doc.getBoundingClientRect();
                     element.style.left = `${box.left + left}px`;
                     element.style.top = `${box.top + top}px`;
+                    if (!started) {
+                        const now = performance.now();
+                        if (box.left !== lastLeft || box.top !== lastTop) {
+                            lastLeft = box.left; lastTop = box.top; stillSince = now;
+                        }
+                        if (now - stillSince >= \(jumpGlowSettleMilliseconds) ||
+                            now - born >= \(jumpGlowLongestWaitMilliseconds)) {
+                            started = true;
+                            show();
+                        }
+                    }
                     requestAnimationFrame(place);
                 };
-                const remove = () => { alive = false; element.remove(); };
                 place();
                 document.body.appendChild(element);
-                if (reduceMotion() || typeof element.animate !== 'function') {
-                    element.style.opacity = '1';
-                    setTimeout(remove, \(jumpGlowStillMilliseconds));
-                    return;
-                }
-                const fade = element.animate([
-                    {opacity: 0, transform: 'scale(0.6)'},
-                    {opacity: 1, transform: 'scale(1)', offset: 0.15},
-                    {opacity: 0, transform: 'scale(1.15)'}
-                ], {duration: \(jumpGlowFadeMilliseconds), easing: 'ease-out'});
-                fade.onfinish = remove;
-                fade.oncancel = remove;
-                // A page in the background may never finish the animation.
-                setTimeout(remove, \(jumpGlowFadeMilliseconds) + 500);
+                // A page in the background may never start or finish the animation.
+                setTimeout(remove, \(jumpGlowLongestWaitMilliseconds + jumpGlowFadeMilliseconds + 500));
             };
             // Returns true when the page should not scroll for this jump.
             window.proseJumpMark = (impl, args) => {
