@@ -729,6 +729,7 @@ final class ManuscriptTextView: NSTextView {
             return
         }
         if trackWritingPointer(event) {
+            locateClickInPreview(event)
             return
         }
         lastWritingClick = nil
@@ -739,8 +740,18 @@ final class ManuscriptTextView: NSTextView {
         selectingWithMouse = true
         defer { selectingWithMouse = false
             selectionChanged(byPointer: true)
+            locateClickInPreview(event)
         }
         super.mouseDown(with: event)
+    }
+
+    /// A single click that left a caret asks where it is in the preview. A
+    /// drag, a double click or a shift click selects text and asks nothing.
+    private func locateClickInPreview(_ event: NSEvent) {
+        guard event.clickCount == 1, !event.modifierFlags.contains(.shift), selectedRange().length == 0 else {
+            return
+        }
+        workspace?.locateClickInPreview()
     }
 
     override func setSelectedRanges(_ ranges: [NSValue], affinity: NSSelectionAffinity, stillSelecting: Bool) {

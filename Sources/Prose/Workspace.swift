@@ -85,6 +85,7 @@ final class Workspace: ObservableObject {
         version: Int,
         reportFailure: Bool,
         following: Bool,
+        mark: PreviewJumpMark?,
     )?
     @Published var diagnostics: [DiagnosticItem] = []
     @Published var layout: EditorLayout = .writing {
@@ -1848,7 +1849,8 @@ final class Workspace: ObservableObject {
             editor.window?.makeFirstResponder(editor)
         }
         if synchronizePreview, layout == .split {
-            queuePreviewNavigation(reportFailure: false)
+            previewFollowTask?.cancel()
+            queuePreviewNavigation(reportFailure: false, mark: .glow)
         } else {
             pendingPreviewNavigation = nil
         }
@@ -1858,7 +1860,21 @@ final class Workspace: ObservableObject {
         if layout == .writing {
             layout = .split
         }
-        queuePreviewNavigation(reportFailure: true)
+        queuePreviewNavigation(reportFailure: true, mark: .glow)
+    }
+
+    /// A pointer click placed the caret: mark the same spot in the preview
+    /// (spec Section 3.3). Following the writing scrolls there as always;
+    /// otherwise the preview scrolls only when the spot is out of view.
+    func locateClickInPreview() {
+        guard layout == .split, !paletteOpen, editor?.hasMarkedText() != true else {
+            return
+        }
+        if let caret = editor?.selectedRange(), caret != selection {
+            selection = caret
+        }
+        previewFollowTask?.cancel()
+        queuePreviewNavigation(reportFailure: false, mark: previewReading.followsWriting ? .glow : .glowIfHidden)
     }
 
     func previewDidBecomeReady(at url: URL) {
@@ -1901,7 +1917,7 @@ final class Workspace: ObservableObject {
         }
     }
 
-    private func queuePreviewNavigation(reportFailure: Bool, following: Bool = false) {
+    private func queuePreviewNavigation(reportFailure: Bool, following: Bool = false, mark: PreviewJumpMark? = nil) {
         // Tinymist resolves the leaf before an exact token boundary. Step into
         // the selected character so heading/paragraph starts map to their text,
         // rather than the preceding newline (which has no rendered position).
@@ -1911,7 +1927,7 @@ final class Workspace: ObservableObject {
             .character(at: offset) != 13
             ? NSMaxRange(source.rangeOfComposedCharacterSequence(at: offset)) : offset
         let target = metrics.position(at: queryOffset)
-        pendingPreviewNavigation = (documentURL, target, documentVersion, reportFailure, following)
+        pendingPreviewNavigation = (documentURL, target, documentVersion, reportFailure, following, mark)
         recordOperation("preview.jump.queued", ["line": String(target.line), "version": String(documentVersion)])
         sendPendingPreviewNavigation()
     }
@@ -1933,12 +1949,18 @@ final class Workspace: ObservableObject {
         let generation = serviceGeneration
         let start = metrics.offset(at: TextPosition(line: pending.position.line, character: 0))
         let end = metrics.offset(at: pending.position)
-        let column = (text as NSString).substring(with: NSRange(location: start, length: end - start)).utf8.count
+        // Typst's `Lines::line_column_to_byte` counts the column in characters
+        // (Unicode scalars), and finds nothing when the count runs past the line.
+        let column = (text as NSString).substring(with: NSRange(location: start, length: end - start))
+            .unicodeScalars.count
         Task {
             guard generation == serviceGeneration, pending.url == documentURL,
                   pending.version == documentVersion, !pending.following || previewReading.followsWriting
             else {
                 return
+            }
+            if let mark = pending.mark {
+                await previewReading.jumpMarker?.markNextJump(mark)
             }
             do {
                 _ = try await client.command(

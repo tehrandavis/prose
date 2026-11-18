@@ -45,6 +45,8 @@ public final class PreviewReadingSession: ObservableObject {
     }
 
     @Published public var followsWriting = false
+    /// The preview on screen, which marks a jump with the glow. Nil while no preview shows.
+    public weak var jumpMarker: (any PreviewJumpMarking)?
     @Published public private(set) var returnAnchor: PreviewReadingAnchor?
     @Published public private(set) var restore: Restore?
     public private(set) var anchor: PreviewReadingAnchor?

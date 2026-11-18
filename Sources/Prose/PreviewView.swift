@@ -39,11 +39,15 @@ struct PreviewView: NSViewRepresentable {
         view.setAccessibilityLabel(L10n.text("Document Preview"))
         _ = view.load(URLRequest(url: url))
         context.coordinator.loadedURL = url
+        context.coordinator.view = view
+        readingSession.jumpMarker = context.coordinator
         return view
     }
 
     func updateNSView(_ view: WKWebView, context: Context) {
         context.coordinator.readingSession = readingSession
+        context.coordinator.view = view
+        readingSession.jumpMarker = context.coordinator
         context.coordinator.onLoading = onLoading
         context.coordinator.onReady = onReady
         view.setAccessibilityLabel(L10n.text("Document Preview"))
@@ -64,7 +68,8 @@ struct PreviewView: NSViewRepresentable {
         view.navigationDelegate = nil
     }
 
-    @MainActor final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+    @MainActor final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, PreviewJumpMarking {
+        weak var view: WKWebView?
         var loadedURL: URL? {
             didSet {
                 if loadedURL != oldValue {
@@ -116,6 +121,17 @@ struct PreviewView: NSViewRepresentable {
 
         func receiveReading(_ body: [String: Any]) {
             readingSession.receive(body)
+        }
+
+        /// Tell the page to mark the next jump. Prose sends the jump after this
+        /// returns, so the mark is in place before Tinymist's message arrives.
+        func markNextJump(_ mark: PreviewJumpMark) async {
+            guard let view, !view.isLoading else {
+                return
+            }
+            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                view.evaluateJavaScript(mark.javaScript) { _, _ in done.resume() }
+            }
         }
 
         func restoreReading(in view: WKWebView) {

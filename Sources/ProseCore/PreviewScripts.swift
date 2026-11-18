@@ -114,9 +114,12 @@ public enum PreviewScripts {
             configureViewportRendering(impl);
             // A resize anchor lives across several rendering passes. An explicit
             // source jump must supersede it, or the next pass restores the old page.
+            // A jump Prose marked draws the glow first, and may keep the page still
+            // when the spot is already in view (PreviewJumpScript.swift).
             if (typeof impl.scrollTo === 'function' && typeof impl.clearSvgResizeAnchor === 'function') {
                 const scrollTo = impl.scrollTo;
                 impl.scrollTo = function(...args) {
+                    if (window.proseJumpMark?.(this, args) === true) return;
                     window.proseSourceJump?.();
                     this.clearSvgResizeAnchor();
                     return scrollTo.apply(this, args);
@@ -159,6 +162,6 @@ public enum PreviewScripts {
         const root = document.getElementById('typst-app');
         if (root) new MutationObserver(() => window.proseSetDark(!!window.prosePreviewDark))
             .observe(root, {attributes: true, attributeFilter: ['class']});
-        """ + reading
+        """ + reading + jumpGlow
     }
 }
