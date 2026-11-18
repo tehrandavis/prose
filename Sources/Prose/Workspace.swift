@@ -327,6 +327,9 @@ final class Workspace: ObservableObject {
 
     @Published var discoveryMode: UniverseDiscoveryMode?
     @Published var libraryOpen = false
+    /// The welcome screen over the window (`WelcomeScreen`). Only the app
+    /// delegate shows it at launch, never `init`, so tests never see it.
+    @Published var showsWelcome = false
     /// Shows file panels; tests replace it (see `present`).
     var showPanel: @MainActor (
         NSSavePanel,

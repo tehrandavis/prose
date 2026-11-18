@@ -22,6 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var settingsWindow: NSWindow?
     private var settingsController: WorkspaceSettings?
     private var dockIcon: DockIconController?
+    /// Set when the app was launched or reached by opening a file; the
+    /// welcome screen then stays away.
+    private(set) var openedFile = false
     #if PROSE_PREVIEW
         private let previewUpdater = PreviewUpdater()
     #endif
@@ -70,6 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         Task {
             // Starts the library, then opens the blank page launch waits for.
             await workspace.launch()
+            showWelcomeAfterLaunch()
             await workspace.agentConnection.resume()
         }
         NSApp.activate(ignoringOtherApps: true)
@@ -149,7 +153,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         workspace.shutdown()
     }
 
+    /// The welcome screen shows once at launch, over the blank page launch
+    /// opened. Not when a file was opened, when launch restored or opened a
+    /// real document, or when something else already covers the page.
+    func showWelcomeAfterLaunch() {
+        guard !openedFile, workspace.isOnUntouchedBlankPage, !workspace.libraryOpen,
+              !workspace.historyOpen, workspace.window?.attachedSheet == nil
+        else {
+            return
+        }
+        workspace.showWelcome()
+    }
+
     func application(_ sender: NSApplication, openFiles filenames: [String]) {
+        openedFile = true
+        workspace.closeWelcome()
         if let path = filenames.first {
             workspace.open(URL(fileURLWithPath: path))
         }
@@ -354,6 +372,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         item(L10n.text("Minimize"), #selector(NSWindow.performMiniaturize(_:)), "m", windowMenu)
         item(L10n.text("Zoom"), #selector(NSWindow.performZoom(_:)), "", windowMenu)
         windowMenu.addItem(.separator())
+        item(
+            L10n.format("Welcome to %@", AppDistribution.current.applicationName),
+            #selector(showWelcome),
+            "",
+            windowMenu,
+            target: self,
+        )
+        windowMenu.addItem(.separator())
         item(L10n.text("Bring All to Front"), #selector(NSApplication.arrangeInFront(_:)), "", windowMenu)
         NSApp.windowsMenu = windowMenu
         // The Help menu holds the system's search field for menu items.
@@ -440,6 +466,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         settingsWindow?.title = L10n.text("Settings")
         settingsWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    @objc func showWelcome() {
+        workspace.closeSheet()
+        workspace.showWelcome()
     }
 
     @objc private func openLibrary() {

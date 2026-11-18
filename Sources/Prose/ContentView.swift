@@ -37,6 +37,11 @@ struct ContentView: View {
         }
         .background(Theme.background)
         .foregroundStyle(Theme.text)
+        .overlay {
+            if workspace.showsWelcome {
+                WelcomeScreen(workspace: workspace)
+            }
+        }
         .sheet(item: $workspace.objectEditSession) { session in
             ObjectEditorForm(
                 object: session.object,

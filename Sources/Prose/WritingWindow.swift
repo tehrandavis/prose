@@ -22,8 +22,13 @@ final class WritingWindow: NSWindow {
             let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
             if modifiers == .command, event.charactersIgnoringModifiers?.lowercased() == workspace.commandKey {
                 if (firstResponder as? NSTextView)?.hasMarkedText() != true {
+                    workspace.closeWelcome()
                     workspace.togglePalette()
                 }
+                return
+            }
+            if event.keyCode == 53, workspace.showsWelcome {
+                workspace.closeWelcome()
                 return
             }
             if workspace.handlePaletteKey(event) {

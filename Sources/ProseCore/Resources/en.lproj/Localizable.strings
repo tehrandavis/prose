@@ -983,3 +983,10 @@
 "↑ ↓ to select · ↵ to cite · ⌥↵ to add a page or section · Tab to switch" = "↑ ↓ to select · ↵ to cite · ⌥↵ to add a page or section · Tab to switch";
 "↵ to link · Esc to go back" = "↵ to link · Esc to go back";
 "Search Zotero" = "Search Zotero";
+"Welcome to %@" = "Welcome to %@";
+"Close Welcome" = "Close Welcome";
+"Open Folder…" = "Open Folder…";
+"Open File…" = "Open File…";
+"Recent" = "Recent";
+"Nothing recent yet" = "Nothing recent yet";
+"Press Esc or click outside to go back to the page." = "Press Esc or click outside to go back to the page.";
