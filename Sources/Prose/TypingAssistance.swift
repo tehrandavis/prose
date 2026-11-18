@@ -21,6 +21,7 @@ extension ManuscriptTextView {
     }
 
     func dismissTypingAssistance() {
+        typingListNavigated = false
         typingTask?.cancel()
         typingTask = nil
         typingRequestID = UUID()
@@ -148,10 +149,21 @@ extension ManuscriptTextView {
         }
         switch event.keyCode {
         case 125: typingList.move(1)
+            typingListNavigated = true
             renderTypingAssistance()
             return true
         case 126: typingList.move(-1)
+            typingListNavigated = true
             renderTypingAssistance()
+            return true
+        // Return and Enter use the chosen item when the writer chose it with
+        // the arrow keys, or when the list completes a citation or reference
+        // (`@key`). Otherwise Return stays a new line, since the list opens
+        // by itself while the writer types.
+        case 36, 76 where typingPanel != nil && (typingListNavigated || typingCompletesReference):
+            if let selected = typingList.selected {
+                acceptTypingCompletion(selected)
+            }
             return true
         case 48 where !event.modifierFlags.contains(.shift):
             if let selected = typingList.selected {
@@ -160,6 +172,29 @@ extension ManuscriptTextView {
             return true
         default: return false
         }
+    }
+
+    /// Whether the word at the caret starts with `@`: a citation or a
+    /// reference to a label.
+    private var typingCompletesReference: Bool {
+        let text = string as NSString
+        var index = selectedRange().location
+        guard selectedRange().length == 0, index <= text.length else {
+            return false
+        }
+        while index > 0 {
+            let unit = text.character(at: index - 1)
+            if unit == 64 {
+                return true
+            }
+            guard let scalar = Unicode.Scalar(unit),
+                  CharacterSet.alphanumerics.contains(scalar) || "_-:.".unicodeScalars.contains(scalar)
+            else {
+                return false
+            }
+            index -= 1
+        }
+        return false
     }
 
     @objc private func chooseTypingCompletion(_ sender: NSButton) {

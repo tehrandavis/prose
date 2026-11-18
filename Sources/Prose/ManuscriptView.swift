@@ -276,6 +276,9 @@ final class ManuscriptTextView: NSTextView {
     var typingRequestID = UUID()
     var typingPanel: NSPanel?
     var typingList = CompletionList(items: [], prefix: "")
+    /// The writer moved through the completion list with the arrow keys, so
+    /// Return means "use this one" and not "new line".
+    var typingListNavigated = false
     var typingSignature: LanguageSignature?
     var typingSource = ""
     var typingSelection = NSRange(location: 0, length: 0)
