@@ -228,9 +228,21 @@ final class Workspace: ObservableObject {
     /// All Comments, the comment list in the command panel (Phase 8
     /// decision 7), while it is open.
     @Published var commentList: CommentList?
+    /// What the sidebar shows: the files, the open file's comments or the
+    /// bibliography. Kept per window for the session.
+    @Published var sidebarView = SidebarView.files
     /// Whether the sidebar shows the open file's comments in place of the
-    /// file tree. Kept per window for the session.
-    @Published var sidebarShowsComments = false
+    /// file tree.
+    var sidebarShowsComments: Bool {
+        get { sidebarView == .comments }
+        set { sidebarView = newValue ? .comments : .files }
+    }
+
+    /// The index revision the sidebar's Bibliography view shows, published
+    /// when a reload finishes so the view follows a `.bib` changed on disk.
+    @Published var bibliographyRevisionShown = -1
+    /// The file open when the Bibliography view last read the index.
+    var sidebarBibliographyDocument: URL?
     /// How far the comments' gutter moved the column left (decision 6).
     @Published var commentColumnShift: CGFloat = 0
     /// Show Comments, on by default, stored on this Mac (decision 7).
@@ -1579,6 +1591,8 @@ final class Workspace: ObservableObject {
         case "navigateBack": closePalette()
             navigateBack()
         case "cite": openCitationPicker()
+        case "showBibliographySidebar": closePalette()
+            showBibliographySidebar()
         case "addComment", "replyComment", "resolveComment", "deleteComment", "nextComment", "previousComment",
              "showComments", "showResolvedComments", "allComments", "showCommentSource", "showCommentsSidebar":
             executeComment(command.id)
@@ -2051,9 +2065,22 @@ final class Workspace: ObservableObject {
                 }
             }
             let context = await TypingContext.resolve(source: source, selection: caret)
-            guard !Task.isCancelled, !automatic || context != nil else {
+            // A word that starts with `@` lists the bibliography's entries
+            // first, unless the `@` is in a comment or raw text.
+            var reference = caret.length == 0 ? CitationInsertion.referenceQuery(
+                in: source as NSString,
+                at: caret.location,
+            ) : nil
+            if let found = reference, await TypingContext.resolve(
+                source: source,
+                selection: NSRange(location: found.range.location + 1, length: 0),
+            ) == nil {
+                reference = nil
+            }
+            guard !Task.isCancelled, !automatic || context != nil || reference != nil else {
                 return
             }
+            let citations = await citationCompletions(for: reference, in: source)
             do {
                 try flushChanges()
                 let params: [String: Any] = [
@@ -2062,11 +2089,28 @@ final class Workspace: ObservableObject {
                 ]
                 var items: [SourceCompletion] = []
                 var signature: LanguageSignature?
-                if !automatic || context?.wantsCompletion == true {
-                    let result = try await client.request("textDocument/completion", params.merging([
-                        "context": ["triggerKind": 1],
-                    ]) { _, new in new })
+                if !automatic || context?.wantsCompletion == true || reference != nil {
+                    let request = { [client] in
+                        try await client.request("textDocument/completion", params.merging([
+                            "context": ["triggerKind": 1],
+                        ]) { _, new in new })
+                    }
+                    // With citations to show, a failed request costs only
+                    // the labels.
+                    let result: JSONValue = if citations.isEmpty {
+                        try await request()
+                    } else {
+                        await (try? request()) ?? .null
+                    }
                     items = LanguageAssistance.completions(result, source: source, selection: caret)
+                }
+                if reference != nil {
+                    // Labels of headings, figures and equations follow the
+                    // citations; a bibliography key shows once.
+                    let keys = bibliographyIndex.keys
+                    items = citations + items.filter { item in
+                        !keys.contains(item.label.hasPrefix("@") ? String(item.label.dropFirst()) : item.label)
+                    }
                 }
                 if !Task.isCancelled, context?.wantsSignature == true, client.supports("signatureHelpProvider") {
                     signature = try await LanguageAssistance.signatureHelp(client.request(
@@ -2086,7 +2130,7 @@ final class Workspace: ObservableObject {
                     source: source,
                     selection: caret,
                     requestID: requestID,
-                    prefix: context?.prefix ?? "",
+                    prefix: reference?.query ?? context?.prefix ?? "",
                 )
                 if !automatic, items.isEmpty, signature == nil {
                     showMessage(L10n.text("No completions are available here."))

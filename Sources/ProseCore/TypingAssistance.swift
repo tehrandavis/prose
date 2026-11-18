@@ -161,8 +161,9 @@ public struct CompletionList: Sendable {
 
     public init(items: [SourceCompletion], prefix: String) {
         // The server may use labels such as `width:` or paths; do not rewrite edits.
+        // Citation rows were matched on author, year and title already.
         let matched = items.filter {
-            prefix.isEmpty || $0.label.localizedCaseInsensitiveContains(prefix)
+            $0.entry != nil || prefix.isEmpty || $0.label.localizedCaseInsensitiveContains(prefix)
         }
         self.items = matched
     }

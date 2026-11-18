@@ -81,9 +81,26 @@ extension ManuscriptTextView {
         stack.alignment = .leading
         stack.spacing = 3
         stack.edgeInsets = NSEdgeInsets(top: 8, left: 10, bottom: 8, right: 10)
-        let start = max(0, typingList.index - 5)
-        for index in start ..< min(start + 8, typingList.items.count) {
+        // Citation rows are two lines tall (after RStudio's), so fewer show.
+        let citations = typingList.items.contains { $0.entry != nil }
+        let width: CGFloat = citations ? 420 : 360
+        let shown = citations ? 6 : 8
+        let start = max(0, typingList.index - (shown - 3))
+        for index in start ..< min(start + shown, typingList.items.count) {
             let item = typingList.items[index]
+            if let entry = item.entry {
+                let row = CitationCompletionRow(
+                    entry: entry,
+                    zotero: workspace?.isZoteroEntry(entry) == true,
+                    selected: index == typingList.index,
+                    width: width,
+                ) { [weak self] in
+                    self?.chooseTypingCompletion(at: index)
+                }
+                row.setAccessibilityIdentifier("completion-item-\(index)")
+                stack.addArrangedSubview(row)
+                continue
+            }
             let button = NSButton(
                 title: (index == typingList.index ? "› " : "  ") + item.label,
                 target: self,
@@ -94,22 +111,23 @@ extension ManuscriptTextView {
             button.alignment = .left
             button.font = .monospacedSystemFont(ofSize: 12, weight: index == typingList.index ? .semibold : .regular)
             button.setAccessibilityIdentifier("completion-item-\(index)")
-            button.widthAnchor.constraint(equalToConstant: 360).isActive = true
+            button.widthAnchor.constraint(equalToConstant: width).isActive = true
             stack.addArrangedSubview(button)
         }
         if let selected = typingList.selected, !selected.detail.isEmpty {
-            addTypingLabel(String(selected.detail.prefix(240)), to: stack)
+            addTypingLabel(String(selected.detail.prefix(240)), to: stack, width: width)
         }
         if let signature = typingSignature {
-            addTypingLabel(signature.label, to: stack)
+            addTypingLabel(signature.label, to: stack, width: width)
             if let parameter = signature.activeParameter {
                 addTypingLabel(
                     L10n.format("Parameter: %@", parameter),
                     to: stack,
+                    width: width,
                 )
             }
             if !signature.parameterDocumentation.isEmpty {
-                addTypingLabel(String(signature.parameterDocumentation.prefix(240)), to: stack)
+                addTypingLabel(String(signature.parameterDocumentation.prefix(240)), to: stack, width: width)
             }
         }
         panel.contentView = stack
@@ -122,12 +140,12 @@ extension ManuscriptTextView {
         panel.orderFront(nil)
     }
 
-    private func addTypingLabel(_ text: String, to stack: NSStackView) {
+    private func addTypingLabel(_ text: String, to stack: NSStackView, width: CGFloat) {
         let label = NSTextField(wrappingLabelWithString: text)
         label.font = .systemFont(ofSize: 11)
         label.textColor = .secondaryLabelColor
         label.maximumNumberOfLines = 3
-        label.widthAnchor.constraint(equalToConstant: 360).isActive = true
+        label.widthAnchor.constraint(equalToConstant: width).isActive = true
         stack.addArrangedSubview(label)
     }
 
@@ -160,7 +178,8 @@ extension ManuscriptTextView {
         // the arrow keys, or when the list completes a citation or reference
         // (`@key`). Otherwise Return stays a new line, since the list opens
         // by itself while the writer types.
-        case 36, 76 where typingPanel != nil && (typingListNavigated || typingCompletesReference):
+        case 36 where typingPanel != nil && (typingListNavigated || typingCompletesReference),
+             76 where typingPanel != nil && (typingListNavigated || typingCompletesReference):
             if let selected = typingList.selected {
                 acceptTypingCompletion(selected)
             }
@@ -198,10 +217,14 @@ extension ManuscriptTextView {
     }
 
     @objc private func chooseTypingCompletion(_ sender: NSButton) {
-        guard typingList.items.indices.contains(sender.tag) else {
+        chooseTypingCompletion(at: sender.tag)
+    }
+
+    private func chooseTypingCompletion(at index: Int) {
+        guard typingList.items.indices.contains(index) else {
             return
         }
-        acceptTypingCompletion(typingList.items[sender.tag])
+        acceptTypingCompletion(typingList.items[index])
     }
 
     func acceptTypingCompletion(_ item: SourceCompletion) {
@@ -221,7 +244,173 @@ extension ManuscriptTextView {
             setCompletionPlaceholders(item.selections)
             setSelectedRange(item.selections.first ?? NSRange(location: item.insertionEnd, length: 0))
             workspace.selection = selectedRange()
-            scheduleTypingAssistance()
+            if item.entry != nil {
+                // A citation is finished: compile at once, as the picker
+                // does, so the block never shows `??`.
+                writing.refreshNow()
+                workspace.recordOperation("citation.completed", ["key": item.entry?.key ?? ""])
+            } else {
+                scheduleTypingAssistance()
+            }
         } catch { workspace.showMessage(error.localizedDescription) }
+    }
+}
+
+/// One row of the `@` list (after RStudio's citation rows): the type icon in
+/// a bordered square with a "Z" badge for a Zotero entry, `@key` in the
+/// monospaced font with the authors and year at the right, and the title
+/// below, cut with an ellipsis. The chosen row has a rounded accent outline
+/// and a faint accent fill. A click inserts.
+final class CitationCompletionRow: NSView {
+    private let selected: Bool
+    private let action: () -> Void
+
+    init(entry: BibliographyEntry, zotero: Bool, selected: Bool, width: CGFloat, action: @escaping () -> Void) {
+        self.selected = selected
+        self.action = action
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 48))
+        translatesAutoresizingMaskIntoConstraints = false
+
+        let box = NSView()
+        box.wantsLayer = true
+        box.translatesAutoresizingMaskIntoConstraints = false
+        let icon = NSImageView()
+        icon.image = IconStore.image(CitationRowStyle.icon(forKind: entry.kind))
+        icon.contentTintColor = Theme.nativeSecondary
+        icon.imageScaling = .scaleProportionallyUpOrDown
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        let boxBackground = BorderedSquare()
+        boxBackground.translatesAutoresizingMaskIntoConstraints = false
+        box.addSubview(boxBackground)
+        box.addSubview(icon)
+
+        let key = Self.label("@" + entry.key, font: .monospacedSystemFont(ofSize: 12, weight: .regular))
+        key.textColor = Theme.nativeText
+        key.lineBreakMode = .byTruncatingMiddle
+        let authors = Self.label(entry.authorYearLine, font: .systemFont(ofSize: 11))
+        authors.alignment = .right
+        authors.lineBreakMode = .byTruncatingTail
+        let title = Self.label(entry.title ?? L10n.text("Untitled"), font: .systemFont(ofSize: 11))
+        title.lineBreakMode = .byTruncatingTail
+        for view in [box, key, authors, title] {
+            addSubview(view)
+        }
+        key.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        authors.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let side = CitationRowStyle.iconBox
+        var constraints = [
+            widthAnchor.constraint(equalToConstant: width),
+            heightAnchor.constraint(equalToConstant: 48),
+            box.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            box.centerYAnchor.constraint(equalTo: centerYAnchor),
+            box.widthAnchor.constraint(equalToConstant: side),
+            box.heightAnchor.constraint(equalToConstant: side),
+            boxBackground.leadingAnchor.constraint(equalTo: box.leadingAnchor),
+            boxBackground.trailingAnchor.constraint(equalTo: box.trailingAnchor),
+            boxBackground.topAnchor.constraint(equalTo: box.topAnchor),
+            boxBackground.bottomAnchor.constraint(equalTo: box.bottomAnchor),
+            icon.centerXAnchor.constraint(equalTo: box.centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: box.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 15),
+            icon.heightAnchor.constraint(equalToConstant: 15),
+            key.leadingAnchor.constraint(equalTo: box.trailingAnchor, constant: 10),
+            key.topAnchor.constraint(equalTo: topAnchor, constant: 7),
+            authors.leadingAnchor.constraint(greaterThanOrEqualTo: key.trailingAnchor, constant: 10),
+            authors.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+            authors.firstBaselineAnchor.constraint(equalTo: key.firstBaselineAnchor),
+            title.leadingAnchor.constraint(equalTo: key.leadingAnchor),
+            title.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -10),
+            title.topAnchor.constraint(equalTo: key.bottomAnchor, constant: 3),
+        ]
+        if zotero {
+            let badge = Self.label("Z", font: .systemFont(ofSize: 7, weight: .bold))
+            badge.textColor = .white
+            badge.alignment = .center
+            badge.drawsBackground = true
+            badge.backgroundColor = CitationRowStyle.zoteroRed
+            badge.wantsLayer = true
+            badge.layer?.cornerRadius = 2
+            addSubview(badge)
+            constraints += [
+                badge.widthAnchor.constraint(equalToConstant: 11),
+                badge.heightAnchor.constraint(equalToConstant: 11),
+                badge.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: 3),
+                badge.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: 3),
+            ]
+        }
+        NSLayoutConstraint.activate(constraints)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel([
+            CitationRowStyle.typeName(forKind: entry.kind), entry.key, entry.authorYearLine, entry.title ?? "",
+        ].filter { !$0.isEmpty }.joined(separator: ", "))
+        setAccessibilitySelected(selected)
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    private static func label(_ text: String, font: NSFont) -> NSTextField {
+        let label = NSTextField(labelWithString: text)
+        label.font = font
+        label.textColor = Theme.nativeSecondary
+        label.maximumNumberOfLines = 1
+        label.cell?.truncatesLastVisibleLine = true
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: frame.width, height: 48)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard selected else {
+            return
+        }
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 6, yRadius: 6)
+        Theme.nativeAccent.withAlphaComponent(0.08).setFill()
+        path.fill()
+        Theme.nativeAccent.withAlphaComponent(0.55).setStroke()
+        path.lineWidth = 1
+        path.stroke()
+    }
+
+    /// The whole row takes the click; its labels do not.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let local = superview.map { convert(point, from: $0) } ?? point
+        return bounds.contains(local) ? self : nil
+    }
+
+    override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
+        true
+    }
+
+    override func mouseDown(with _: NSEvent) {}
+
+    override func mouseUp(with event: NSEvent) {
+        if bounds.contains(convert(event.locationInWindow, from: nil)) {
+            action()
+        }
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        action()
+        return true
+    }
+}
+
+/// The icon's square: the page colour with a hairline border.
+private final class BorderedSquare: NSView {
+    override func draw(_: NSRect) {
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 5, yRadius: 5)
+        Theme.nativeEditor.setFill()
+        path.fill()
+        Theme.nativeBorder.setStroke()
+        path.lineWidth = 1
+        path.stroke()
     }
 }

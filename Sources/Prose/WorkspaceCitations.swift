@@ -40,7 +40,7 @@ struct CitationPicker: Equatable {
 }
 
 extension Workspace {
-    private var citeCommand: WritingCommand? {
+    var citeCommand: WritingCommand? {
         WritingCommand.all.first { $0.id == "cite" }
     }
 
@@ -117,6 +117,9 @@ extension Workspace {
                 if generation == bibliographyIndexGeneration {
                     citationPicker?.loading = false
                     citationPicker?.revision = bibliographyIndex.revision
+                    if bibliographyRevisionShown != bibliographyIndex.revision {
+                        bibliographyRevisionShown = bibliographyIndex.revision
+                    }
                 }
             }
             guard let engine = await citationEngine(), generation == bibliographyIndexGeneration else {
@@ -349,7 +352,7 @@ extension Workspace {
     /// offer, or nil when no offer applies: the document has a call, the
     /// writer declined for this main file, or the open file is not the main
     /// file (the insertion edits only the open buffer).
-    private func bibliographyOfferPath(for entry: BibliographyEntry) -> String? {
+    func bibliographyOfferPath(for entry: BibliographyEntry) -> String? {
         let main = compilationURL.standardizedFileURL
         guard !bibliographyIndex.isLinked,
               bibliographyIndex.contents.files.contains(where: { $0.path == entry.file && !$0.linked }),
@@ -484,5 +487,126 @@ extension Workspace {
         editor.setSelectedRange(caret)
         editor.writing.refreshNow()
         recordOperation("citation.bibliographyAdded", ["path": path])
+    }
+}
+
+// MARK: - The `@` list and the sidebar's Bibliography view
+
+extension Workspace {
+    /// The rows of the `@` list: the index's entries matching what was typed
+    /// after the `@`, at most 50, searched off the main thread. Reads the
+    /// index the first time; until it is read the list keeps the language
+    /// service's items only.
+    func citationCompletions(
+        for reference: (range: NSRange, query: String)?,
+        in source: String,
+    ) async -> [SourceCompletion] {
+        guard let reference else {
+            return []
+        }
+        if !bibliographyIndexUsed {
+            reloadBibliographyIndex()
+        }
+        let snapshot = bibliographyIndex.snapshot
+        guard !snapshot.entries.isEmpty else {
+            return []
+        }
+        let entries = await Task.detached(priority: .userInitiated) {
+            snapshot.search(reference.query, limit: 50)
+        }.value
+        let text = source as NSString
+        return entries.map { entry in
+            SourceCompletion(
+                citing: entry,
+                replacing: reference.range,
+                with: CitationInsertion.text(citing: entry.key, in: text, replacing: reference.range),
+            )
+        }
+    }
+
+    /// Whether an entry comes from Zotero: the project's linked
+    /// auto-export, or `references-prose.bib`, where Prose writes Zotero's
+    /// entries.
+    func isZoteroEntry(_ entry: BibliographyEntry) -> Bool {
+        if let link = zoteroLink, entry.file == link.bibliography {
+            return true
+        }
+        return (entry.file as NSString).lastPathComponent == ProseBibliography.fileName
+    }
+
+    /// The sidebar's Bibliography view: reads the index the first time it
+    /// shows.
+    func showBibliographySidebar() {
+        if !sidebarVisible, editorMode != .focus {
+            sidebarVisible = true
+            sidebarView = .bibliography
+        } else {
+            sidebarView = sidebarView == .bibliography ? .files : .bibliography
+        }
+        recordOperation("bibliography.sidebar", ["shown": String(sidebarView == .bibliography)])
+    }
+
+    /// The view asks for the index: reads it the first time, and again when
+    /// another file opens.
+    func loadSidebarBibliography() {
+        if !bibliographyIndexUsed || sidebarBibliographyDocument != documentURL {
+            sidebarBibliographyDocument = documentURL
+            reloadBibliographyIndex()
+        }
+    }
+
+    /// Cites `entry` at the caret from the sidebar: the picker's rules (the
+    /// insertion-context check, the spacing, one undoable edit, the compile
+    /// at once) without the panel. The keyboard stays in the editor.
+    func citeFromSidebar(_ entry: BibliographyEntry) {
+        guard canEditSource, !applyingCommand, let editor, !editor.hasMarkedText(), let command = citeCommand else {
+            return
+        }
+        if layout == .preview {
+            layout = .split
+        }
+        returnKeyboardToEditor()
+        let selection = editor.selectedRange()
+        let range = NSRange(location: NSMaxRange(selection), length: 0)
+        let version = revision, document = documentURL
+        let missingBibliography = bibliographyOfferPath(for: entry) != nil
+        applyingCommand = true
+        recordOperation("insertion.begin", ["command": command.id, "from": "sidebar"])
+        Task {
+            defer { applyingCommand = false }
+            do {
+                _ = try await insertionContext(for: command, range: range)
+                guard version == revision, documentURL == document, editor.selectedRange() == selection,
+                      !editor.hasMarkedText()
+                else {
+                    recordOperation(
+                        "insertion.cancelled",
+                        ["command": command.id, "reason": "document or selection changed"],
+                    )
+                    return
+                }
+                let citation = CitationInsertion.text(citing: entry.key, in: text as NSString, at: range.location)
+                editor.insertSnippet(Snippet(text: citation), replacing: range)
+                editor.writing.refreshNow()
+                returnKeyboardToEditor()
+                recordOperation(
+                    "insertion.finished",
+                    ["command": command.id, "insertedUTF16": String(citation.utf16.count)],
+                )
+                if missingBibliography {
+                    showMessage(L10n.text(
+                        "This document has no bibliography yet, so the citation will not compile. Add one with ⌘J R B.",
+                    ))
+                }
+            } catch {
+                recordOperation("insertion.failed", ["command": command.id, "error": error.localizedDescription])
+                showMessage(error.localizedDescription)
+            }
+        }
+    }
+
+    /// The bibliography file at `path`, relative to the project root.
+    func bibliographyFileURL(_ path: String) -> URL {
+        writingEngineKey.root.appendingPathComponent(path).standardizedFileURL
     }
 }

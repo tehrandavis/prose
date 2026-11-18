@@ -126,40 +126,59 @@ extension Workspace {
     }
 }
 
-/// The two segments at the top of the sidebar: the files (or the outline
-/// of a file with no folder) and the comments, with the number of open
-/// comments.
+/// The three segments at the top of the sidebar: the files (or the outline
+/// of a file with no folder), the comments, with the number of open
+/// comments, and the bibliography. Labels show when they fit; at the
+/// sidebar's narrow widths the segments show icons, with the names in help.
 struct SidebarModeControl: View {
     @ObservedObject var workspace: Workspace
     @ObservedObject var comments: CommentSidebarModel
 
     var body: some View {
-        let filesTitle = workspace.project == nil ? L10n.text("Outline") : L10n.text("Files")
-        HStack(spacing: 2) {
-            segment(
-                filesTitle,
-                icon: workspace.project == nil ? "list-bullets" : "files",
-                count: 0,
-                selected: !workspace.sidebarShowsComments,
-                identifier: "sidebar.mode.files",
-            ) { workspace.sidebarShowsComments = false }
-            segment(
-                L10n.text("Comments"),
-                icon: "chat-circle",
-                count: comments.openCount,
-                selected: workspace.sidebarShowsComments,
-                identifier: "sidebar.mode.comments",
-            ) { workspace.sidebarShowsComments = true }
+        ViewThatFits(in: .horizontal) {
+            segments(labels: true)
+            segments(labels: false)
         }
         .padding(2)
         .background(Theme.editor.opacity(0.7), in: RoundedRectangle(cornerRadius: 7))
         .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.border))
     }
 
+    private func segments(labels: Bool) -> some View {
+        let filesTitle = workspace.project == nil ? L10n.text("Outline") : L10n.text("Files")
+        return HStack(spacing: 2) {
+            segment(
+                filesTitle,
+                icon: workspace.project == nil ? "list-bullets" : "files",
+                count: 0,
+                labels: labels,
+                selected: workspace.sidebarView == .files,
+                identifier: "sidebar.mode.files",
+            ) { workspace.sidebarView = .files }
+            segment(
+                L10n.text("Comments"),
+                icon: "chat-circle",
+                count: comments.openCount,
+                labels: labels,
+                selected: workspace.sidebarView == .comments,
+                identifier: "sidebar.mode.comments",
+            ) { workspace.sidebarView = .comments }
+            segment(
+                L10n.text("Bibliography"),
+                icon: "books",
+                count: 0,
+                labels: labels,
+                selected: workspace.sidebarView == .bibliography,
+                identifier: "sidebar.mode.bibliography",
+            ) { workspace.sidebarView = .bibliography }
+        }
+    }
+
     private func segment(
         _ title: String,
         icon: String,
         count: Int,
+        labels: Bool,
         selected: Bool,
         identifier: String,
         action: @escaping () -> Void,
@@ -167,18 +186,24 @@ struct SidebarModeControl: View {
         Button(action: action) {
             HStack(spacing: 5) {
                 PhosphorIcon(name: icon, size: 12)
-                Text(title).font(.system(size: 12, weight: selected ? .medium : .regular)).lineLimit(1)
+                if labels {
+                    Text(title).font(.system(size: 12, weight: selected ? .medium : .regular)).lineLimit(1)
+                        .fixedSize()
+                }
                 if count > 0 {
                     Text(String(count)).font(.system(size: 10).monospacedDigit())
                         .foregroundStyle(selected ? Theme.accent : Theme.muted)
+                        .fixedSize()
                 }
             }
             .foregroundStyle(selected ? Theme.accent : Theme.secondary)
+            .padding(.horizontal, 6)
             .frame(maxWidth: .infinity).frame(height: 22)
             .background(selected ? Theme.sidebarSelection : .clear, in: RoundedRectangle(cornerRadius: 5))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .learningHelp(title)
         .accessibilityLabel(count > 0 ? L10n.format("%@, %@ open", title, String(count)) : title)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier(identifier)

@@ -142,6 +142,8 @@ public final class BibliographyIndex {
     public private(set) var contents = BibliographyContents.empty
     /// Changes when, and only when, the contents change.
     public private(set) var revision = 0
+    /// Every entry's key, for telling citations from other references.
+    public private(set) var keys: Set<String> = []
     private var table = SearchTable([])
 
     public init() {}
@@ -168,6 +170,7 @@ public final class BibliographyIndex {
         }
         self.contents = contents
         self.table = table ?? SearchTable(contents.entries)
+        keys = Set(contents.entries.map(\.key))
         revision += 1
     }
 
@@ -210,13 +213,36 @@ public final class BibliographyIndex {
     /// then author or year prefix, then title word prefix, then anywhere; ties
     /// keep file order. An empty query lists every entry.
     public func search(_ query: String, limit: Int? = nil) -> [BibliographyEntry] {
+        snapshot.search(query, limit: limit)
+    }
+
+    /// The entries and their search table as a value, to search off the
+    /// main thread: the completion list searches while the writer types.
+    public var snapshot: BibliographySnapshot {
+        BibliographySnapshot(entries: contents.entries, table: table)
+    }
+}
+
+/// A copy of the index's entries and search table that any thread can
+/// search. Copying is cheap: both are copy-on-write arrays.
+public struct BibliographySnapshot: Sendable {
+    public let entries: [BibliographyEntry]
+    private let table: SearchTable
+
+    init(entries: [BibliographyEntry], table: SearchTable) {
+        self.entries = entries
+        self.table = table
+    }
+
+    /// `BibliographyIndex.search(_:limit:)`.
+    public func search(_ query: String, limit: Int? = nil) -> [BibliographyEntry] {
         let words = SearchTable.fold(query).split(whereSeparator: \.isWhitespace)
             .map { $0.utf8.filter { $0 > 1 } }
             .filter { !$0.isEmpty }
         guard !words.isEmpty else {
-            return Array(contents.entries.prefix(limit ?? .max))
+            return Array(entries.prefix(limit ?? .max))
         }
-        return table.search(words).prefix(limit ?? .max).map { contents.entries[$0] }
+        return table.search(words).prefix(limit ?? .max).map { entries[$0] }
     }
 }
 
@@ -226,7 +252,7 @@ public final class BibliographyIndex {
 /// names and year, its title, then its container and DOI, every word after a
 /// 1 (`wordStart`). A word prefix is then a search for 1 and the query word,
 /// and no match runs from one entry into the next.
-private struct SearchTable: Sendable {
+struct SearchTable: Sendable {
     private static let entryStart: UInt8 = 0
     private static let wordStart: UInt8 = 1
 

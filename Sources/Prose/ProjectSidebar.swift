@@ -71,6 +71,8 @@ struct ProjectSidebar: View {
     @State private var query = ""
     /// The search of the Comments view, apart from the files' search.
     @State private var commentQuery = ""
+    /// The search of the Bibliography view.
+    @State private var bibliographyQuery = ""
     @State private var renaming: URL?
     @State private var draftName = ""
     @State private var targetFolder: URL?
@@ -85,7 +87,8 @@ struct ProjectSidebar: View {
         // An untouched blank page shows recents in place of its own folder
         // (Phase 7, decision 4), with no search field and no footer.
         let showsRecents = workspace.showsSidebarRecents
-        let showsComments = workspace.sidebarShowsComments && !showsRecents
+        let showsComments = workspace.sidebarView == .comments && !showsRecents
+        let showsBibliography = workspace.sidebarView == .bibliography && !showsRecents
         VStack(spacing: 0) {
             if showsRecents {
                 Color.clear.frame(height: 6)
@@ -94,6 +97,8 @@ struct ProjectSidebar: View {
                     .padding(.horizontal, 10).padding(.top, 10)
                 if showsComments {
                     searchField(L10n.text("Search Comments"), text: $commentQuery)
+                } else if showsBibliography {
+                    searchField(L10n.text("Search Bibliography"), text: $bibliographyQuery)
                 } else if workspace.project != nil {
                     searchField(L10n.text("Search Files"), text: $query)
                 } else {
@@ -107,6 +112,8 @@ struct ProjectSidebar: View {
                     hover: workspace.sidebarHover,
                     query: commentQuery,
                 )
+            } else if showsBibliography {
+                BibliographySidebarList(workspace: workspace, hover: workspace.sidebarHover, query: bibliographyQuery)
             } else {
                 files(showsRecents: showsRecents)
             }

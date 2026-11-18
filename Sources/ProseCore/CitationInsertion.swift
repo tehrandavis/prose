@@ -38,7 +38,20 @@ public enum CitationInsertion {
         at location: Int,
         supplement: String? = nil,
     ) -> String {
+        text(citing: key, in: source, replacing: NSRange(location: location, length: 0), supplement: supplement)
+    }
+
+    /// The text to put in place of `range` of `source` to cite `key`, such
+    /// as a typed `@prefix`: the spacing rules of `text(citing:in:at:)`,
+    /// with the text before `range` and the text after it as neighbours.
+    public static func text(
+        citing key: String,
+        in source: NSString,
+        replacing range: NSRange,
+        supplement: String? = nil,
+    ) -> String {
         let citation = citation(key, supplement: supplement)
+        let location = range.location
         var before = ""
         if location > 0, location <= source.length {
             let previous = source.rangeOfComposedCharacterSequence(at: location - 1)
@@ -48,8 +61,9 @@ public enum CitationInsertion {
             }
         }
         var after = ""
-        if location < source.length {
-            let next = Character(source.substring(with: source.rangeOfComposedCharacterSequence(at: location)))
+        let end = NSMaxRange(range)
+        if end < source.length {
+            let next = Character(source.substring(with: source.rangeOfComposedCharacterSequence(at: end)))
             if next.isLetter || next.isNumber || "_-[".contains(next) {
                 after = " "
             }
@@ -124,6 +138,72 @@ public enum CitationInsertion {
         }
     }
 
+    /// The `@` word that ends at `caret`: the range from the `@` to the
+    /// caret and the text typed after the `@`. Nil when the word at the
+    /// caret does not start with `@`, or when the `@` follows a letter or a
+    /// digit, as in an address.
+    public static func referenceQuery(in source: NSString, at caret: Int) -> (range: NSRange, query: String)? {
+        guard caret > 0, caret <= source.length else {
+            return nil
+        }
+        var index = caret
+        while index > 0 {
+            let unit = source.character(at: index - 1)
+            if unit == 0x40 { // @
+                break
+            }
+            guard let scalar = Unicode.Scalar(unit),
+                  CharacterSet.alphanumerics.contains(scalar) || "_-:.".unicodeScalars.contains(scalar)
+            else {
+                return nil
+            }
+            index -= 1
+        }
+        guard index > 0, source.character(at: index - 1) == 0x40 else {
+            return nil
+        }
+        let at = index - 1
+        if at > 0 {
+            let before = Character(source.substring(with: source.rangeOfComposedCharacterSequence(at: at - 1)))
+            if before.isLetter || before.isNumber {
+                return nil
+            }
+        }
+        let range = NSRange(location: at, length: caret - at)
+        return (range, source.substring(with: NSRange(location: index, length: caret - index)))
+    }
+
+    /// The keys `source` cites: each `@key` reference the syntax tree finds,
+    /// and each `cite(<key>)` or `cite(label("key"))` call. Labels of
+    /// headings and figures referenced with `@` are in the set too; callers
+    /// intersect it with the bibliography's keys.
+    public static func citedKeys(in source: String) -> Set<String> {
+        var keys: Set<String> = []
+        let text = source as NSString
+        if let tree = SyntaxTree(source), let nodes = tree.nodes() {
+            for node in nodes where node.kind == .ref {
+                var key = String(text.substring(with: node.range).dropFirst().prefix { isKeyCharacter($0) })
+                while key.last == "." || key.last == ":" {
+                    key.removeLast()
+                }
+                if !key.isEmpty {
+                    keys.insert(key)
+                }
+            }
+        }
+        let pattern = #"cite\(\s*(?:<([^>\s]+)>|label\(\s*"((?:[^"\\]|\\.)*)"\s*\))"#
+        if let expression = try? NSRegularExpression(pattern: pattern) {
+            for match in expression.matches(in: source, range: NSRange(location: 0, length: text.length)) {
+                for group in 1 ... 2 where match.range(at: group).location != NSNotFound {
+                    keys.insert(text.substring(with: match.range(at: group))
+                        .replacingOccurrences(of: "\\\"", with: "\"")
+                        .replacingOccurrences(of: "\\\\", with: "\\"))
+                }
+            }
+        }
+        return keys
+    }
+
     private static func isKeyCharacter(_ character: Character) -> Bool {
         character.isLetter || character.isNumber || "_-.:".contains(character)
     }
@@ -137,6 +217,31 @@ public extension BibliographyEntry {
             return ""
         }
         return authors.count > 1 ? first.family + " " + L10n.text("et al.") : first.family
+    }
+
+    /// The authors as a list row shows them: "Adami, G" for one, "Adami
+    /// and Gatti" for two, "Adami, Gatti, et al." for more; empty when the
+    /// entry names no one.
+    var authorLine: String {
+        switch authors.count {
+        case 0:
+            return ""
+        case 1:
+            let author = authors[0]
+            guard let initial = author.given?.trimmingCharacters(in: .whitespaces).first else {
+                return author.family
+            }
+            return "\(author.family), \(initial)"
+        case 2:
+            return L10n.format("%@ and %@", authors[0].family, authors[1].family)
+        default:
+            return "\(authors[0].family), \(authors[1].family), " + L10n.text("et al.")
+        }
+    }
+
+    /// The authors and the year: "Adami, Gatti, et al. 2020".
+    var authorYearLine: String {
+        [authorLine, year.map(String.init) ?? ""].filter { !$0.isEmpty }.joined(separator: " ")
     }
 }
 

@@ -32,6 +32,24 @@ public struct SourceCompletion: Equatable, Sendable {
     public let edits: [TextReplacement]
     public let insertionEnd: Int
     public let selections: [NSRange]
+    /// The bibliography entry a citation row cites; nil for the language
+    /// service's items.
+    public var entry: BibliographyEntry?
+}
+
+public extension SourceCompletion {
+    /// A row of the `@` list that cites `entry`: `edits` replace the typed
+    /// `@prefix` with the citation.
+    init(citing entry: BibliographyEntry, replacing range: NSRange, with text: String) {
+        self.init(
+            label: "@" + entry.key,
+            detail: [entry.title, entry.container].compactMap(\.self).filter { !$0.isEmpty }.joined(separator: ". "),
+            edits: [TextReplacement(range: range, text: text)],
+            insertionEnd: range.location + text.utf16.count,
+            selections: [],
+            entry: entry,
+        )
+    }
 }
 
 public enum LanguageAssistance {

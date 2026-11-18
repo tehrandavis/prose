@@ -338,6 +338,7 @@ public struct WritingCommand: Identifiable, Sendable {
         "bibliography": "books",
         "citation": "book-bookmark",
         "cite": "file-text",
+        "showBibliographySidebar": "book-open",
         "include": "files",
         "import": "package",
         "variable": "code",
@@ -1064,6 +1065,15 @@ public struct WritingCommand: Identifiable, Sendable {
             "Cite a Source",
             "Search the project's bibliography files by author, year, title or key, and cite the entry at the caret.",
             "cite citation source reference bibliography author year search zotero",
+            isInsertion: false,
+        ),
+        .init(
+            "showBibliographySidebar",
+            "references",
+            "l",
+            "Show Bibliography in Sidebar",
+            "Switch the sidebar to the project's bibliography entries. Click an entry to cite it.",
+            "bibliography sidebar sources entries list cite",
             isInsertion: false,
         ),
         .init(
