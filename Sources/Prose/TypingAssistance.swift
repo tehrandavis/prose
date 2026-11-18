@@ -50,6 +50,19 @@ extension ManuscriptTextView {
         renderTypingAssistance()
     }
 
+    /// Rows that arrive after the list shows, such as Zotero's for `@`:
+    /// they go below the others, and the chosen row stays chosen. Dropped
+    /// when the writer typed or moved on.
+    func appendTypingCompletions(_ rows: [SourceCompletion], requestID: UUID) {
+        guard !rows.isEmpty, requestID == typingRequestID, string == typingSource,
+              selectedRange() == typingSelection, !hasMarkedText(), isEditable
+        else {
+            return
+        }
+        typingList.append(rows)
+        renderTypingAssistance()
+    }
+
     private func renderTypingAssistance() {
         guard let window else {
             return
@@ -231,6 +244,13 @@ extension ManuscriptTextView {
         guard typingList.items.contains(item), string == typingSource, selectedRange() == typingSelection,
               !hasMarkedText(), isEditable, let workspace, workspace.text == string
         else {
+            return
+        }
+        if let result = item.zotero, let range = item.edits.first?.range {
+            // A Zotero item the project lacks: its entry is exported first,
+            // then the citation replaces the typed `@prefix`.
+            dismissTypingAssistance()
+            workspace.citeZoteroItem(result, replacing: range)
             return
         }
         do {

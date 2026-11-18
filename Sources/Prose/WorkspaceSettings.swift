@@ -164,6 +164,14 @@ struct WritingSettingsView: View {
                     .font(.footnote).foregroundStyle(Theme.secondary)
             } header: { Text(L10n.text("Comments")) }
             Section {
+                Toggle(L10n.text("Search Zotero when I type @"), isOn: $workspace.searchesZoteroWhenTyping)
+                    .accessibilityIdentifier("settings.zoteroCompletion")
+                Text(L10n.text(
+                    "After three characters, the @ list adds items from your Zotero library. Needs Zotero with Better BibTeX. Stored on this Mac only.",
+                ))
+                .font(.footnote).foregroundStyle(Theme.secondary)
+            } header: { Text(L10n.text("Citations")) }
+            Section {
                 Toggle(L10n.text("Dark preview"), isOn: $workspace.previewDark)
             } header: { Text(L10n.text("Preview")) }
         }.formStyle(.grouped)

@@ -98,7 +98,13 @@ struct ProjectSidebar: View {
                 if showsComments {
                     searchField(L10n.text("Search Comments"), text: $commentQuery)
                 } else if showsBibliography {
-                    searchField(L10n.text("Search Bibliography"), text: $bibliographyQuery)
+                    searchField(
+                        workspace.bibliographySidebarSource == .zotero
+                            ? L10n.text("Search Zotero") : L10n.text("Search Bibliography"),
+                        text: $bibliographyQuery,
+                    )
+                    BibliographySourceSwitch(workspace: workspace)
+                        .padding(.horizontal, 10).padding(.bottom, 6)
                 } else if workspace.project != nil {
                     searchField(L10n.text("Search Files"), text: $query)
                 } else {
@@ -112,6 +118,8 @@ struct ProjectSidebar: View {
                     hover: workspace.sidebarHover,
                     query: commentQuery,
                 )
+            } else if showsBibliography, workspace.bibliographySidebarSource == .zotero {
+                ZoteroSidebarList(workspace: workspace, hover: workspace.sidebarHover, query: bibliographyQuery)
             } else if showsBibliography {
                 BibliographySidebarList(workspace: workspace, hover: workspace.sidebarHover, query: bibliographyQuery)
             } else {

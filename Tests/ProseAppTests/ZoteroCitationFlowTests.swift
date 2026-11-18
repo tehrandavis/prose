@@ -283,6 +283,146 @@ extension WritingFlowTests {
         #expect(app.workspace.message?.contains("references-prose.bib") == true)
         expectPlainStorage(editor)
     }
+
+    /// The sidebar's Zotero view uses the picker's search and marks an item
+    /// the project has. A click on a new item writes `references-prose.bib`,
+    /// cites it at the caret, names the file in the `#bibliography` call and
+    /// leaves the keyboard in the editor.
+    @Test func sidebarZoteroClickCitesANewItemAtTheCaret() async throws {
+        let app = try WritingFixture(text: "= Loose file\n", startService: false)
+        defer { app.close() }
+        let paper = try makeZoteroPaper(in: app.root)
+        let source = ScriptedZoteroSource(
+            items: [
+                newItem,
+                zoteroItem("smith2019", item: "SMITHKEY", family: "Smith", title: "Quantum Gravity Notes", year: 2019),
+            ],
+            exports: [newItem.key: newEntry(title: "Quokka")],
+        )
+        app.workspace.zoteroSource = source
+        #expect(app.workspace.openFolder(paper.root))
+        app.workspace.startService()
+        try await app.ready()
+        let editor = try #require(app.workspace.editor)
+        let original = editor.string
+        app.window.makeFirstResponder(editor)
+
+        app.workspace.showBibliographySidebar()
+        #expect(app.workspace.sidebarView == .bibliography)
+        app.workspace.switchBibliographySidebar(to: .zotero)
+        await app.layout()
+        try await app.wait { app.workspace.bibliographyIndex.keys.contains("smith2019") }
+        try await app.wait { app.workspace.sidebarZotero.availability == .ready }
+
+        // An item the project has is marked.
+        app.workspace.scheduleSidebarZoteroSearch("smith 2019")
+        try await app.wait { app.workspace.sidebarZotero.searchedQuery == "smith 2019" }
+        #expect(app.workspace.sidebarZotero.results.map(\.item.key) == ["smith2019"])
+        #expect(app.workspace.sidebarZotero.results.first?.inProject == true)
+
+        app.workspace.scheduleSidebarZoteroSearch("furmanek joint")
+        try await app.wait { app.workspace.sidebarZotero.searchedQuery == "furmanek joint" }
+        let result = try #require(app.workspace.sidebarZotero.results.first)
+        #expect(app.workspace.sidebarZotero.results.map(\.item.key) == [newItem.key])
+        #expect(!result.inProject)
+        await app.layout()
+
+        let claim = (original as NSString).range(of: "The second claim").location + 16
+        editor.setSelectedRange(NSRange(location: claim, length: 0))
+        app.workspace.citeZoteroItem(result)
+        let call = #"#bibliography(("refs.bib", "references-prose.bib"), style: "apa")"#
+        try await app.wait { app.workspace.text.contains(call) }
+        let expected = (original as NSString)
+            .replacingCharacters(in: NSRange(location: claim, length: 0), with: " @\(newItem.key)")
+            .replacingOccurrences(of: #"#bibliography("refs.bib", style: "apa")"#, with: call)
+        #expect(app.workspace.text == expected && editor.string == expected)
+        #expect(await source.exports == [[newItem.key]])
+        let prose = try String(contentsOf: paper.prose, encoding: .utf8)
+        #expect(prose == newEntry(title: "Quokka").trimmingCharacters(in: .whitespacesAndNewlines) + "\n")
+        #expect(app.window.firstResponder === editor)
+        #expect(!app.workspace.paletteOpen)
+        let message = try #require(app.workspace.message)
+        #expect(message.contains("references-prose.bib") && message.contains("not undone"))
+        #expect(app.workspace.messageAction?.url.absoluteString == "zotero://select/library/items/NSPZRSQM")
+        expectPlainStorage(editor)
+
+        // The switch is kept for the window.
+        app.workspace.sidebarView = .files
+        app.workspace.showBibliographySidebar()
+        #expect(app.workspace.bibliographySidebarSource == .zotero)
+    }
+
+    /// The `@` list: with three characters typed, Zotero's items join the
+    /// list below the project's rows, with no key the project has. Choosing
+    /// one replaces the typed `@prefix` and runs the picker's citation path.
+    /// A Zotero that does not answer pauses the search for a while.
+    @Test func atListAddsZoteroItemsAndCitesThem() async throws {
+        let app = try WritingFixture(text: "= Loose file\n", startService: false)
+        defer { app.close() }
+        let paper = try makeZoteroPaper(in: app.root)
+        let source = ScriptedZoteroSource(
+            items: [
+                newItem,
+                zoteroItem("smith2019", item: "SMITHKEY", family: "Smith", title: "Quantum Gravity Notes", year: 2019),
+            ],
+            exports: [newItem.key: newEntry(title: "Quokka")],
+        )
+        app.workspace.zoteroSource = source
+        #expect(app.workspace.openFolder(paper.root))
+        app.workspace.startService()
+        try await app.ready()
+        let editor = try #require(app.workspace.editor)
+        let original = editor.string
+        app.window.makeFirstResponder(editor)
+        app.workspace.reloadBibliographyIndex()
+        try await app.wait { app.workspace.bibliographyIndex.keys.contains("smith2019") }
+
+        // `@smi` lists the project's entry; Zotero's copy of it is left out.
+        let claim = (original as NSString).range(of: "The second claim").location + 16
+        editor.insertText(" @smi", replacementRange: NSRange(location: claim, length: 0))
+        editor.setSelectedRange(NSRange(location: claim + 5, length: 0))
+        app.workspace.requestCompletion()
+        try await app.wait { editor.typingList.items.contains { $0.entry?.key == "smith2019" } }
+        try await app.wait { editor.typingTask == nil }
+        #expect(!editor.typingList.items.contains { $0.zotero != nil })
+        #expect(await source.searches.contains("smi"))
+
+        // `@furm` adds Zotero's item below any other rows, with the badge's file.
+        editor.insertText("", replacementRange: NSRange(location: claim, length: 5))
+        editor.insertText(" @furm", replacementRange: NSRange(location: claim, length: 0))
+        editor.setSelectedRange(NSRange(location: claim + 6, length: 0))
+        app.workspace.requestCompletion()
+        try await app.wait { editor.typingList.items.contains { $0.zotero != nil } }
+        let items = editor.typingList.items
+        let first = try #require(items.firstIndex { $0.zotero != nil })
+        #expect(items[first...].allSatisfy { $0.zotero != nil })
+        #expect(items.compactMap(\.zotero).map(\.item.key) == [newItem.key])
+        #expect(items[first].entry?.file == ProseBibliography.fileName)
+        #expect(editor.typingList.index == 0)
+
+        editor.acceptTypingCompletion(items[first])
+        let call = #"#bibliography(("refs.bib", "references-prose.bib"), style: "apa")"#
+        try await app.wait { app.workspace.text.contains(call) }
+        let expected = (original as NSString)
+            .replacingCharacters(in: NSRange(location: claim, length: 0), with: " @\(newItem.key)")
+            .replacingOccurrences(of: #"#bibliography("refs.bib", style: "apa")"#, with: call)
+        #expect(app.workspace.text == expected && editor.string == expected)
+        #expect(await source.exports == [[newItem.key]])
+        #expect(try String(contentsOf: paper.prose, encoding: .utf8).contains("Quokka"))
+        #expect(app.workspace.message?.contains("references-prose.bib") == true)
+        expectPlainStorage(editor)
+
+        // Nothing listens: one failed search pauses the next ones.
+        app.workspace.zoteroSource = try HTTPZoteroSource(base: #require(URL(
+            string: "http://127.0.0.1:\(closedLoopbackPort())",
+        )))
+        let reference = (range: NSRange(location: 0, length: 5), query: "smit")
+        #expect(await app.workspace.zoteroCompletions(for: reference, in: "@smit").isEmpty)
+        let paused = try #require(app.workspace.zoteroCompletionPausedUntil)
+        #expect(paused > .now)
+        #expect(await app.workspace.zoteroCompletions(for: reference, in: "@smit").isEmpty)
+        #expect(app.workspace.zoteroCompletionPausedUntil == paused)
+    }
 }
 
 // MARK: - Helpers

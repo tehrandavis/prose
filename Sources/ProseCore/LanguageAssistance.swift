@@ -35,6 +35,9 @@ public struct SourceCompletion: Equatable, Sendable {
     /// The bibliography entry a citation row cites; nil for the language
     /// service's items.
     public var entry: BibliographyEntry?
+    /// The Zotero item a row of the `@` list cites when the project has no
+    /// entry for it yet; nil otherwise.
+    public var zotero: ZoteroSearch.Result?
 }
 
 public extension SourceCompletion {
@@ -49,6 +52,14 @@ public extension SourceCompletion {
             selections: [],
             entry: entry,
         )
+    }
+
+    /// A row of the `@` list for a Zotero item the project does not have:
+    /// choosing it exports the entry first, so `edits` are what the citation
+    /// will replace, for the list's checks.
+    init(citing result: ZoteroSearch.Result, replacing range: NSRange, with text: String) {
+        self.init(citing: result.item.bibliographyEntry, replacing: range, with: text)
+        zotero = result
     }
 }
 

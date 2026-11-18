@@ -462,6 +462,79 @@ public enum ZoteroSearch {
     static func fold(_ text: String) -> String {
         text.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: nil)
     }
+
+    /// What one search found: the rows, the word sent to Better BibTeX and
+    /// the number of items it returned.
+    public struct Found: Equatable, Sendable {
+        public let results: [Result]
+        public let word: String
+        public let items: Int
+    }
+
+    /// The one search the picker's Zotero tab, the sidebar's Zotero view and
+    /// the `@` list share: the query's longest word goes to Better BibTeX,
+    /// the linked collection is searched for it in parallel, and the items
+    /// are filtered by every word (`results`). Nil when the query is too
+    /// short to search. Throws `ZoteroError` when Better BibTeX does not
+    /// answer; the collection's answer is optional.
+    public static func search(
+        _ query: String,
+        in source: any ZoteroSource,
+        collection: String?,
+        projectKeys: Set<String>,
+    ) async throws -> Found? {
+        guard let word = remoteWord(for: query) else {
+            return nil
+        }
+        async let found = source.search(word)
+        async let members = members(of: collection, matching: word, in: source)
+        let items = try await found
+        let inCollection = await members
+        return Found(
+            results: results(items, query: query, collectionItems: inCollection, projectKeys: projectKeys),
+            word: word,
+            items: items.count,
+        )
+    }
+
+    /// The item keys in the linked collection that match `word`; empty
+    /// without a link or when Zotero's local API does not answer.
+    private static func members(
+        of collection: String?,
+        matching word: String,
+        in source: any ZoteroSource,
+    ) async -> Set<String> {
+        guard let collection else {
+            return []
+        }
+        return await (try? source.collectionItems(collection, query: word)) ?? []
+    }
+}
+
+public extension ZoteroItem {
+    /// The item as an entry of `references-prose.bib`, for rows that show
+    /// project entries and Zotero items alike. The CSL type becomes the
+    /// nearest Hayagriva type, for the row's icon.
+    var bibliographyEntry: BibliographyEntry {
+        let type = kind.lowercased()
+        let hayagriva = switch type {
+        case "book", "thesis", "report", "chapter": type
+        case _ where type.hasPrefix("article") || type == "paper-conference": "article"
+        case _ where type.hasPrefix("entry"): "entry"
+        case "webpage", "post", "post-weblog": "web"
+        default: "misc"
+        }
+        return BibliographyEntry(
+            key: key,
+            kind: hayagriva,
+            title: title,
+            authors: authors,
+            year: year,
+            container: container,
+            doi: doi,
+            file: ProseBibliography.fileName,
+        )
+    }
 }
 
 /// A project's link to Zotero (step D outcome, change 2): the project's

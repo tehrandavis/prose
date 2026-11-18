@@ -288,15 +288,7 @@ extension Workspace {
 
     /// A Zotero item as an entry of `references-prose.bib`, for the panel.
     static func entry(for item: ZoteroItem) -> BibliographyEntry {
-        BibliographyEntry(
-            key: item.key,
-            title: item.title,
-            authors: item.authors,
-            year: item.year,
-            container: item.container,
-            doi: item.doi,
-            file: ProseBibliography.fileName,
-        )
+        item.bibliographyEntry
     }
 
     /// `⌥Return` (the note's **Choice**): one field for a page or section.
@@ -469,7 +461,7 @@ extension Workspace {
     /// edit joined the undo group AppKit keeps open for this pass of the run
     /// loop; waiting for that group to close keeps the two edits apart, so
     /// one undo removes only the call. The caret stays where it was.
-    private func appendBibliographyCall(_ call: Snippet, path: String, document: URL) async {
+    func appendBibliographyCall(_ call: Snippet, path: String, document: URL) async {
         let deadline = ContinuousClock.now + .seconds(1)
         while editor?.undoManager.map({ $0.groupingLevel > 0 }) == true, ContinuousClock.now < deadline {
             try? await Task.sleep(for: .milliseconds(5))

@@ -171,33 +171,30 @@ extension Workspace {
             guard !Task.isCancelled else {
                 return
             }
-            async let items = source.search(word)
-            async let members = Self.members(of: collection, matching: word, in: source)
-            let outcome: Result<[ZoteroItem], any Error>
+            let outcome: Result<ZoteroSearch.Found?, any Error>
             do {
-                outcome = try await .success(items)
+                outcome = try await .success(ZoteroSearch.search(
+                    query,
+                    in: source,
+                    collection: collection,
+                    projectKeys: [],
+                ))
             } catch {
                 outcome = .failure(error)
             }
-            let inCollection = await members
             guard !Task.isCancelled, let self, self.query == query else {
                 return
             }
             zotero.searching = false
             zotero.searchedQuery = query
             switch outcome {
-            case let .success(items):
+            case let .success(found):
                 zotero.availability = .ready
-                zotero.results = ZoteroSearch.results(
-                    items,
-                    query: query,
-                    collectionItems: inCollection,
-                    projectKeys: Set(bibliographyIndex.entries.map(\.key)),
-                )
+                zotero.results = markingProjectKeys(found?.results ?? [])
                 selectedCommandIndex = min(selectedCommandIndex, max(0, zotero.results.count - 1))
                 recordOperation("zotero.search", [
                     "word": word,
-                    "items": String(items.count),
+                    "items": String(found?.items ?? 0),
                     "results": String(zotero.results.count),
                 ])
             case let .failure(error):
@@ -208,17 +205,12 @@ extension Workspace {
         }
     }
 
-    /// The item keys in the linked collection that match `word`; empty
-    /// without a link or when Zotero's local API does not answer.
-    private nonisolated static func members(
-        of collection: String?,
-        matching word: String,
-        in source: any ZoteroSource,
-    ) async -> Set<String> {
-        guard let collection else {
-            return []
+    /// Marks the rows whose key the project has, as the index reads now.
+    func markingProjectKeys(_ results: [ZoteroSearch.Result]) -> [ZoteroSearch.Result] {
+        let keys = bibliographyIndex.keys
+        return results.map {
+            ZoteroSearch.Result(item: $0.item, inCollection: $0.inCollection, inProject: keys.contains($0.item.key))
         }
-        return await (try? source.collectionItems(collection, query: word)) ?? []
     }
 
     var highlightedZoteroResult: ZoteroSearch.Result? {
@@ -245,32 +237,17 @@ extension Workspace {
         }
         commandError = nil
         zotero.exporting = true
-        let source = zoteroSource, link = zoteroLink, file = proseBibliographyURL
         Task {
             defer { zotero.exporting = false }
-            async let exported = source.export([item.key])
-            async let collections = Self.collections(of: item.key, linked: link != nil, in: source)
             do {
-                let biblatex = try await exported
-                guard ProseBibliography.keys(in: biblatex).contains(item.key) else {
-                    throw ZoteroError.server(L10n.format("The export did not contain %@.", item.key))
-                }
-                let memberships = await collections
-                let inCollection = link.map { link in
-                    memberships.contains { $0.key == link.collection } || result.inCollection
-                }
+                let addition = try await exportZoteroAddition(result)
                 guard citationPicker != nil else {
                     return
                 }
                 recordOperation("zotero.cite", ["key": item.key, "new": "true"])
-                let addition = ZoteroAddition(item: item, biblatex: biblatex, file: file, inCollection: inCollection)
                 citationPicker?.zoteroAddition = addition
                 let entry = Self.entry(for: item)
-                let path = DocumentResource(url: file, relativeTo: documentURL).relativePath
-                let main = compilationURL.standardizedFileURL
-                if BibliographyCall.adding(path, to: text) == .noCall, !bibliographyIndex.isLinked,
-                   documentURL.standardizedFileURL == main, !declinedBibliographyOffers.contains(main)
-                {
+                if let path = proseBibliographyCallOffer(for: addition.file) {
                     citationPicker?.stage = .linkBibliography(entry, supplement: supplement, path: path)
                     return
                 }
@@ -283,6 +260,40 @@ extension Workspace {
                 commandError = error.localizedDescription
             }
         }
+    }
+
+    /// The path of `file` from the open file when the document has no
+    /// `#bibliography` call, the open file is the main file and the writer
+    /// did not decline the call for it; nil otherwise.
+    func proseBibliographyCallOffer(for file: URL) -> String? {
+        let path = DocumentResource(url: file, relativeTo: documentURL).relativePath
+        let main = compilationURL.standardizedFileURL
+        guard BibliographyCall.adding(path, to: text) == .noCall, !bibliographyIndex.isLinked,
+              documentURL.standardizedFileURL == main, !declinedBibliographyOffers.contains(main)
+        else {
+            return nil
+        }
+        return path
+    }
+
+    /// Exports the item's BibLaTeX entry from Better BibTeX for
+    /// `references-prose.bib`, and asks whether the item is in the linked
+    /// collection. The picker, the sidebar and the `@` list all export
+    /// through here. Throws `ZoteroError`.
+    func exportZoteroAddition(_ result: ZoteroSearch.Result) async throws -> ZoteroAddition {
+        let item = result.item
+        let source = zoteroSource, link = zoteroLink, file = proseBibliographyURL
+        async let exported = source.export([item.key])
+        async let collections = Self.collections(of: item.key, linked: link != nil, in: source)
+        let biblatex = try await exported
+        guard ProseBibliography.keys(in: biblatex).contains(item.key) else {
+            throw ZoteroError.server(L10n.format("The export did not contain %@.", item.key))
+        }
+        let memberships = await collections
+        let inCollection = link.map { link in
+            memberships.contains { $0.key == link.collection } || result.inCollection
+        }
+        return ZoteroAddition(item: item, biblatex: biblatex, file: file, inCollection: inCollection)
     }
 
     private nonisolated static func collections(

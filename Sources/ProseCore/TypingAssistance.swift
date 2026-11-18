@@ -156,7 +156,7 @@ public struct TypingContext: Equatable, Sendable {
 
 /// Keyboard selection is identical on both platforms. Preserve server ranking.
 public struct CompletionList: Sendable {
-    public let items: [SourceCompletion]
+    public private(set) var items: [SourceCompletion]
     public private(set) var index = 0
 
     public init(items: [SourceCompletion], prefix: String) {
@@ -170,6 +170,12 @@ public struct CompletionList: Sendable {
 
     public var selected: SourceCompletion? {
         items.indices.contains(index) ? items[index] : nil
+    }
+
+    /// Adds rows below the others, such as Zotero's answer to the `@` list,
+    /// leaving the chosen row and the rows before it where they are.
+    public mutating func append(_ rows: [SourceCompletion]) {
+        items += rows
     }
 
     public mutating func move(_ delta: Int) {

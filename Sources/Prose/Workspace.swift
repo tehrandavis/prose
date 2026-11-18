@@ -295,6 +295,24 @@ final class Workspace: ObservableObject {
     @Published var zotero = ZoteroPane()
     var zoteroSearchTask: Task<Void, Never>?
     var zoteroCheckTask: Task<Void, Never>?
+    /// The sidebar's Bibliography view lists the project's entries or
+    /// searches Zotero. Kept per window for the session.
+    @Published var bibliographySidebarSource = BibliographySidebarSource.project
+    /// The sidebar's Zotero search, apart from the picker's.
+    @Published var sidebarZotero = ZoteroPane()
+    var sidebarZoteroTask: Task<Void, Never>?
+    /// "Search Zotero when I type @" in Settings, stored on this Mac.
+    @Published var searchesZoteroWhenTyping = ZoteroCompletionPreference.isEnabled() {
+        didSet {
+            if searchesZoteroWhenTyping != oldValue {
+                ZoteroCompletionPreference.set(searchesZoteroWhenTyping)
+                zoteroCompletionPausedUntil = nil
+            }
+        }
+    }
+
+    /// Zotero did not answer the `@` list: it is not asked again until then.
+    var zoteroCompletionPausedUntil: ContinuousClock.Instant?
     /// Entries removed from `references-prose.bib` as duplicates, for tests.
     var proseDuplicatesRemoved = 0
     /// Opens a link outside Prose, such as "Show in Zotero"; tests record it.
@@ -2080,6 +2098,13 @@ final class Workspace: ObservableObject {
             guard !Task.isCancelled, !automatic || context != nil || reference != nil else {
                 return
             }
+            // Zotero is asked at once, beside the project's entries and the
+            // language service; its rows join the list when they arrive.
+            let zoteroRows = reference.flatMap { reference in
+                searchesZoteroWhenTyping && ZoteroSearch.remoteWord(for: reference.query) != nil
+                    ? Task { await zoteroCompletions(for: reference, in: source) } : nil
+            }
+            defer { zoteroRows?.cancel() }
             let citations = await citationCompletions(for: reference, in: source)
             do {
                 try flushChanges()
@@ -2132,8 +2157,17 @@ final class Workspace: ObservableObject {
                     requestID: requestID,
                     prefix: reference?.query ?? context?.prefix ?? "",
                 )
-                if !automatic, items.isEmpty, signature == nil {
+                if !automatic, items.isEmpty, signature == nil, zoteroRows == nil {
                     showMessage(L10n.text("No completions are available here."))
+                }
+                // Zotero's rows go below the others, so the rows on show and
+                // the chosen row stay; a request the writer typed past is
+                // dropped.
+                if let rows = await zoteroRows?.value, !rows.isEmpty, !Task.isCancelled,
+                   version == documentVersion, url == documentURL, source == text, caret == selection, !paletteOpen,
+                   !editor.hasMarkedText(), requestID == editor.typingRequestID
+                {
+                    editor.appendTypingCompletions(rows, requestID: requestID)
                 }
             } catch {
                 if !automatic, !Task.isCancelled, generation == serviceGeneration,
