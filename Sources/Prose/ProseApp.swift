@@ -387,6 +387,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         view.addItem(.separator())
         item(L10n.text("Increase Text Size"), #selector(increaseFont), "+", view, target: self)
         item(L10n.text("Decrease Text Size"), #selector(decreaseFont), "-", view, target: self)
+        let lineWidth = NSMenu(title: L10n.text("Line Width"))
+        let lineWidthItem = NSMenuItem(title: lineWidth.title, action: nil, keyEquivalent: "")
+        lineWidthItem.submenu = lineWidth
+        view.addItem(lineWidthItem)
+        for width in LineWidth.allCases {
+            let entry = NSMenuItem(
+                title: L10n.text(width.title),
+                action: #selector(chooseLineWidth(_:)),
+                keyEquivalent: "",
+            )
+            entry.representedObject = width.rawValue
+            entry.target = self
+            lineWidth.addItem(entry)
+        }
         view.addItem(.separator())
         item(
             L10n.text("Enter Full Screen"),
@@ -429,6 +443,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             case "showResolvedComments": menuItem.state = workspace.showsResolvedComments ? .on : .off
             default: break
             }
+        }
+        if menuItem.action == #selector(chooseLineWidth(_:)) {
+            menuItem.state = menuItem.representedObject as? String == workspace.lineWidth.rawValue ? .on : .off
+            return true
         }
         if menuItem.action == #selector(toggleSpellCheck) {
             menuItem.state = workspace.checkSpellingWhileTyping ? .on : .off
@@ -569,6 +587,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc private func preview() {
         workspace.layout = .preview
+    }
+
+    @objc private func chooseLineWidth(_ sender: NSMenuItem) {
+        if let width = (sender.representedObject as? String).flatMap(LineWidth.init(rawValue:)) {
+            workspace.lineWidth = width
+        }
     }
 
     @objc private func increaseFont() {

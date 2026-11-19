@@ -147,6 +147,12 @@
 "Editing & Code" = "Editing & Code";
 "Editing, code and Universe packages" = "Editing, code and Universe packages";
 "Editor text size: %d" = "Editor text size: %d";
+"Line width" = "Line width";
+"Line Width" = "Line Width";
+"Narrow" = "Narrow";
+"Medium" = "Medium";
+"Wide" = "Wide";
+"Full" = "Full";
 "Editor, preview and writing tools" = "Editor, preview and writing tools";
 "Emphasize the selection with *bold text*." = "Emphasize the selection with *bold text*.";
 "Empty document" = "Empty document";

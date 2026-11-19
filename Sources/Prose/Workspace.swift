@@ -189,6 +189,18 @@ final class Workspace: ObservableObject {
     }
 
     @Published var fontSize: CGFloat = 16
+    /// The text column's width in Code and Writing mode.
+    @Published var lineWidth = ManuscriptLayout.lineWidth {
+        didSet {
+            guard lineWidth != oldValue else {
+                return
+            }
+            ManuscriptLayout.lineWidth = lineWidth
+            UserDefaults.standard.set(lineWidth.rawValue, forKey: LineWidth.defaultsKey)
+            editor?.lineWidthChanged()
+        }
+    }
+
     @Published var selection = NSRange(location: 0, length: 0) {
         didSet {
             if selection != oldValue {

@@ -562,6 +562,13 @@ final class ManuscriptTextView: NSTextView {
         }
     }
 
+    /// The writer chose another line width: re-wrap as a resize does.
+    func lineWidthChanged() {
+        applyColumnInset()
+        commentOverlay?.setNeedsRefresh()
+        writing.appearanceDidChange(coalesced: true)
+    }
+
     /// Applies the margins for the view's width and mode, keeping the top
     /// line in place when they change.
     private func applyColumnInset() {

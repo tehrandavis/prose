@@ -1,6 +1,45 @@
 import AppKit
 
+/// How wide the text column is in Code and Writing mode (Settings and
+/// View › Line Width). Focus mode keeps its own column.
+enum LineWidth: String, CaseIterable {
+    case narrow
+    case medium
+    case wide
+    case full
+
+    /// The column's width in points; nil lets the column grow with the pane.
+    var columnWidth: CGFloat? {
+        switch self {
+        case .narrow: 560
+        case .medium: 680
+        case .wide: 820
+        case .full: nil
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .narrow: "Narrow"
+        case .medium: "Medium"
+        case .wide: "Wide"
+        case .full: "Full"
+        }
+    }
+
+    static let defaultsKey = "ProseLineWidth"
+
+    /// The stored choice; Full, the column as it always was, when none is stored.
+    static var stored: LineWidth {
+        UserDefaults.standard.string(forKey: defaultsKey).flatMap(LineWidth.init(rawValue:)) ?? .full
+    }
+}
+
 enum ManuscriptLayout {
+    /// The writer's choice of column width. `Workspace.lineWidth` sets it,
+    /// on the main thread, where every reader of the layout runs.
+    nonisolated(unsafe) static var lineWidth = LineWidth.stored
+
     /// The smallest margin on each side of the column.
     static let minimumInset: CGFloat = 36
     /// The space above and below the text.
@@ -19,6 +58,10 @@ enum ManuscriptLayout {
     static func horizontalInset(for paneWidth: CGFloat, focus: Bool = false) -> CGFloat {
         if focus {
             let column = min(focusColumnWidth, paneWidth - 2 * minimumInset)
+            return max(minimumInset, (paneWidth - column) / 2)
+        }
+        if let fixed = lineWidth.columnWidth {
+            let column = min(fixed, paneWidth - 2 * minimumInset)
             return max(minimumInset, (paneWidth - column) / 2)
         }
         // Keep the familiar column in ordinary panes, then let wider panes

@@ -151,6 +151,11 @@ struct WritingSettingsView: View {
                     value: $workspace.fontSize,
                     in: 12 ... 28,
                 )
+                Picker(L10n.text("Line width"), selection: $workspace.lineWidth) {
+                    ForEach(LineWidth.allCases, id: \.self) { width in
+                        Text(L10n.text(width.title)).tag(width)
+                    }
+                }
                 Toggle(L10n.text("Style headings and emphasis in the editor"), isOn: $workspace.styledSource)
                 Toggle(L10n.text("Check Spelling While Typing"), isOn: $workspace.checkSpellingWhileTyping)
             } header: { Text(L10n.text("Editor")) }
