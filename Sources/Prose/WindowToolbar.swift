@@ -205,10 +205,10 @@ private struct WritingActions: View {
             Rectangle().fill(Theme.border.opacity(0.65)).frame(width: 1, height: 12).padding(.horizontal, 5)
             QuietButton(
                 icon: "arrow-square-out",
-                help: L10n.text("Export PDF"),
-                shortcut: WritingCommand.all.first { $0.id == "export" }?.shortcuts.first?.label,
-                detail: L10n.text("Export the current document in its original colors."),
-            ) { workspace.exportPDF() }.disabled(workspace.exporting)
+                help: L10n.text("Export"),
+                detail: L10n.text("Export the current document as a PDF or as a LaTeX draft."),
+            ) { ExportMenu.show(for: workspace) }.disabled(workspace.exporting)
+                .accessibilityIdentifier("toolbar.export")
             QuietButton(
                 icon: "square-split-horizontal",
                 help: L10n.text("Show or Hide Preview"),
@@ -217,6 +217,47 @@ private struct WritingActions: View {
                 active: workspace.previewShown,
             ) { workspace.togglePreview() }.accessibilityIdentifier("toolbar.preview")
         }.fixedSize().disabled(workspace.isLibraryHome)
+    }
+}
+
+/// The export button's menu: PDF and LaTeX, as in the File menu.
+@MainActor
+final class ExportMenu: NSObject {
+    private static var current: ExportMenu?
+    private let workspace: Workspace
+
+    private init(workspace: Workspace) {
+        self.workspace = workspace
+    }
+
+    /// The menu's items; `show` pops them up at the pointer.
+    static func make(for workspace: Workspace) -> NSMenu {
+        let owner = ExportMenu(workspace: workspace)
+        current = owner
+        let menu = NSMenu(title: L10n.text("Export"))
+        let pdf = NSMenuItem(title: L10n.text("Export PDF…"), action: #selector(exportPDF), keyEquivalent: "")
+        let latex = NSMenuItem(title: L10n.text("Export LaTeX…"), action: #selector(exportLaTeX), keyEquivalent: "")
+        for item in [pdf, latex] {
+            item.target = owner
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    static func show(for workspace: Workspace) {
+        guard let view = workspace.window?.contentView, let event = NSApp.currentEvent else {
+            workspace.exportPDF()
+            return
+        }
+        NSMenu.popUpContextMenu(make(for: workspace), with: event, for: view)
+    }
+
+    @objc private func exportPDF() {
+        workspace.exportPDF()
+    }
+
+    @objc private func exportLaTeX() {
+        workspace.exportLaTeX()
     }
 }
 

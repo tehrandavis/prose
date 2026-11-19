@@ -1009,3 +1009,5 @@
 "Recent" = "Recent";
 "Nothing recent yet" = "Nothing recent yet";
 "Press Esc or click outside to go back to the page." = "Press Esc or click outside to go back to the page.";
+"Export" = "Export";
+"Export the current document as a PDF or as a LaTeX draft." = "Export the current document as a PDF or as a LaTeX draft.";
