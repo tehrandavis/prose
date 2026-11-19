@@ -64,6 +64,12 @@ https://github.com/modelcontextprotocol/rust-sdk
 Its complete pinned dependency notices are in MCP-LICENSES.txt.
 The helper and its dependencies are not part of the Tinymist engine.
 
+Tylax 0.3.8 (Apache-2.0)
+https://github.com/scipenai/tylax/tree/v0.3.8
+The macOS app bundles its t2l converter, built from the crates.io release, for
+File > Export LaTeX…. See Tylax-LICENSE. Its complete pinned dependency notices
+are in TylaxConverter-LICENSES.txt.
+
 Bundled authoring guides adapt dimensional-drawing by Enes Ozturk (MIT)
 and ian-xiaohei-illustrations by Ian (MIT).
 https://github.com/enesozturk/dimensional-drawing/tree/5c457437c8c83524308aad3b7443e81adcc13153

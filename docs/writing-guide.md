@@ -120,7 +120,7 @@ Bibliography, Include Document and Import Local Module use the same resource pic
 
 To assemble a book, open a library document, choose **Include Document → Library Documents**, and select a chapter. Prose inserts a standard Typst `#include` pointing to the original article. The chapter keeps its own images and modules; changes to it appear in the book, and renaming its library title preserves the reference. **Import Local Module → Library Documents** works the same way for shared Typst definitions. Each insertion is undoable.
 
-PDF export compiles the whole book. Source-project export currently exports only the selected article's directory; it does not bundle other library articles referenced by the book.
+PDF export compiles the whole book. Source-project export currently exports only the selected article's directory; it does not bundle other library articles referenced by the book. **File → Export LaTeX…** converts the main document alone, not its included files, to a `.tex` draft with Tylax; check it before use, because the converter's warnings are listed at the top of the file.
 
 ## Writing and preview
 

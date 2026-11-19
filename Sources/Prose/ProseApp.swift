@@ -321,6 +321,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         item(L10n.text("Save As…"), #selector(saveAs), "s", file, modifiers: [.command, .shift], target: self)
         item(L10n.text("Document History…"), #selector(documentHistory), "", file, target: self)
         item(L10n.text("Export PDF…"), #selector(exportPDF), "e", file, modifiers: [.command, .shift], target: self)
+        item(L10n.text("Export LaTeX…"), #selector(exportLaTeX), "", file, target: self)
         file.addItem(.separator())
         item(L10n.text("Print…"), #selector(printDocument), "p", file, target: self)
         file.addItem(.separator())
@@ -452,6 +453,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             menuItem.state = workspace.checkSpellingWhileTyping ? .on : .off
             return true
         }
+        if menuItem.action == #selector(exportLaTeX) {
+            return !workspace.isLibraryHome
+        }
         if menuItem.action == #selector(printDocument) {
             return workspace.serviceReady && !workspace.exporting && !workspace.isLibraryHome
         }
@@ -559,6 +563,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc private func exportPDF() {
         workspace.exportPDF()
+    }
+
+    @objc private func exportLaTeX() {
+        workspace.exportLaTeX()
     }
 
     @objc private func printDocument() {

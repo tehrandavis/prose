@@ -31,12 +31,13 @@ DOCS = (
     'docs/', 'releases/', 'README.md', 'BRAND_POLICY.md', 'LICENSE', 'codecov.yml', 'Brand/README.md',
 )
 MAC = (
-    'Sources/', 'Tests/', 'Tools/MCPServer/', 'Engine/RenderBridge/', 'Engine/SyntaxBridge/',
+    'Sources/', 'Tests/', 'Tools/MCPServer/', 'Tools/Tylax/', 'Engine/RenderBridge/', 'Engine/SyntaxBridge/',
     'Package.swift', 'Package.resolved', 'Resources/', 'Examples/', 'Brand/',
     # Only scripts/lint.sh reads these; Mac regression runs it.
     'Benchmarks/', '.swiftlint.yml', '.swiftformat',
     'scripts/appstore_connect.py', 'scripts/benchmark-books.sh', 'scripts/bootstrap.sh', 'scripts/build.sh',
     'scripts/build-mcp.sh', 'scripts/build-render.sh', 'scripts/build-syntax.sh', 'scripts/build-tinymist.sh',
+    'scripts/build-tylax.sh',
     'scripts/check-memory.sh', 'scripts/ci_changes.py', 'scripts/coverage.py', 'scripts/environment.sh',
     'scripts/export-appstore.py', 'scripts/lint.sh', 'scripts/make-app-icon.py', 'scripts/package-app.py',
     'scripts/package-sicp.py', 'scripts/prepare-icloud-profile.py', 'scripts/prepare-large-document.py',

@@ -32,6 +32,10 @@ def package(binary_dir, distribution):
     shutil.copy2('.tools/tinymist', contents / 'Helpers/tinymist')
     shutil.copy2('.tools/prose-mcp', contents / 'Helpers/prose-mcp')
     shutil.copy2('.tools/MCP-LICENSES.txt', resources / 'MCP-LICENSES.txt')
+    # The Tylax LaTeX converter for File > Export LaTeX… (scripts/build-tylax.sh).
+    subprocess.run(['scripts/build-tylax.sh', '--check'], check=True)
+    shutil.copy2('.tools/t2l', contents / 'Helpers/t2l')
+    shutil.copy2('.tools/TYLAX-LICENSES.txt', resources / 'TylaxConverter-LICENSES.txt')
     # The Typst engine (renderer and typst-syntax) is statically linked into the
     # executable (scripts/build-render.sh).
     shutil.copy2('.tools/RENDER-LICENSES.txt', resources / 'TypstEngine-LICENSES.txt')

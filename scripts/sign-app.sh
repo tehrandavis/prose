@@ -32,6 +32,7 @@ if [ "$distribution" = appstore ]; then
 fi
 codesign "${helper_args[@]}" "$app/Contents/Helpers/tinymist"
 codesign "${helper_args[@]}" "$app/Contents/Helpers/prose-mcp"
+codesign "${helper_args[@]}" "$app/Contents/Helpers/t2l"
 if [ -n "$entitlements" ]; then args+=(--entitlements "$entitlements"); fi
 codesign "${args[@]}" "$app"
 codesign --verify --deep --strict "$app"

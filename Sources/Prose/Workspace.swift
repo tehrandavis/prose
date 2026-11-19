@@ -1579,6 +1579,8 @@ final class Workspace: ObservableObject {
             openPanel(recovery: true)
         case "export": closePalette()
             exportPDF()
+        case "exportLatex": closePalette()
+            exportLaTeX()
         case "writing": layout = .writing
             closePalette()
         case "togglePreview": togglePreview()
@@ -2048,6 +2050,59 @@ final class Workspace: ObservableObject {
                 .format("PDF exported: %@", destination.lastPathComponent) : L10n
                 .text("PDF exported using the document version from when export began."))
         } catch { recordOperation("export.failed", ["error": error.localizedDescription])
+            throw error
+        }
+    }
+
+    /// File > Export LaTeX…: converts the document that PDF export compiles
+    /// with the bundled Tylax converter. It does not need the typesetting
+    /// service, and the result is a draft the writer checks before use.
+    func exportLaTeX() {
+        recordOperation("exportLatex.dialog")
+        let panel = NSSavePanel()
+        panel.title = L10n.text("Export LaTeX")
+        panel.nameFieldStringValue = (managedTitle?.replacingOccurrences(of: "/", with: "-")
+            ?? compilationURL.deletingPathExtension().lastPathComponent) + ".tex"
+        panel.allowedContentTypes = [UTType(filenameExtension: "tex", conformingTo: .plainText) ?? .plainText]
+        present(panel) { [weak self] destination in
+            Task { @MainActor in
+                guard let self else {
+                    return
+                }
+                do { try await self.exportLaTeX(to: destination) }
+                catch { self.showMessage(error.localizedDescription, persistent: true) }
+            }
+        }
+    }
+
+    /// Writes the LaTeX draft to `destination` and reports it. `converter`
+    /// replaces the bundled `t2l` (tests).
+    func exportLaTeX(to destination: URL, converter: URL? = nil) async throws {
+        try PackageSource.requireWritable(destination, packageCache: packageCache)
+        recordOperation("exportLatex.begin")
+        do {
+            guard let converter = converter ?? LatexExport.converterURL,
+                  FileManager.default.isExecutableFile(atPath: converter.path)
+            else {
+                throw LatexExportError.missingConverter
+            }
+            let source = compilationURL.standardizedFileURL == documentURL.standardizedFileURL
+                ? text : try DocumentStorage.read(compilationURL).0
+            let directory = compilationURL.deletingLastPathComponent()
+            let result = try await Task.detached {
+                try LatexExport.convert(source, converter: converter, directory: directory)
+            }.value
+            try Data(result.latex.utf8).write(to: destination, options: .atomic)
+            recordOperation("exportLatex.finished", ["warnings": String(result.warnings.count)])
+            showMessage(
+                LatexExport.summary(
+                    fileName: destination.lastPathComponent,
+                    warnings: result.warnings.count,
+                    referencesLocalFiles: LatexExport.referencesLocalFiles(source),
+                ),
+                persistent: true,
+            )
+        } catch { recordOperation("exportLatex.failed", ["error": error.localizedDescription])
             throw error
         }
     }

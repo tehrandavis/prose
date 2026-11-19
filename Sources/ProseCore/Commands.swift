@@ -376,6 +376,7 @@ public struct WritingCommand: Identifiable, Sendable {
         "saveAs": "floppy-disk-back",
         "history": "notebook",
         "export": "file-pdf",
+        "exportLatex": "file-code",
         "drafts": "clock-counter-clockwise",
         "reload": "arrows-clockwise",
         "addComment": "chat-circle",
@@ -1443,6 +1444,14 @@ public struct WritingCommand: Identifiable, Sendable {
         .init("save", "file", "s", "Save", "Save the current document to disk.", "save"),
         .init("saveAs", "file", "a", "Save As", "Choose a new name and location for this document.", "save as"),
         .init("export", "file", "e", "Export PDF", "Export the current document as a shareable PDF.", "export pdf"),
+        .init(
+            "exportLatex",
+            "file",
+            "l",
+            "Export LaTeX",
+            "Export the current document as a LaTeX draft to check before use.",
+            "export latex tex tylax",
+        ),
         .init(
             "drafts",
             "file",

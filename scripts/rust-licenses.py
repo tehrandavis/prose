@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Collect pinned Rust dependency notices into a macOS package resource.
 
-Usage: rust-licenses.py {mcp|syntax|render}. Run with the CARGO_HOME that built the crate.
+Usage: rust-licenses.py {mcp|syntax|render|tylax}. Run with the CARGO_HOME that built the crate.
 """
 import json
 from pathlib import Path
@@ -20,6 +20,10 @@ BUNDLES = {
     # the per-block Typst renderer with the typst-syntax bridge inside it.
     'render': ('Engine/RenderBridge/Cargo.toml', '.tools/RENDER-LICENSES.txt',
                'Prose macOS Typst engine (renderer and parser) dependency notices.'),
+    # The Tylax LaTeX converter helper (scripts/build-tylax.sh), from the
+    # crates.io archive that cargo install unpacked.
+    'tylax': ('.tools/cargo-tylax/registry/src/*/tylax-0.3.8/Cargo.toml', '.tools/TYLAX-LICENSES.txt',
+              'Prose macOS LaTeX converter (Tylax t2l) dependency notices.'),
 }
 # Crates whose published archive or git subdirectory omits the repository-root license.
 SHARED_LICENSES = {
@@ -41,6 +45,19 @@ SHARED_LICENSES_LISTS = {
     'wasmparser': [RENDER_TEXTS / 'wasm-tools-LICENSE-Apache-2.0_WITH_LLVM-exception',
                    RENDER_TEXTS / 'wasm-tools-LICENSE-APACHE', RENDER_TEXTS / 'wasm-tools-LICENSE-MIT'],
 }
+# Tylax's graph has crates whose archives omit their license. The texts are
+# copied from each upstream repository at the commit the crate archive records
+# (seahash's from its default branch; fxhash publishes none, see its notice).
+TYLAX_TEXTS = root / 'Tools/Tylax/licenses'
+LOGOS = [TYLAX_TEXTS / 'logos-LICENSE-APACHE', TYLAX_TEXTS / 'logos-LICENSE-MIT']
+MITEX = [TYLAX_TEXTS / 'mitex-LICENSE']
+SHARED_LICENSES_LISTS.update({
+    'fxhash': [TYLAX_TEXTS / 'fxhash-NOTICE.txt', root / 'Resources/Typst-LICENSE'],
+    'logos': LOGOS, 'logos-codegen': LOGOS, 'logos-derive': LOGOS,
+    'mitex': MITEX, 'mitex-glob': MITEX, 'mitex-lexer': MITEX, 'mitex-parser': MITEX,
+    'mitex-spec': MITEX, 'mitex-spec-gen': MITEX,
+    'seahash': [TYLAX_TEXTS / 'seahash-LICENSE'],
+})
 # Every Typst crate comes from Tinymist's pinned fork, whose crate directories
 # omit the repository-root license.
 TYPST_FORK = 'git+https://github.com/Myriad-Dreamin/typst.git'
@@ -48,9 +65,14 @@ TYPST_FORK = 'git+https://github.com/Myriad-Dreamin/typst.git'
 
 def notices(bundle):
     manifest, output, title = BUNDLES[bundle]
+    # A pattern names a crate archive under a CARGO_HOME; expect exactly one.
+    matches = sorted(root.glob(manifest)) if '*' in manifest else [root / manifest]
+    if len(matches) != 1:
+        raise SystemExit(f'Expected one manifest for {manifest}, found {len(matches)}')
+    manifest = matches[0]
     metadata = json.loads(subprocess.check_output([
         'cargo', '+1.92.0', 'metadata', '--locked', '--format-version', '1',
-        '--manifest-path', str(root / manifest), '--filter-platform', 'aarch64-apple-darwin',
+        '--manifest-path', str(manifest), '--filter-platform', 'aarch64-apple-darwin',
     ], text=True))
     workspace = set(metadata['workspace_members'])
     sections = [title + '\n']
