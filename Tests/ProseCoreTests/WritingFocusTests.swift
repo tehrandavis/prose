@@ -17,7 +17,7 @@ import Testing
     #expect(!WritingFocus.contains(ranges, 6) && !WritingFocus.contains(ranges, 19))
     #expect(WritingFocus.contains(ranges, 20) && WritingFocus.contains(ranges, 31))
     #expect(!WritingFocus.contains(ranges, 32) && !WritingFocus.contains([], 0))
-    #expect(WritingFocus.dimmedAlpha == 0.45)
+    #expect(WritingFocus.dimmedAlpha == 0.62)
 }
 
 @Test func writingFocusSymmetricDifferenceCoversWhatOneListHas() {

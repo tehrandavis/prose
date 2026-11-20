@@ -8,7 +8,7 @@ import Foundation
 /// whose first character changed sides need to draw again.
 public enum WritingFocus {
     /// The opacity a paragraph outside the focus blocks is drawn with.
-    public static let dimmedAlpha: CGFloat = 0.45
+    public static let dimmedAlpha: CGFloat = 0.62
 
     /// `ranges` sorted, with overlapping and touching ranges joined and
     /// empty ones dropped.

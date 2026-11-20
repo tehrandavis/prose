@@ -365,7 +365,7 @@ extension WritingFlowTests {
 
     /// Acceptance test 6: in Focus a closed setup row takes no height, shows
     /// while the caret rests on it, and Up and Down pass it in one step; a
-    /// margin mark draws at 45 percent outside the focus blocks. The
+    /// margin mark draws at 62 percent outside the focus blocks. The
     /// typewriter line holds with the caret on the row and in an open fold.
     @Test func writingFoldFocusHidesTheRowAndDimsTheMark() async throws {
         let source = foldSource.replacingOccurrences(
@@ -419,7 +419,7 @@ extension WritingFlowTests {
         expectTypewriter(editor, "the caret in the open fold")
         #expect(!editor.writing.dims(paragraphAt: setup) && !editor.writing.dims(paragraphAt: fold.end - 1))
 
-        // The mark dims to 45 percent outside the focus blocks.
+        // The mark dims to 62 percent outside the focus blocks.
         park(editor)
         await app.layout()
         func markInk(_ label: String) throws -> Double {
@@ -437,7 +437,7 @@ extension WritingFlowTests {
         #expect(!editor.writing.dims(paragraphAt: comment) && model.fold(holding: comment)?.isOpen == false)
         let full = try markInk("focus")
         #expect(full > 60, "The mark has no ink: \(full)")
-        #expect(abs(dimmed / full - 0.45) <= 0.04, "The mark dims to \(dimmed / full)")
+        #expect(abs(dimmed / full - 0.62) <= 0.04, "The mark dims to \(dimmed / full)")
         app.workspace.setMode(.writing)
         #expect(!model.hidesSetupRows)
         expectFoldInvariants(editor, undo)

@@ -323,7 +323,7 @@ extension WritingFlowTests {
     }
 
     /// Acceptance test 3: in Focus every paragraph outside the focus block is
-    /// drawn at 45 percent of its contrast against the page, a rendered
+    /// drawn at 62 percent of its contrast against the page, a rendered
     /// block, a pill and a raw block alike, in light and dark appearance;
     /// moving the caret moves full contrast with it, a pointer selection
     /// across three blocks draws all three at full contrast, and Code and
@@ -855,7 +855,7 @@ private func expectFocusDimming(_ appearance: NSAppearance.Name) async throws {
             return
         }
         #expect(
-            abs(low / high - 0.45) <= 0.03,
+            abs(low / high - 0.62) <= 0.03,
             "\(name) \(label): \(low) / \(high) = \(low / high)",
             sourceLocation: sourceLocation,
         )
@@ -901,7 +901,7 @@ private func expectFocusDimming(_ appearance: NSAppearance.Name) async throws {
     // equation is selected whole, so this compares the strongest ink.
     for key in ["paragraph", "equation", "raw"] {
         let ratio = (caretInPlain["peak " + key] ?? 0) / (threeSelected["peak " + key] ?? 1)
-        #expect(abs(ratio - 0.45) <= 0.03, "\(name): \(key) dimmed at \(ratio) of a three-block selection")
+        #expect(abs(ratio - 0.62) <= 0.03, "\(name): \(key) dimmed at \(ratio) of a three-block selection")
     }
 
     // The caret into the raw block, which stays source: full contrast moves
